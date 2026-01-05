@@ -1,26 +1,60 @@
-import React from 'react'
+import React, { useState } from 'react'
 import './HomePage.css'
 
 const HomePage = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const partners = [
+    { id: 1, name: 'Partner 1', size: 'smaller' },
+    { id: 4, name: 'Partner 4', size: 'bigger' },
+    { id: 5, name: 'Partner 5', size: 'smaller' },
+    { id: 6, name: 'Partner 6', size: 'bigger' },
+    { id: 7, name: 'Partner 7', size: 'smaller' },
+    { id: 8, name: 'Partner 8', size: 'large' }
+  ]
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen)
+  }
+
   return (
     <div className="home-page">
       <header className="header">
         <nav className="nav">
           <div className="nav-container">
             <div className="logo">
-              <h1>Ops</h1>
+              <h1>Opessocius</h1>
             </div>
             <ul className="nav-links">
-              <li><a href="#home">Home</a></li>
-              <li><a href="#about">About</a></li>
-              <li><a href="#services">Services</a></li>
-              <li><a href="#contact">Contact</a></li>
+              <li><a href="#products">Products</a></li>
+              <li><a href="#solutions">Solutions</a></li>
+              <li><a href="#markets">Markets</a></li>
+              <li><a href="#resources">Resources</a></li>
+              <li><a href="#company">Company</a></li>
             </ul>
-            <button className="menu-toggle" aria-label="Toggle menu">
-              <span></span>
-              <span></span>
-              <span></span>
+            <div className="header-actions">
+              <a href="#contact" className="contact-link">Contact Us</a>
+              <button className="btn-login">Login</button>
+            </div>
+            <button 
+              className="menu-toggle" 
+              onClick={toggleMenu}
+              aria-label="Toggle menu"
+            >
+              <span className={isMenuOpen ? 'open' : ''}></span>
+              <span className={isMenuOpen ? 'open' : ''}></span>
             </button>
+          </div>
+          <div className={`mobile-menu ${isMenuOpen ? 'open' : ''}`}>
+            <ul className="mobile-nav-links">
+              <li><a href="#products" onClick={toggleMenu}>Products</a></li>
+              <li><a href="#solutions" onClick={toggleMenu}>Solutions</a></li>
+              <li><a href="#markets" onClick={toggleMenu}>Markets</a></li>
+              <li><a href="#resources" onClick={toggleMenu}>Resources</a></li>
+              <li><a href="#company" onClick={toggleMenu}>Company</a></li>
+              <li><a href="#contact" onClick={toggleMenu}>Contact Us</a></li>
+              <li><button className="btn-login-mobile" onClick={toggleMenu}>Login</button></li>
+            </ul>
           </div>
         </nav>
       </header>
@@ -28,57 +62,41 @@ const HomePage = () => {
       <main className="main-content">
         <section className="hero">
           <div className="hero-content">
-            <h2 className="hero-title">Welcome to Ops</h2>
+            <h1 className="hero-title">Monetize, Track and Trade Energy & Environmental Commodities</h1>
             <p className="hero-subtitle">
-              Building modern solutions for today's challenges
+              Opessocius operates the world's largest integrated platform for the energy transition – trusted by financial institutions, corporations, governments and power producers worldwide.
             </p>
             <div className="hero-buttons">
-              <button className="btn btn-primary">Get Started</button>
-              <button className="btn btn-secondary">Learn More</button>
+              <button className="btn btn-primary">Talk to an Expert →</button>
+              <button className="btn btn-secondary">Explore Platform</button>
             </div>
           </div>
-        </section>
-
-        <section className="features">
-          <div className="container">
-            <h2 className="section-title">Features</h2>
-            <div className="features-grid">
-              <div className="feature-card">
-                <div className="feature-icon">🚀</div>
-                <h3>Fast & Reliable</h3>
-                <p>Built with modern technologies for optimal performance</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">📱</div>
-                <h3>Responsive Design</h3>
-                <p>Works seamlessly on all devices and screen sizes</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">🔒</div>
-                <h3>Secure</h3>
-                <p>Enterprise-grade security for your peace of mind</p>
+          
+          <div className="partners-section">
+            <div className="partners-container">
+              <div className="partners-track">
+                {[...partners, ...partners].map((partner, index) => (
+                  <div key={index} className="partner-item">
+                    <img 
+                      src={`/images/partners/partner${partner.id}.png`} 
+                      alt={partner.name}
+                      className={`partner-logo partner-logo-${partner.size}`}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="cta">
+        <section className="white-section">
           <div className="container">
-            <h2>Ready to get started?</h2>
-            <p>Join us today and experience the difference</p>
-            <button className="btn btn-primary btn-large">Contact Us</button>
+            {/* White canvas section for future content */}
           </div>
         </section>
       </main>
-
-      <footer className="footer">
-        <div className="container">
-          <p>&copy; 2024 Ops. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   )
 }
 
 export default HomePage
-

@@ -35,4 +35,5 @@ yarn-error.log*
 *-firebase-adminsdk-*.json
 firebase-debug.log
 .firebase/
+.config/
 
