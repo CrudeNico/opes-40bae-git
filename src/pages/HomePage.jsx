@@ -12,6 +12,7 @@ const HomePage = () => {
     company: '',
     message: ''
   })
+  const [expandedFooterSection, setExpandedFooterSection] = useState(null)
 
   const partners = [
     { id: 1, name: 'Partner 1', size: 'smaller' },
@@ -474,7 +475,219 @@ const HomePage = () => {
             </div>
           </div>
         </section>
+
+        {/* Light Blue Section */}
+        <section className="light-blue-section">
+          <div className="container">
+            <div className="light-blue-content">
+              <div className="light-blue-image">
+                <div className="image-placeholder">
+                  {/* Image will be added here */}
+                </div>
+              </div>
+              <div className="light-blue-text">
+                <h2 className="light-blue-title">Transact efficiently across commodities</h2>
+                <p className="light-blue-subtitle">One platform for the full range of energy and environmental commodities.</p>
+                <a href="#" className="light-blue-learn-more">Learn more <span className="learn-more-arrow">›</span></a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Featured Learning & Insights Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="featured-section-header">
+              <h2 className="featured-section-title">Featured Learning & Insights</h2>
+              <button className="btn-view-all">View All <span className="view-all-arrow">→</span></button>
+            </div>
+            <div className="featured-cards-grid">
+              <div className="featured-card">
+                <div className="featured-card-image">
+                  {/* Image will be added here */}
+                </div>
+                <div className="featured-card-content">
+                  <div className="featured-card-tags">CBL, FEATURED NEWS, MARKET</div>
+                  <h3 className="featured-card-title">Xpansiv Launches Consolidated Renewable Energy...</h3>
+                </div>
+              </div>
+              <div className="featured-card">
+                <div className="featured-card-image">
+                  {/* Image will be added here */}
+                </div>
+                <div className="featured-card-content">
+                  <div className="featured-card-tags">EMA, FEATURED NEWS, PRODUCT</div>
+                  <h3 className="featured-card-title">New York State Selects Xpansiv to Power Its Greenhous...</h3>
+                </div>
+              </div>
+              <div className="featured-card">
+                <div className="featured-card-image">
+                  {/* Image will be added here */}
+                </div>
+                <div className="featured-card-content">
+                  <div className="featured-card-tags">ACE, CBL, FEATURED NEWS, MARKET</div>
+                  <h3 className="featured-card-title">Xpansiv and KRX to Collaborate on Korean Carbon Cred...</h3>
+                </div>
+              </div>
+              <div className="featured-card">
+                <div className="featured-card-image">
+                  {/* Image will be added here */}
+                </div>
+                <div className="featured-card-content">
+                  <div className="featured-card-tags">FEATURED NEWS</div>
+                  <h3 className="featured-card-title">Xpansiv Recognized as One of the Best Companies to Work...</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="cta-widget">
+              <div className="cta-widget-background">
+                {/* Background image will be added here */}
+              </div>
+              <div className="cta-widget-content">
+                <h2 className="cta-title">Ready to transact with confidence?</h2>
+                <button className="btn btn-primary-white cta-button">Talk to an Expert →</button>
+              </div>
+            </div>
+            <p className="disclaimer-text">
+              Trading in futures and options involves substantial risk of loss and is not suitable for everyone. Past performance is not indicative of future results.
+              <br /><br />
+              When Evolution Markets acts as a broker in futures contracts, either on an introductory or execution basis, it is acting through its wholly-owned subsidiaries, Evolution Markets Futures LLC or Evolution Markets Limited. Evolution Markets Futures LLC is an introducing broker registered with the U.S. Commodity Futures Trading Commission and is a member of the National Futures Association. Evolution Markets Limited is registered with the U.K. Financial Conduct Authority and is an introducing broker registered with the U.S. Commodity Futures Trading Commission and is a member of the National Futures Association.
+            </p>
+          </div>
+        </section>
       </main>
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-brand">
+              <h2 className="footer-logo">Opessocius</h2>
+              <div className="footer-social">
+                <a href="#" className="social-icon" aria-label="LinkedIn">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" fill="currentColor"/>
+                  </svg>
+                </a>
+                <a href="#" className="social-icon" aria-label="YouTube">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="currentColor"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div className="footer-links">
+              <div className="footer-column">
+                <button 
+                  className="footer-column-title mobile-toggle"
+                  onClick={() => setExpandedFooterSection(expandedFooterSection === 'products' ? null : 'products')}
+                  aria-expanded={expandedFooterSection === 'products'}
+                >
+                  Products
+                  <span className="footer-chevron">›</span>
+                </button>
+                <ul className={`footer-link-list ${expandedFooterSection === 'products' ? 'expanded' : ''}`}>
+                  <li><a href="#">Trading Platforms</a></li>
+                  <li><a href="#">Market Execution</a></li>
+                  <li><a href="#">Registries</a></li>
+                  <li><a href="#">Power</a></li>
+                  <li><a href="#">Connect</a></li>
+                  <li><a href="#">Data</a></li>
+                  <li><a href="#">Managed Solutions - Solar</a></li>
+                  <li><a href="#">Managed Solutions - Clean Transportation</a></li>
+                </ul>
+              </div>
+              <div className="footer-column">
+                <button 
+                  className="footer-column-title mobile-toggle"
+                  onClick={() => setExpandedFooterSection(expandedFooterSection === 'solutions' ? null : 'solutions')}
+                  aria-expanded={expandedFooterSection === 'solutions'}
+                >
+                  Solutions
+                  <span className="footer-chevron">›</span>
+                </button>
+                <ul className={`footer-link-list ${expandedFooterSection === 'solutions' ? 'expanded' : ''}`}>
+                  <li><a href="#">Solutions</a></li>
+                  <li><a href="#">Environmental Commodity Buyers</a></li>
+                  <li><a href="#">Traders & Brokers</a></li>
+                  <li><a href="#">Asset & Project Owners</a></li>
+                  <li><a href="#">Power Producers</a></li>
+                  <li><a href="#">Solar Installers</a></li>
+                  <li><a href="#">Solar Homeowners & Businesses</a></li>
+                  <li><a href="#">EV Charging & Fleet Operators</a></li>
+                </ul>
+              </div>
+              <div className="footer-column">
+                <button 
+                  className="footer-column-title mobile-toggle"
+                  onClick={() => setExpandedFooterSection(expandedFooterSection === 'resources' ? null : 'resources')}
+                  aria-expanded={expandedFooterSection === 'resources'}
+                >
+                  Resources
+                  <span className="footer-chevron">›</span>
+                </button>
+                <ul className={`footer-link-list ${expandedFooterSection === 'resources' ? 'expanded' : ''}`}>
+                  <li><a href="#">Learning & Insights</a></li>
+                  <li><a href="#">Blog</a></li>
+                  <li><a href="#">Documents & Guides</a></li>
+                  <li><a href="#">Support Center</a></li>
+                  <li><a href="#">Developer Portal</a></li>
+                </ul>
+              </div>
+              <div className="footer-column">
+                <button 
+                  className="footer-column-title mobile-toggle"
+                  onClick={() => setExpandedFooterSection(expandedFooterSection === 'legal' ? null : 'legal')}
+                  aria-expanded={expandedFooterSection === 'legal'}
+                >
+                  Legal
+                  <span className="footer-chevron">›</span>
+                </button>
+                <ul className={`footer-link-list ${expandedFooterSection === 'legal' ? 'expanded' : ''}`}>
+                  <li><a href="#">Trademark Usage</a></li>
+                  <li><a href="#">Disclaimer (Evolution Markets)</a></li>
+                  <li><a href="#">Compliance (Evolution Markets)</a></li>
+                  <li><a href="#">Evolution Markets Futures LLC</a></li>
+                  <li><a href="#">Modern Slavery Statement</a></li>
+                  <li><a href="#">Supplier Code of Conduct</a></li>
+                  <li><a href="#">CBL Markets (Australia) Pty Ltd AFSL 536825</a></li>
+                  <li><a href="#">California Assembly Bill No. 1305</a></li>
+                </ul>
+              </div>
+              <div className="footer-column">
+                <button 
+                  className="footer-column-title mobile-toggle"
+                  onClick={() => setExpandedFooterSection(expandedFooterSection === 'company' ? null : 'company')}
+                  aria-expanded={expandedFooterSection === 'company'}
+                >
+                  Company
+                  <span className="footer-chevron">›</span>
+                </button>
+                <ul className={`footer-link-list ${expandedFooterSection === 'company' ? 'expanded' : ''}`}>
+                  <li><a href="#">About Us</a></li>
+                  <li><a href="#">Careers</a></li>
+                  <li><a href="#">Contact</a></li>
+                  <li><a href="#">News</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <div className="footer-bottom-links">
+              <a href="#">Privacy</a>
+              <a href="#">Cookie Policy</a>
+              <a href="#">Terms of Use</a>
+            </div>
+            <div className="footer-copyright">© 2026 Opessocius</div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
