@@ -31,3 +31,8 @@ yarn-error.log*
 # Vite
 .vite/
 
+# Firebase
+*-firebase-adminsdk-*.json
+firebase-debug.log
+.firebase/
+
