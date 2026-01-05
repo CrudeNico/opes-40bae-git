@@ -91,7 +91,45 @@ const HomePage = () => {
 
         <section className="white-section">
           <div className="container">
-            {/* White canvas section for future content */}
+            {/* Hero Section */}
+            <div className="white-hero">
+              <h2 className="white-hero-title">The Global Platform for Energy and Environmental Commodities</h2>
+              <p className="white-hero-subtitle">
+                From trading and brokerage to registries, wholesale power and beyond – Xpansiv gives you the proven platform to capture opportunities and drive environmental impact.
+              </p>
+              <button className="btn btn-primary-white">Explore Platform →</button>
+            </div>
+
+            {/* Video Widget */}
+            <div className="video-widget">
+              <div className="video-container">
+                {/* Video will be added here */}
+              </div>
+            </div>
+
+            {/* Stats Section */}
+            <div className="stats-section">
+              <div className="stat-card">
+                <div className="stat-icon">◉</div>
+                <h3 className="stat-title">Global Transaction Expertise</h3>
+                <p className="stat-description">Transact in renewable energy, carbon and more across 5 continents</p>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">▦</div>
+                <h3 className="stat-title">300 GW</h3>
+                <p className="stat-description">Capacity of Xpansiv's unmatched global REC registry network</p>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">▣</div>
+                <h3 className="stat-title">&gt;20%</h3>
+                <p className="stat-description">ERCOT and CAISO battery storage capacity served by Xpansiv (formerly APX)</p>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">✓</div>
+                <h3 className="stat-title">Trusted by the Market</h3>
+                <p className="stat-description">Over 100,000 customers - from Fortune 500 companies and government agencies to project developers and homeowners</p>
+              </div>
+            </div>
           </div>
         </section>
       </main>
