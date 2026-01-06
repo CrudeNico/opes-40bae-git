@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { signUpWithEmail, signInWithGoogle } from '../firebase/auth'
+import { sendConfirmationEmail } from '../firebase/email'
 import './SignUpPage.css'
 
 const SignUpPage = () => {
@@ -9,15 +11,122 @@ const SignUpPage = () => {
   const [fullName, setFullName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle sign up logic here
-    console.log('Sign Up:', { email, password, fullName })
+    setError('')
+    setLoading(true)
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const result = await signUpWithEmail(email, password, fullName)
+      
+      if (result.success) {
+        // Send confirmation email
+        try {
+          await sendConfirmationEmail(email, fullName)
+          // Email sent successfully (we don't show error if email fails, as account is already created)
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError)
+          // Account is created, so we continue even if email fails
+        }
+        
+        // Show success popup
+        setShowSuccessPopup(true)
+        // Auto-dismiss popup after 5 seconds and redirect
+        setTimeout(() => {
+          setShowSuccessPopup(false)
+          navigate('/')
+        }, 5000)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClosePopup = () => {
+    setShowSuccessPopup(false)
+    navigate('/')
+  }
+
+  const handleGoogleSignUp = async () => {
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await signInWithGoogle()
+      
+      if (result.success) {
+        // Send confirmation email for Google sign-up
+        try {
+          await sendConfirmationEmail(
+            result.user.email || '', 
+            result.user.displayName || ''
+          )
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError)
+        }
+        
+        // Show success popup
+        setShowSuccessPopup(true)
+        // Auto-dismiss popup after 5 seconds and redirect
+        setTimeout(() => {
+          setShowSuccessPopup(false)
+          navigate('/')
+        }, 5000)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="signup-page">
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="success-popup-overlay" onClick={handleClosePopup}>
+          <div className="success-popup" onClick={(e) => e.stopPropagation()}>
+            <button className="success-popup-close" onClick={handleClosePopup}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div className="success-popup-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3 className="success-popup-title">Thank you for signing in</h3>
+            <p className="success-popup-message">You will receive shortly an email confirmation of your account created.</p>
+          </div>
+        </div>
+      )}
+      
       <Link to="/" className="back-to-home">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -47,6 +156,12 @@ const SignUpPage = () => {
           <div className="signup-form-container">
             <h2 className="signup-form-title">Sign up</h2>
             <p className="signup-form-subtitle">Enter your details below to create your account.</p>
+
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
 
             <form className="signup-form" onSubmit={handleSubmit}>
               <div className="form-group">
@@ -168,8 +283,8 @@ const SignUpPage = () => {
                 </div>
               </div>
 
-              <button type="submit" className="signup-button">
-                Sign up
+              <button type="submit" className="signup-button" disabled={loading}>
+                {loading ? 'Creating account...' : 'Sign up'}
               </button>
             </form>
 
@@ -180,7 +295,12 @@ const SignUpPage = () => {
             </div>
 
             <div className="social-login">
-              <button className="social-button google-button">
+              <button 
+                type="button"
+                className="social-button google-button"
+                onClick={handleGoogleSignUp}
+                disabled={loading}
+              >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M19.6 10.2273C19.6 9.51818 19.5364 8.83636 19.4182 8.18182H10V12.05H15.3818C15.15 13.3 14.4455 14.3591 13.3864 15.0682V17.5773H16.6182C18.5091 15.8364 19.6 13.2727 19.6 10.2273Z" fill="#4285F4"/>
                   <path d="M10 20C12.7 20 14.9636 19.1045 16.6182 17.5773L13.3864 15.0682C12.4909 15.6682 11.3455 16.0227 10 16.0227C7.39545 16.0227 5.19091 14.2636 4.40455 11.9H1.06364V14.4909C2.70909 17.7591 6.09091 20 10 20Z" fill="#34A853"/>

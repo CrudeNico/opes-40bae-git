@@ -37,3 +37,7 @@ firebase-debug.log
 .firebase/
 .config/
 
+
+# Environment variables
+.env
+.env.local

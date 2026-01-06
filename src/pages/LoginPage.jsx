@@ -1,16 +1,55 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { signInWithEmail, signInWithGoogle } from '../firebase/auth'
 import './LoginPage.css'
 
 const LoginPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle login logic here
-    console.log('Login:', { email, password })
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await signInWithEmail(email, password)
+      
+      if (result.success) {
+        // Redirect to home page or dashboard after successful login
+        navigate('/')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await signInWithGoogle()
+      
+      if (result.success) {
+        // Redirect to home page after successful login
+        navigate('/')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -44,6 +83,12 @@ const LoginPage = () => {
           <div className="login-form-container">
             <h2 className="login-form-title">Log in</h2>
             <p className="login-form-subtitle">Enter your details below to sign into your account.</p>
+
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
 
             <form className="login-form" onSubmit={handleSubmit}>
               <div className="form-group">
@@ -108,8 +153,8 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              <button type="submit" className="login-button">
-                Log in
+              <button type="submit" className="login-button" disabled={loading}>
+                {loading ? 'Logging in...' : 'Log in'}
               </button>
             </form>
 
@@ -120,7 +165,12 @@ const LoginPage = () => {
             </div>
 
             <div className="social-login">
-              <button className="social-button google-button">
+              <button 
+                type="button"
+                className="social-button google-button"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+              >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M19.6 10.2273C19.6 9.51818 19.5364 8.83636 19.4182 8.18182H10V12.05H15.3818C15.15 13.3 14.4455 14.3591 13.3864 15.0682V17.5773H16.6182C18.5091 15.8364 19.6 13.2727 19.6 10.2273Z" fill="#4285F4"/>
                   <path d="M10 20C12.7 20 14.9636 19.1045 16.6182 17.5773L13.3864 15.0682C12.4909 15.6682 11.3455 16.0227 10 16.0227C7.39545 16.0227 5.19091 14.2636 4.40455 11.9H1.06364V14.4909C2.70909 17.7591 6.09091 20 10 20Z" fill="#34A853"/>
