@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import './HomePage.css'
 
 const HomePage = () => {
@@ -345,7 +346,7 @@ const HomePage = () => {
             </ul>
             <div className="header-actions">
               <a href="#contact" className="contact-link">Contact Us</a>
-              <button className="btn-login">Login</button>
+              <Link to="/login" className="btn-login">Login</Link>
             </div>
             <button 
               className="menu-toggle" 
@@ -459,7 +460,7 @@ const HomePage = () => {
                 )}
               </li>
               <li><a href="#contact" onClick={toggleMenu}>Contact Us</a></li>
-              <li><button className="btn-login-mobile" onClick={toggleMenu}>Login</button></li>
+              <li><Link to="/login" className="btn-login-mobile" onClick={toggleMenu}>Login</Link></li>
             </ul>
           </div>
         </nav>

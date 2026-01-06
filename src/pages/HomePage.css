@@ -242,6 +242,8 @@
   font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn-login:hover {
@@ -412,6 +414,9 @@
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-decoration: none;
+  display: block;
+  text-align: center;
 }
 
 .btn-login-mobile:hover {
