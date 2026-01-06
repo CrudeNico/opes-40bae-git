@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { auth } from '../firebase/config'
 import { signOutUser } from '../firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
+import Settings from '../components/Settings'
 import './DashboardPage.css'
 
 const DashboardPage = () => {
@@ -13,8 +14,10 @@ const DashboardPage = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
+        // Reload user to get latest profile data
+        await currentUser.reload()
         setUser(currentUser)
       } else {
         // User is not logged in, redirect to login
@@ -42,8 +45,9 @@ const DashboardPage = () => {
   const sections = [
     { id: 'dashboard', title: 'Dashboard' },
     { id: 'portfolio', title: 'Portfolio' },
-    { id: 'trading', title: 'Trading' },
-    { id: 'analytics', title: 'Analytics' },
+    { id: 'news', title: 'News' },
+    { id: 'learning', title: 'Learning' },
+    { id: 'community', title: 'Community' },
     { id: 'settings', title: 'Settings' },
     { id: 'support', title: 'Support' }
   ]
@@ -136,13 +140,19 @@ const DashboardPage = () => {
       {/* Main Content Area */}
       <main className="dashboard-content">
         <div className="content-wrapper">
-          <h1 className="content-title">
-            {sections.find(s => s.id === activeSection)?.title || 'Dashboard'}
-          </h1>
-          <div className="content-body">
-            <p>Welcome to your {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'dashboard'} section.</p>
-            {/* Content will be displayed here based on activeSection */}
-          </div>
+          {activeSection === 'settings' ? (
+            <Settings user={user} />
+          ) : (
+            <>
+              <h1 className="content-title">
+                {sections.find(s => s.id === activeSection)?.title || 'Dashboard'}
+              </h1>
+              <div className="content-body">
+                <p>Welcome to your {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'dashboard'} section.</p>
+                {/* Content will be displayed here based on activeSection */}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>
