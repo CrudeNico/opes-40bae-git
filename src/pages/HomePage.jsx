@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import './HomePage.css'
 
 const HomePage = () => {
@@ -13,6 +13,52 @@ const HomePage = () => {
     message: ''
   })
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
+  const [activeDropdown, setActiveDropdown] = useState(null)
+  const [expandedMobileSection, setExpandedMobileSection] = useState(null)
+  const [dropdownFading, setDropdownFading] = useState(false)
+  const dropdownRef = useRef(null)
+
+  // Close dropdown when clicking outside or scrolling
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        // Check if clicking on a nav-link-button
+        if (!event.target.closest('.nav-link-button')) {
+          setDropdownFading(true)
+          setTimeout(() => {
+            setActiveDropdown(null)
+            setDropdownFading(false)
+          }, 300)
+        }
+      }
+    }
+
+    const handleScroll = () => {
+      // Get the header section position
+      const header = document.querySelector('.header')
+      if (header && activeDropdown) {
+        const headerRect = header.getBoundingClientRect()
+        // If scrolled away from the header (header is out of view), fade out dropdown
+        if (headerRect.bottom < 100 && !dropdownFading) {
+          setDropdownFading(true)
+          setTimeout(() => {
+            setActiveDropdown(null)
+            setDropdownFading(false)
+          }, 300)
+        }
+      }
+    }
+
+    if (activeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      window.addEventListener('scroll', handleScroll, { passive: true })
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [activeDropdown, dropdownFading])
 
   const partners = [
     { id: 1, name: 'Partner 1', size: 'smaller' },
@@ -35,12 +81,267 @@ const HomePage = () => {
             <div className="logo">
               <h1>Opessocius</h1>
             </div>
-            <ul className="nav-links">
-              <li><a href="#products">Products</a></li>
-              <li><a href="#solutions">Solutions</a></li>
-              <li><a href="#markets">Markets</a></li>
-              <li><a href="#resources">Resources</a></li>
-              <li><a href="#company">Company</a></li>
+            <ul className="nav-links" ref={dropdownRef}>
+              <li className="nav-item">
+                <button 
+                  className="nav-link-button"
+                  onClick={() => {
+                    if (activeDropdown === 'products') {
+                      setDropdownFading(true)
+                      setTimeout(() => {
+                        setActiveDropdown(null)
+                        setDropdownFading(false)
+                      }, 300)
+                    } else {
+                      setActiveDropdown('products')
+                      setDropdownFading(false)
+                    }
+                  }}
+                >
+                  Products
+                </button>
+                {activeDropdown === 'products' && (
+                  <div className={`nav-dropdown ${dropdownFading ? 'fading-out' : ''}`}>
+                    <div className="nav-dropdown-content">
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Trading Platforms</a>
+                        <p className="nav-dropdown-subtext">Access comprehensive trading platforms for energy and environmental commodities</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Market Execution</a>
+                        <p className="nav-dropdown-subtext">Execute trades efficiently across global markets</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Registries</a>
+                        <p className="nav-dropdown-subtext">Manage and track renewable energy certificates</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Power</a>
+                        <p className="nav-dropdown-subtext">Power generation and wholesale electricity solutions</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Connect</a>
+                        <p className="nav-dropdown-subtext">Connect with partners and streamline operations</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Data</a>
+                        <p className="nav-dropdown-subtext">Access real-time market data and analytics</p>
+                      </div>
+                    </div>
+                    <div className="nav-dropdown-image">
+                      {/* Image will be added here */}
+                    </div>
+                  </div>
+                )}
+              </li>
+              <li className="nav-item">
+                <button 
+                  className="nav-link-button"
+                  onClick={() => {
+                    if (activeDropdown === 'solutions') {
+                      setDropdownFading(true)
+                      setTimeout(() => {
+                        setActiveDropdown(null)
+                        setDropdownFading(false)
+                      }, 300)
+                    } else {
+                      setActiveDropdown('solutions')
+                      setDropdownFading(false)
+                    }
+                  }}
+                >
+                  Solutions
+                </button>
+                {activeDropdown === 'solutions' && (
+                  <div className={`nav-dropdown ${dropdownFading ? 'fading-out' : ''}`}>
+                    <div className="nav-dropdown-content">
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Environmental Commodity Buyers</a>
+                        <p className="nav-dropdown-subtext">Streamline procurement and reporting for sustainability leaders</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Traders & Brokers</a>
+                        <p className="nav-dropdown-subtext">Advanced trading tools and market execution services</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Asset & Project Owners</a>
+                        <p className="nav-dropdown-subtext">Maximize value and optimize renewable energy assets</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Power Producers</a>
+                        <p className="nav-dropdown-subtext">Connect generation assets to global energy markets</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Solar Installers</a>
+                        <p className="nav-dropdown-subtext">Expand business opportunities with solar solutions</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>EV Charging & Fleet Operators</a>
+                        <p className="nav-dropdown-subtext">Manage electric vehicle fleets and clean fuel credits</p>
+                      </div>
+                    </div>
+                    <div className="nav-dropdown-image">
+                      {/* Image will be added here */}
+                    </div>
+                  </div>
+                )}
+              </li>
+              <li className="nav-item">
+                <button 
+                  className="nav-link-button"
+                  onClick={() => {
+                    if (activeDropdown === 'markets') {
+                      setDropdownFading(true)
+                      setTimeout(() => {
+                        setActiveDropdown(null)
+                        setDropdownFading(false)
+                      }, 300)
+                    } else {
+                      setActiveDropdown('markets')
+                      setDropdownFading(false)
+                    }
+                  }}
+                >
+                  Markets
+                </button>
+                {activeDropdown === 'markets' && (
+                  <div className={`nav-dropdown ${dropdownFading ? 'fading-out' : ''}`}>
+                    <div className="nav-dropdown-content">
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Renewable Energy</a>
+                        <p className="nav-dropdown-subtext">Trade renewable energy certificates and clean power</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Carbon Markets</a>
+                        <p className="nav-dropdown-subtext">Access the world's leading carbon exchange and registries</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Power Markets</a>
+                        <p className="nav-dropdown-subtext">Wholesale electricity trading and market operations</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Environmental Commodities</a>
+                        <p className="nav-dropdown-subtext">Comprehensive platform for all environmental attributes</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Energy Storage</a>
+                        <p className="nav-dropdown-subtext">Battery storage and grid-scale energy solutions</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Clean Fuels</a>
+                        <p className="nav-dropdown-subtext">Renewable fuel credits and clean transportation markets</p>
+                      </div>
+                    </div>
+                    <div className="nav-dropdown-image">
+                      {/* Image will be added here */}
+                    </div>
+                  </div>
+                )}
+              </li>
+              <li className="nav-item">
+                <button 
+                  className="nav-link-button"
+                  onClick={() => {
+                    if (activeDropdown === 'resources') {
+                      setDropdownFading(true)
+                      setTimeout(() => {
+                        setActiveDropdown(null)
+                        setDropdownFading(false)
+                      }, 300)
+                    } else {
+                      setActiveDropdown('resources')
+                      setDropdownFading(false)
+                    }
+                  }}
+                >
+                  Resources
+                </button>
+                {activeDropdown === 'resources' && (
+                  <div className={`nav-dropdown ${dropdownFading ? 'fading-out' : ''}`}>
+                    <div className="nav-dropdown-content">
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Learning & Insights</a>
+                        <p className="nav-dropdown-subtext">Featured articles and insights on energy markets</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Blog</a>
+                        <p className="nav-dropdown-subtext">Latest news and updates from our team</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Documents & Guides</a>
+                        <p className="nav-dropdown-subtext">Comprehensive documentation and user guides</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Support Center</a>
+                        <p className="nav-dropdown-subtext">Get help and find answers to common questions</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Developer Portal</a>
+                        <p className="nav-dropdown-subtext">API documentation and developer resources</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Webinars & Events</a>
+                        <p className="nav-dropdown-subtext">Join industry events and educational webinars</p>
+                      </div>
+                    </div>
+                    <div className="nav-dropdown-image">
+                      {/* Image will be added here */}
+                    </div>
+                  </div>
+                )}
+              </li>
+              <li className="nav-item">
+                <button 
+                  className="nav-link-button"
+                  onClick={() => {
+                    if (activeDropdown === 'company') {
+                      setDropdownFading(true)
+                      setTimeout(() => {
+                        setActiveDropdown(null)
+                        setDropdownFading(false)
+                      }, 300)
+                    } else {
+                      setActiveDropdown('company')
+                      setDropdownFading(false)
+                    }
+                  }}
+                >
+                  Company
+                </button>
+                {activeDropdown === 'company' && (
+                  <div className={`nav-dropdown ${dropdownFading ? 'fading-out' : ''}`}>
+                    <div className="nav-dropdown-content">
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>About Us</a>
+                        <p className="nav-dropdown-subtext">Learn about our mission and platform</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Careers</a>
+                        <p className="nav-dropdown-subtext">Join our team and help shape the energy transition</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Contact</a>
+                        <p className="nav-dropdown-subtext">Get in touch with our team</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>News</a>
+                        <p className="nav-dropdown-subtext">Latest company announcements and press releases</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Partners</a>
+                        <p className="nav-dropdown-subtext">Explore our strategic partnerships and alliances</p>
+                      </div>
+                      <div className="nav-dropdown-item">
+                        <a href="#" onClick={() => setActiveDropdown(null)}>Leadership</a>
+                        <p className="nav-dropdown-subtext">Meet our executive team and board of directors</p>
+                      </div>
+                    </div>
+                    <div className="nav-dropdown-image">
+                      {/* Image will be added here */}
+                    </div>
+                  </div>
+                )}
+              </li>
             </ul>
             <div className="header-actions">
               <a href="#contact" className="contact-link">Contact Us</a>
@@ -57,11 +358,106 @@ const HomePage = () => {
           </div>
           <div className={`mobile-menu ${isMenuOpen ? 'open' : ''}`}>
             <ul className="mobile-nav-links">
-              <li><a href="#products" onClick={toggleMenu}>Products</a></li>
-              <li><a href="#solutions" onClick={toggleMenu}>Solutions</a></li>
-              <li><a href="#markets" onClick={toggleMenu}>Markets</a></li>
-              <li><a href="#resources" onClick={toggleMenu}>Resources</a></li>
-              <li><a href="#company" onClick={toggleMenu}>Company</a></li>
+              <li className="mobile-nav-item">
+                <button 
+                  className="mobile-nav-button"
+                  onClick={() => setExpandedMobileSection(expandedMobileSection === 'products' ? null : 'products')}
+                  aria-expanded={expandedMobileSection === 'products'}
+                >
+                  Products
+                  <span className="mobile-chevron">›</span>
+                </button>
+                {expandedMobileSection === 'products' && (
+                  <ul className="mobile-submenu">
+                    <li><a href="#" onClick={toggleMenu}>Trading Platforms</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Market Execution</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Registries</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Power</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Connect</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Data</a></li>
+                  </ul>
+                )}
+              </li>
+              <li className="mobile-nav-item">
+                <button 
+                  className="mobile-nav-button"
+                  onClick={() => setExpandedMobileSection(expandedMobileSection === 'solutions' ? null : 'solutions')}
+                  aria-expanded={expandedMobileSection === 'solutions'}
+                >
+                  Solutions
+                  <span className="mobile-chevron">›</span>
+                </button>
+                {expandedMobileSection === 'solutions' && (
+                  <ul className="mobile-submenu">
+                    <li><a href="#" onClick={toggleMenu}>Environmental Commodity Buyers</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Traders & Brokers</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Asset & Project Owners</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Power Producers</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Solar Installers</a></li>
+                    <li><a href="#" onClick={toggleMenu}>EV Charging & Fleet Operators</a></li>
+                  </ul>
+                )}
+              </li>
+              <li className="mobile-nav-item">
+                <button 
+                  className="mobile-nav-button"
+                  onClick={() => setExpandedMobileSection(expandedMobileSection === 'markets' ? null : 'markets')}
+                  aria-expanded={expandedMobileSection === 'markets'}
+                >
+                  Markets
+                  <span className="mobile-chevron">›</span>
+                </button>
+                {expandedMobileSection === 'markets' && (
+                  <ul className="mobile-submenu">
+                    <li><a href="#" onClick={toggleMenu}>Renewable Energy</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Carbon Markets</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Power Markets</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Environmental Commodities</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Energy Storage</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Clean Fuels</a></li>
+                  </ul>
+                )}
+              </li>
+              <li className="mobile-nav-item">
+                <button 
+                  className="mobile-nav-button"
+                  onClick={() => setExpandedMobileSection(expandedMobileSection === 'resources' ? null : 'resources')}
+                  aria-expanded={expandedMobileSection === 'resources'}
+                >
+                  Resources
+                  <span className="mobile-chevron">›</span>
+                </button>
+                {expandedMobileSection === 'resources' && (
+                  <ul className="mobile-submenu">
+                    <li><a href="#" onClick={toggleMenu}>Learning & Insights</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Blog</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Documents & Guides</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Support Center</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Developer Portal</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Webinars & Events</a></li>
+                  </ul>
+                )}
+              </li>
+              <li className="mobile-nav-item">
+                <button 
+                  className="mobile-nav-button"
+                  onClick={() => setExpandedMobileSection(expandedMobileSection === 'company' ? null : 'company')}
+                  aria-expanded={expandedMobileSection === 'company'}
+                >
+                  Company
+                  <span className="mobile-chevron">›</span>
+                </button>
+                {expandedMobileSection === 'company' && (
+                  <ul className="mobile-submenu">
+                    <li><a href="#" onClick={toggleMenu}>About Us</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Careers</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Contact</a></li>
+                    <li><a href="#" onClick={toggleMenu}>News</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Partners</a></li>
+                    <li><a href="#" onClick={toggleMenu}>Leadership</a></li>
+                  </ul>
+                )}
+              </li>
               <li><a href="#contact" onClick={toggleMenu}>Contact Us</a></li>
               <li><button className="btn-login-mobile" onClick={toggleMenu}>Login</button></li>
             </ul>
