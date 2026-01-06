@@ -4,9 +4,13 @@ import {
   signInWithPopup,
   signOut,
   updateProfile,
-  GoogleAuthProvider
+  GoogleAuthProvider,
+  onAuthStateChanged
 } from 'firebase/auth'
 import { auth } from './config'
+
+// Export onAuthStateChanged for use in components
+export { onAuthStateChanged }
 
 /**
  * Sign up a new user with email and password

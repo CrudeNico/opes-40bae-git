@@ -20,8 +20,8 @@ const LoginPage = () => {
       const result = await signInWithEmail(email, password)
       
       if (result.success) {
-        // Redirect to home page or dashboard after successful login
-        navigate('/')
+        // Redirect to dashboard after successful login
+        navigate('/dashboard')
       } else {
         setError(result.error)
       }

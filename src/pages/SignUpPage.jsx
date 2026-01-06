@@ -53,7 +53,7 @@ const SignUpPage = () => {
         // Auto-dismiss popup after 5 seconds and redirect
         setTimeout(() => {
           setShowSuccessPopup(false)
-          navigate('/')
+          navigate('/dashboard')
         }, 5000)
       } else {
         setError(result.error)
@@ -67,7 +67,7 @@ const SignUpPage = () => {
 
   const handleClosePopup = () => {
     setShowSuccessPopup(false)
-    navigate('/')
+    navigate('/dashboard')
   }
 
   const handleGoogleSignUp = async () => {
@@ -93,7 +93,7 @@ const SignUpPage = () => {
         // Auto-dismiss popup after 5 seconds and redirect
         setTimeout(() => {
           setShowSuccessPopup(false)
-          navigate('/')
+          navigate('/dashboard')
         }, 5000)
       } else {
         setError(result.error)
