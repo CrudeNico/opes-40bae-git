@@ -4,7 +4,8 @@ import {
   signInWithPopup,
   signOut,
   updateProfile,
-  GoogleAuthProvider
+  GoogleAuthProvider,
+  OAuthProvider
 } from 'firebase/auth'
 import { auth } from './config'
 
@@ -96,6 +97,40 @@ export const signInWithGoogle = async () => {
       errorMessage = 'Sign-in was cancelled. Please try again.'
     } else if (error.code === 'auth/network-request-failed') {
       errorMessage = 'Network error. Please check your internet connection.'
+    }
+    return { success: false, error: errorMessage }
+  }
+}
+
+/**
+ * Sign in with Apple
+ * @returns {Promise} - User credential
+ */
+export const signInWithApple = async () => {
+  try {
+    const provider = new OAuthProvider('apple.com')
+    // Add scopes for email and name
+    provider.addScope('email')
+    provider.addScope('name')
+    
+    const result = await signInWithPopup(auth, provider)
+    
+    // Apple provides name only on first sign-in
+    // The name is automatically set by Firebase if provided by Apple
+    return { success: true, user: result.user }
+  } catch (error) {
+    // Provide user-friendly error messages
+    let errorMessage = error.message
+    if (error.code === 'auth/popup-closed-by-user') {
+      errorMessage = 'Sign-in popup was closed. Please try again.'
+    } else if (error.code === 'auth/popup-blocked') {
+      errorMessage = 'Popup was blocked by your browser. Please allow popups and try again.'
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      errorMessage = 'Sign-in was cancelled. Please try again.'
+    } else if (error.code === 'auth/network-request-failed') {
+      errorMessage = 'Network error. Please check your internet connection.'
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      errorMessage = 'An account already exists with this email. Please sign in with your original method.'
     }
     return { success: false, error: errorMessage }
   }
