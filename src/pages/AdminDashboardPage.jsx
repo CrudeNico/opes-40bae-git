@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { auth } from '../firebase/config'
 import { signOutUser } from '../firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
-import Settings from '../components/Settings'
-import Portfolio from '../components/Portfolio'
-import './DashboardPage.css'
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
+import AdminUsersManagement from '../components/AdminUsersManagement'
+import AdminInvestorsManagement from '../components/AdminInvestorsManagement'
+import './AdminDashboardPage.css'
 
-const DashboardPage = () => {
+const AdminDashboardPage = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState('dashboard')
@@ -17,9 +18,42 @@ const DashboardPage = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // Reload user to get latest profile data
-        await currentUser.reload()
-        setUser(currentUser)
+        // Check if user is admin
+        const db = getFirestore()
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid)
+          const userDoc = await getDoc(userDocRef)
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            // Handle both old format (isAdmin as array) and new format (statuses as array)
+            let statuses = userData.statuses || []
+            // If statuses doesn't exist but isAdmin does (as array), use isAdmin
+            if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
+              statuses = userData.isAdmin
+            }
+            // If isAdmin is boolean true, convert to array
+            if (statuses.length === 0 && userData.isAdmin === true) {
+              statuses = ['Admin']
+            }
+            
+            if (statuses.includes('Admin')) {
+              setUser(currentUser)
+            } else {
+              // User is not admin, redirect to regular dashboard
+              navigate('/dashboard')
+            }
+          } else {
+            // User document doesn't exist - this shouldn't happen for admins
+            // But let's create it just in case (this will be handled by auth.js on next login)
+            console.warn('Admin user document does not exist. This should be created automatically.')
+            navigate('/dashboard')
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error)
+          // On error, redirect to regular dashboard for security
+          navigate('/dashboard')
+        }
       } else {
         // User is not logged in, redirect to login
         navigate('/login')
@@ -43,22 +77,11 @@ const DashboardPage = () => {
     navigate('/')
   }
 
-  const handleProfileUpdate = () => {
-    // Force a reload of the user object to get updated photoURL/displayName
-    if (auth.currentUser) {
-      auth.currentUser.reload().then(() => {
-        setUser({ ...auth.currentUser }) // Create a new object to trigger re-render
-      })
-    }
-  }
-
   const sections = [
-    { id: 'dashboard', title: 'Dashboard' },
-    { id: 'portfolio', title: 'Portfolio' },
-    { id: 'news', title: 'News' },
-    { id: 'learning', title: 'Learning' },
-    { id: 'community', title: 'Community' },
-    { id: 'settings', title: 'Settings' },
+    { id: 'dashboard', title: 'Admin Dashboard' },
+    { id: 'users', title: 'Manage Users' },
+    { id: 'investors', title: 'Investors' },
+    { id: 'settings', title: 'Admin Settings' },
     { id: 'support', title: 'Support' }
   ]
 
@@ -71,7 +94,7 @@ const DashboardPage = () => {
   }
 
   if (!user) {
-    return null // Will redirect to login
+    return null // Will redirect
   }
 
   return (
@@ -101,16 +124,17 @@ const DashboardPage = () => {
         <div className="sidebar-profile">
           <div className="profile-image">
             {user.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName || 'User'} />
+              <img src={user.photoURL} alt={user.displayName || 'Admin'} />
             ) : (
               <div className="profile-placeholder">
-                {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'A'}
               </div>
             )}
           </div>
           <div className="profile-info">
-            <h3 className="profile-name">{user.displayName || 'User'}</h3>
+            <h3 className="profile-name">{user.displayName || 'Admin'}</h3>
             <p className="profile-email">{user.email}</p>
+            <span className="admin-badge">Admin</span>
           </div>
         </div>
 
@@ -150,26 +174,25 @@ const DashboardPage = () => {
       {/* Main Content Area */}
       <main className="dashboard-content">
         <div className="content-wrapper">
-          {activeSection === 'settings' ? (
-            <Settings user={user} onProfileUpdate={handleProfileUpdate} />
-          ) : activeSection === 'portfolio' ? (
-            <Portfolio user={user} onStatusUpdate={handleProfileUpdate} />
-          ) : (
-            <>
-              <h1 className="content-title">
-                {sections.find(s => s.id === activeSection)?.title || 'Dashboard'}
-              </h1>
-              <div className="content-body">
-                <p>Welcome to your {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'dashboard'} section.</p>
-                {/* Content will be displayed here based on activeSection */}
-              </div>
-            </>
-          )}
+          <h1 className="content-title">
+            {sections.find(s => s.id === activeSection)?.title || 'Admin Dashboard'}
+          </h1>
+          <div className="content-body">
+            {activeSection === 'users' ? (
+              <AdminUsersManagement />
+            ) : activeSection === 'investors' ? (
+              <AdminInvestorsManagement />
+            ) : activeSection === 'settings' ? (
+              <p>Admin specific settings will go here.</p>
+            ) : (
+              <p>Welcome to the {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'admin dashboard'} section.</p>
+            )}
+          </div>
         </div>
       </main>
     </div>
   )
 }
 
-export default DashboardPage
+export default AdminDashboardPage
 

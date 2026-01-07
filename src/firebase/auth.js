@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged
 } from 'firebase/auth'
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth } from './config'
 
 // Export onAuthStateChanged for use in components
@@ -29,6 +30,16 @@ export const signUpWithEmail = async (email, password, fullName) => {
         displayName: fullName
       })
     }
+    
+    // Create user document in Firestore
+    const db = getFirestore()
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      email: email,
+      displayName: fullName || '',
+      statuses: [], // Empty array - no statuses by default
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
     
     return { success: true, user: userCredential.user }
   } catch (error) {
@@ -56,6 +67,21 @@ export const signUpWithEmail = async (email, password, fullName) => {
 export const signInWithEmail = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password)
+    
+    // Ensure user document exists in Firestore (for existing users)
+    const db = getFirestore()
+    const userDocRef = doc(db, 'users', userCredential.user.uid)
+    // Only update if document doesn't exist - preserve existing statuses
+    const userDoc = await getDoc(userDocRef)
+    if (!userDoc.exists()) {
+      await setDoc(userDocRef, {
+        email: userCredential.user.email || email,
+        displayName: userCredential.user.displayName || '',
+        statuses: [], // Empty array - no statuses by default
+        updatedAt: new Date().toISOString()
+      }, { merge: true })
+    }
+    
     return { success: true, user: userCredential.user }
   } catch (error) {
     // Provide user-friendly error messages
@@ -88,6 +114,18 @@ export const signInWithGoogle = async () => {
     })
     
     const result = await signInWithPopup(auth, provider)
+    
+    // Create or update user document in Firestore
+    const db = getFirestore()
+    await setDoc(doc(db, 'users', result.user.uid), {
+      email: result.user.email || '',
+      displayName: result.user.displayName || '',
+      profileImageUrl: result.user.photoURL || '',
+      statuses: [], // Empty array - no statuses by default
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
+    
     return { success: true, user: result.user }
   } catch (error) {
     // Provide user-friendly error messages

@@ -4,6 +4,8 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import FirstAdminSetupPage from './pages/FirstAdminSetupPage'
 import './App.css'
 
 function App() {
@@ -15,6 +17,8 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/first-admin-setup" element={<FirstAdminSetupPage />} />
         </Routes>
       </div>
     </Router>

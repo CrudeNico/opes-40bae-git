@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signInWithEmail, signInWithGoogle } from '../firebase/auth'
+import { auth } from '../firebase/config'
+import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import './LoginPage.css'
 
 const LoginPage = () => {
@@ -20,8 +22,36 @@ const LoginPage = () => {
       const result = await signInWithEmail(email, password)
       
       if (result.success) {
-        // Redirect to dashboard after successful login
-        navigate('/dashboard')
+        // Check if user is admin and redirect accordingly
+        const db = getFirestore()
+        try {
+          const userDoc = await getDoc(doc(db, 'users', result.user.uid))
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            // Handle both old format (isAdmin as array) and new format (statuses as array)
+            let statuses = userData.statuses || []
+            // If statuses doesn't exist but isAdmin does (as array), use isAdmin
+            if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
+              statuses = userData.isAdmin
+            }
+            // If isAdmin is boolean true, convert to array
+            if (statuses.length === 0 && userData.isAdmin === true) {
+              statuses = ['Admin']
+            }
+            
+            if (statuses.includes('Admin')) {
+              navigate('/admin')
+            } else {
+              navigate('/dashboard')
+            }
+          } else {
+            navigate('/dashboard')
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error)
+          // Default to regular dashboard on error
+          navigate('/dashboard')
+        }
       } else {
         setError(result.error)
       }
@@ -40,8 +70,36 @@ const LoginPage = () => {
       const result = await signInWithGoogle()
       
       if (result.success) {
-        // Redirect to home page after successful login
-        navigate('/')
+        // Check if user is admin and redirect accordingly
+        const db = getFirestore()
+        try {
+          const userDoc = await getDoc(doc(db, 'users', result.user.uid))
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            // Handle both old format (isAdmin as array) and new format (statuses as array)
+            let statuses = userData.statuses || []
+            // If statuses doesn't exist but isAdmin does (as array), use isAdmin
+            if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
+              statuses = userData.isAdmin
+            }
+            // If isAdmin is boolean true, convert to array
+            if (statuses.length === 0 && userData.isAdmin === true) {
+              statuses = ['Admin']
+            }
+            
+            if (statuses.includes('Admin')) {
+              navigate('/admin')
+            } else {
+              navigate('/dashboard')
+            }
+          } else {
+            navigate('/dashboard')
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error)
+          // Default to regular dashboard on error
+          navigate('/dashboard')
+        }
       } else {
         setError(result.error)
       }
