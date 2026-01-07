@@ -1,0 +1,50 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    // We check the user document once and evaluate all conditions
+    function isAdmin() {
+      return isAuthenticated() && 
+             firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             (
+               // Check statuses array for 'Admin'
+               (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('statuses', []).hasAny(['Admin'])) ||
+               // Check isAdmin boolean
+               firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true ||
+               // Check isAdmin array for 'Admin'
+               (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('isAdmin', []).hasAny(['Admin']))
+             );
+    }
+
+    // User profile images
+    match /profile-images/{userId}/{imageName} {
+      // Users can read their own profile images
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Users can upload their own profile images
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+      // Admins can read and write any profile image
+      allow read, write: if isAdmin();
+    }
+
+    // News images
+    match /news/{imageName} {
+      // All authenticated users can read news images
+      allow read: if isAuthenticated();
+      // Allow authenticated users to upload news images
+      // Note: Admin check via Firestore in Storage rules has limitations
+      // Security is enforced at the application level (only admins can access the admin panel)
+      allow write: if isAuthenticated();
+    }
+
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

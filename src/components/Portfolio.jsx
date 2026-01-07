@@ -566,6 +566,11 @@ const Portfolio = ({ user, onStatusUpdate }) => {
               </div>
             </div>
           )}
+
+          {/* Desktop View Message (Mobile Only) */}
+          <div className="desktop-view-message">
+            <p>To view the graph and performance history, please log in from your desktop.</p>
+          </div>
         </div>
       </div>
     )

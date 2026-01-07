@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import AdminUsersManagement from '../components/AdminUsersManagement'
 import AdminInvestorsManagement from '../components/AdminInvestorsManagement'
+import AdminNewsManagement from '../components/AdminNewsManagement'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
@@ -81,6 +82,7 @@ const AdminDashboardPage = () => {
     { id: 'dashboard', title: 'Admin Dashboard' },
     { id: 'users', title: 'Manage Users' },
     { id: 'investors', title: 'Investors' },
+    { id: 'news', title: 'News' },
     { id: 'settings', title: 'Admin Settings' },
     { id: 'support', title: 'Support' }
   ]
@@ -178,15 +180,17 @@ const AdminDashboardPage = () => {
             {sections.find(s => s.id === activeSection)?.title || 'Admin Dashboard'}
           </h1>
           <div className="content-body">
-            {activeSection === 'users' ? (
-              <AdminUsersManagement />
-            ) : activeSection === 'investors' ? (
-              <AdminInvestorsManagement />
-            ) : activeSection === 'settings' ? (
-              <p>Admin specific settings will go here.</p>
-            ) : (
-              <p>Welcome to the {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'admin dashboard'} section.</p>
-            )}
+                {activeSection === 'users' ? (
+                  <AdminUsersManagement />
+                ) : activeSection === 'investors' ? (
+                  <AdminInvestorsManagement />
+                ) : activeSection === 'news' ? (
+                  <AdminNewsManagement />
+                ) : activeSection === 'settings' ? (
+                  <p>Admin specific settings will go here.</p>
+                ) : (
+                  <p>Welcome to the {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'admin dashboard'} section.</p>
+                )}
           </div>
         </div>
       </main>

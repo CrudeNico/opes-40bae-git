@@ -5,6 +5,7 @@ import { signOutUser } from '../firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
 import Settings from '../components/Settings'
 import Portfolio from '../components/Portfolio'
+import News from '../components/News'
 import './DashboardPage.css'
 
 const DashboardPage = () => {
@@ -154,6 +155,8 @@ const DashboardPage = () => {
             <Settings user={user} onProfileUpdate={handleProfileUpdate} />
           ) : activeSection === 'portfolio' ? (
             <Portfolio user={user} onStatusUpdate={handleProfileUpdate} />
+          ) : activeSection === 'news' ? (
+            <News />
           ) : (
             <>
               <h1 className="content-title">
