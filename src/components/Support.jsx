@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { auth, storage } from '../firebase/config'
@@ -22,6 +22,15 @@ const Support = ({ user }) => {
   const [uploadingFile, setUploadingFile] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [chatMessages])
 
   useEffect(() => {
     if (user) {
@@ -217,6 +226,11 @@ const Support = ({ user }) => {
 
       setNewMessage('')
       setSuccess('Message sent successfully! An admin will respond shortly.')
+      
+      // Scroll to bottom after sending message
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     } catch (error) {
       console.error('Error sending message:', error)
       setError('Failed to send message. Please try again.')
@@ -386,36 +400,41 @@ const Support = ({ user }) => {
                 ) : (
                   chatMessages.map((msg) => (
                     <div key={msg.id} className="message-item">
-                      <div className="message-header">
-                        <span className="message-author">You</span>
-                        <span className="message-date">
-                          {msg.createdAt?.toDate ? 
-                            msg.createdAt.toDate().toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            }) : 
-                            'Just now'
-                          }
-                        </span>
-                      </div>
-                      <div className="message-content">
-                        {msg.message && <p>{msg.message}</p>}
-                        {msg.imageUrl && (
-                          <div className="message-attachment">
-                            <img src={msg.imageUrl} alt="Uploaded image" className="message-image" />
+                      {/* Only show user message if there's actual content (message, image, or file) */}
+                      {(msg.message || msg.imageUrl || msg.fileUrl) && (
+                        <>
+                          <div className="message-header">
+                            <span className="message-author">You</span>
+                            <span className="message-date">
+                              {msg.createdAt?.toDate ? 
+                                msg.createdAt.toDate().toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 
+                                'Just now'
+                              }
+                            </span>
                           </div>
-                        )}
-                        {msg.fileUrl && (
-                          <div className="message-attachment">
-                            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file">
-                              📎 {msg.fileName || 'Download file'}
-                            </a>
+                          <div className="message-content">
+                            {msg.message && <p>{msg.message}</p>}
+                            {msg.imageUrl && (
+                              <div className="message-attachment">
+                                <img src={msg.imageUrl} alt="Uploaded image" className="message-image" />
+                              </div>
+                            )}
+                            {msg.fileUrl && (
+                              <div className="message-attachment">
+                                <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file">
+                                  📎 {msg.fileName || 'Download file'}
+                                </a>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                       {msg.adminResponse && (
                         <div className="admin-response">
                           <div className="message-header">
@@ -453,6 +472,7 @@ const Support = ({ user }) => {
                     </div>
                   ))
                 )}
+                <div ref={messagesEndRef} />
               </div>
               <div className="chat-input-container">
                 <textarea

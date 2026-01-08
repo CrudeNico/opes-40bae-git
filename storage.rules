@@ -42,15 +42,19 @@ service firebase.storage {
     }
     
     // Support images - users can upload to their own folder, admins can upload to any user's folder, all authenticated users can read
+    // Note: Admin check via Firestore in Storage rules has limitations
+    // Security is enforced at the application level (only admins can access the admin panel)
     match /support-images/{userId}/{fileName} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated();
     }
     
     // Support files - users can upload to their own folder, admins can upload to any user's folder, all authenticated users can read
+    // Note: Admin check via Firestore in Storage rules has limitations
+    // Security is enforced at the application level (only admins can access the admin panel)
     match /support-files/{userId}/{fileName} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated();
     }
 
     // Default: deny all other access

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, collection, query, where, orderBy, onSnapshot, updateDoc, doc, addDoc, Timestamp, getDocs, getDoc } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase/config'
@@ -19,6 +19,11 @@ const AdminSupport = () => {
   const [loadingEmail, setLoadingEmail] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all') // all, pending, completed
   const [userTypeFilter, setUserTypeFilter] = useState('all') // all, investor, learner, relations, admin
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   useEffect(() => {
     loadUsers()
@@ -29,8 +34,30 @@ const AdminSupport = () => {
     if (selectedUser) {
       loadUserMessages(selectedUser.uid)
       markMessagesAsRead(selectedUser.uid)
+      // Immediately remove unread indicator when user is selected
+      setUnreadUsers(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(selectedUser.uid)
+        return newSet
+      })
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.uid === selectedUser.uid 
+            ? { ...user, hasUnreadMessages: false }
+            : user
+        )
+      )
     }
   }, [selectedUser])
+
+  useEffect(() => {
+    // Scroll to bottom when messages are updated
+    if (userMessages.length > 0) {
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
+    }
+  }, [userMessages])
 
   const loadUsers = async () => {
     try {
@@ -134,6 +161,11 @@ const AdminSupport = () => {
         return aTime - bTime
       })
       setUserMessages(messages)
+      
+      // Scroll to bottom when messages are loaded
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     }, (error) => {
       console.error('Error loading messages:', error)
     })
@@ -162,12 +194,21 @@ const AdminSupport = () => {
       
       await Promise.all(updatePromises)
       
-      // Remove from unread users set
+      // Remove from unread users set immediately
       setUnreadUsers(prev => {
         const newSet = new Set(prev)
         newSet.delete(userId)
         return newSet
       })
+      
+      // Update users list to remove unread indicator immediately
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.uid === userId 
+            ? { ...user, hasUnreadMessages: false }
+            : user
+        )
+      )
     } catch (error) {
       console.error('Error marking messages as read:', error)
     }
@@ -251,17 +292,21 @@ const AdminSupport = () => {
     }
 
     setLoadingMessage(true)
+    setUploadingFile(true)
     try {
       const db = getFirestore()
       
       // Upload file/image if provided
       let fileUrl = null
       let imageUrl = null
+      let fileName = null
       
       if (attachedFile) {
         fileUrl = await handleUploadFile(attachedFile, false)
+        fileName = attachedFile.name
         if (!fileUrl) {
           setLoadingMessage(false)
+          setUploadingFile(false)
           return
         }
       }
@@ -270,46 +315,46 @@ const AdminSupport = () => {
         imageUrl = await handleUploadFile(attachedImage, true)
         if (!imageUrl) {
           setLoadingMessage(false)
+          setUploadingFile(false)
           return
         }
       }
       
-      // Add admin response to the last user message
-      if (userMessages.length > 0) {
-        const lastMessage = userMessages[userMessages.length - 1]
-        await updateDoc(doc(db, 'supportMessages', lastMessage.id), {
-          adminResponse: {
-            message: newMessage.trim() || '',
-            createdAt: Timestamp.now(),
-            ...(fileUrl && { fileUrl, fileName: attachedFile.name }),
-            ...(imageUrl && { imageUrl })
-          },
-          status: 'responded',
-          updatedAt: Timestamp.now()
-        })
-      } else {
-        // If no user message exists, create a new message thread
-        await addDoc(collection(db, 'supportMessages'), {
-          userId: selectedUser.uid,
-          userName: selectedUser.displayName || selectedUser.email,
-          userEmail: selectedUser.email,
-          message: '',
-          status: 'responded',
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
-          type: 'chat',
-          adminResponse: {
-            message: newMessage.trim() || '',
-            createdAt: Timestamp.now(),
-            ...(fileUrl && { fileUrl, fileName: attachedFile.name }),
-            ...(imageUrl && { imageUrl })
-          }
-        })
+      setUploadingFile(false)
+      
+      // Create a new message document for each admin response
+      // This ensures all messages are preserved and displayed correctly
+      const adminResponseData = {
+        message: newMessage.trim() || '',
+        createdAt: Timestamp.now()
       }
+      
+      if (fileUrl) {
+        adminResponseData.fileUrl = fileUrl
+        adminResponseData.fileName = fileName
+      }
+      
+      if (imageUrl) {
+        adminResponseData.imageUrl = imageUrl
+      }
+      
+      // Create a new message document with only admin response (no user message fields)
+      // This prevents showing empty user messages
+      await addDoc(collection(db, 'supportMessages'), {
+        userId: selectedUser.uid,
+        userName: selectedUser.displayName || selectedUser.email,
+        userEmail: selectedUser.email,
+        status: 'responded',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        type: 'chat',
+        adminResponse: adminResponseData
+      })
 
       setNewMessage('')
     } catch (error) {
       console.error('Error sending message:', error)
+      setUploadingFile(false)
     } finally {
       setLoadingMessage(false)
     }
@@ -428,7 +473,7 @@ const AdminSupport = () => {
                 ) : (
                   userMessages.map((msg) => (
                     <div key={msg.id} className="message-thread">
-                      {msg.message && (
+                      {(msg.message || msg.imageUrl || msg.fileUrl) && (
                         <div className="message-item user-message">
                           <div className="message-header">
                             <span className="message-author">{msg.userName}</span>
@@ -462,7 +507,7 @@ const AdminSupport = () => {
                           </div>
                         </div>
                       )}
-                      {msg.adminResponse && (
+                      {msg.adminResponse && (msg.adminResponse.message || msg.adminResponse.imageUrl || msg.adminResponse.fileUrl) && (
                         <div className="message-item admin-message">
                           <div className="message-header">
                             <span className="message-author admin">Admin</span>
@@ -499,6 +544,7 @@ const AdminSupport = () => {
                     </div>
                   ))
                 )}
+                <div ref={messagesEndRef} />
               </div>
               <div className="chat-input-container">
                 <textarea

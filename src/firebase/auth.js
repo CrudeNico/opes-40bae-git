@@ -7,11 +7,43 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged
 } from 'firebase/auth'
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, Timestamp } from 'firebase/firestore'
 import { auth } from './config'
 
 // Export onAuthStateChanged for use in components
 export { onAuthStateChanged }
+
+/**
+ * Send welcome message to a new user
+ * @param {string} userId - User's UID
+ * @param {string} userEmail - User's email
+ * @param {string} userName - User's display name
+ */
+const sendWelcomeMessage = async (userId, userEmail, userName) => {
+  try {
+    const db = getFirestore()
+    const welcomeMessage = {
+      userId: userId,
+      userName: userName || userEmail,
+      userEmail: userEmail,
+      message: 'Welcome to your account.\n\nOn the left, you will find the calendar, where you can schedule meetings regarding your investments. This chat log is available to contact customer support 24/7.',
+      status: 'read',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      type: 'system',
+      isSystemMessage: true,
+      adminResponse: {
+        message: 'Welcome to your account.\n\nOn the left, you will find the calendar, where you can schedule meetings regarding your investments. This chat log is available to contact customer support 24/7.',
+        createdAt: Timestamp.now()
+      }
+    }
+    
+    await addDoc(collection(db, 'supportMessages'), welcomeMessage)
+  } catch (error) {
+    console.error('Failed to send welcome message:', error)
+    // Don't throw error - account creation should succeed even if welcome message fails
+  }
+}
 
 /**
  * Sign up a new user with email and password
@@ -40,6 +72,9 @@ export const signUpWithEmail = async (email, password, fullName) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }, { merge: true })
+    
+    // Send welcome message
+    await sendWelcomeMessage(userCredential.user.uid, email, fullName)
     
     return { success: true, user: userCredential.user }
   } catch (error) {
@@ -117,7 +152,13 @@ export const signInWithGoogle = async () => {
     
     // Create or update user document in Firestore
     const db = getFirestore()
-    await setDoc(doc(db, 'users', result.user.uid), {
+    const userDocRef = doc(db, 'users', result.user.uid)
+    const userDoc = await getDoc(userDocRef)
+    
+    // Only send welcome message if this is a new user
+    const isNewUser = !userDoc.exists()
+    
+    await setDoc(userDocRef, {
       email: result.user.email || '',
       displayName: result.user.displayName || '',
       profileImageUrl: result.user.photoURL || '',
@@ -125,6 +166,15 @@ export const signInWithGoogle = async () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }, { merge: true })
+    
+    // Send welcome message only for new users
+    if (isNewUser) {
+      await sendWelcomeMessage(
+        result.user.uid, 
+        result.user.email || '', 
+        result.user.displayName || ''
+      )
+    }
     
     return { success: true, user: result.user }
   } catch (error) {
