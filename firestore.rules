@@ -61,6 +61,32 @@ service cloud.firestore {
     match /news {
       allow list: if isAuthenticated();
     }
+
+    // Support Requests collection (consultation requests)
+    match /supportRequests/{requestId} {
+      // Users can create their own support requests
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Users can read their own support requests
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admins can read all support requests
+      allow read: if isAdmin();
+      // Admins can update support requests
+      allow update: if isAdmin();
+    }
+
+    // Support Messages collection (chat messages)
+    match /supportMessages/{messageId} {
+      // Users can create their own messages
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Admins can create messages (for responding to users)
+      allow create: if isAdmin();
+      // Users can read their own messages
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admins can read all messages
+      allow read: if isAdmin();
+      // Admins can update messages (to add responses)
+      allow update: if isAdmin();
+    }
   }
 }
 

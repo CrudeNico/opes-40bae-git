@@ -7,6 +7,7 @@ import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import AdminUsersManagement from '../components/AdminUsersManagement'
 import AdminInvestorsManagement from '../components/AdminInvestorsManagement'
 import AdminNewsManagement from '../components/AdminNewsManagement'
+import AdminSupport from '../components/AdminSupport'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
@@ -186,6 +187,8 @@ const AdminDashboardPage = () => {
                   <AdminInvestorsManagement />
                 ) : activeSection === 'news' ? (
                   <AdminNewsManagement />
+                ) : activeSection === 'support' ? (
+                  <AdminSupport />
                 ) : activeSection === 'settings' ? (
                   <p>Admin specific settings will go here.</p>
                 ) : (
