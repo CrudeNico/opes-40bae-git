@@ -88,6 +88,28 @@ service cloud.firestore {
       // Admins can update messages (to add responses)
       allow update: if isAdmin();
     }
+
+    // Learning Requests collection
+    match /learningRequests/{requestId} {
+      // Users can create their own learning requests
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Users can read their own learning requests
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admins can read all learning requests
+      allow read: if isAdmin();
+      // Admins can update learning requests
+      allow update: if isAdmin();
+    }
+
+    // Learning Modules collection
+    match /learningModules/{moduleId} {
+      // All authenticated users can read learning modules
+      allow read: if isAuthenticated();
+      // Only admins can create, update, and delete modules
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }
 

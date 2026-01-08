@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import Settings from '../components/Settings'
 import Portfolio from '../components/Portfolio'
 import News from '../components/News'
+import Learning from '../components/Learning'
 import Support from '../components/Support'
 import './DashboardPage.css'
 
@@ -158,6 +159,8 @@ const DashboardPage = () => {
             <Portfolio user={user} onStatusUpdate={handleProfileUpdate} />
           ) : activeSection === 'news' ? (
             <News />
+          ) : activeSection === 'learning' ? (
+            <Learning user={user} onStatusUpdate={handleProfileUpdate} />
           ) : activeSection === 'support' ? (
             <Support user={user} />
           ) : (

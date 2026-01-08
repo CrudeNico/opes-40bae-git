@@ -7,6 +7,7 @@ import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import AdminUsersManagement from '../components/AdminUsersManagement'
 import AdminInvestorsManagement from '../components/AdminInvestorsManagement'
 import AdminNewsManagement from '../components/AdminNewsManagement'
+import AdminLearningManagement from '../components/AdminLearningManagement'
 import AdminSupport from '../components/AdminSupport'
 import './AdminDashboardPage.css'
 
@@ -84,6 +85,7 @@ const AdminDashboardPage = () => {
     { id: 'users', title: 'Manage Users' },
     { id: 'investors', title: 'Investors' },
     { id: 'news', title: 'News' },
+    { id: 'learning', title: 'Learning' },
     { id: 'settings', title: 'Admin Settings' },
     { id: 'support', title: 'Support' }
   ]
@@ -187,6 +189,8 @@ const AdminDashboardPage = () => {
                   <AdminInvestorsManagement />
                 ) : activeSection === 'news' ? (
                   <AdminNewsManagement />
+                ) : activeSection === 'learning' ? (
+                  <AdminLearningManagement />
                 ) : activeSection === 'support' ? (
                   <AdminSupport />
                 ) : activeSection === 'settings' ? (
