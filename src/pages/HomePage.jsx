@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getFirestore, collection, addDoc, Timestamp } from 'firebase/firestore'
+import { auth } from '../firebase/config'
+import { sendConsultationConfirmationEmail } from '../firebase/email'
 import './HomePage.css'
 
 const HomePage = () => {
@@ -7,6 +10,8 @@ const HomePage = () => {
   const [activeTab, setActiveTab] = useState(0)
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedTime, setSelectedTime] = useState('')
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,6 +23,9 @@ const HomePage = () => {
   const [expandedMobileSection, setExpandedMobileSection] = useState(null)
   const [dropdownFading, setDropdownFading] = useState(false)
   const dropdownRef = useRef(null)
+  const [loadingConsultation, setLoadingConsultation] = useState(false)
+  const [consultationSuccess, setConsultationSuccess] = useState(false)
+  const [consultationError, setConsultationError] = useState('')
 
   // Close dropdown when clicking outside or scrolling
   useEffect(() => {
@@ -72,6 +80,128 @@ const HomePage = () => {
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
+  }
+
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month + 1, 0).getDate()
+  }
+
+  const getFirstDayOfMonth = (month, year) => {
+    return new Date(year, month, 1).getDay()
+  }
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const timeSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM']
+
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const days = []
+    const firstDay = getFirstDayOfMonth(currentMonth, currentYear)
+    const daysInMonth = getDaysInMonth(currentMonth, currentYear)
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null)
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentYear, currentMonth, day)
+      const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+      const isAvailable = !isPast && day % 3 !== 0 // Simple availability logic
+      days.push({ day, date, isAvailable })
+    }
+
+    return days
+  }
+
+  const days = generateCalendarDays()
+
+  const handleScheduleConsultation = async () => {
+    if (!selectedDate || !selectedTime) {
+      setConsultationError('Please select a date and time.')
+      return
+    }
+
+    if (!formData.name.trim() || !formData.email.trim()) {
+      setConsultationError('Please fill in your name and email.')
+      return
+    }
+
+    setLoadingConsultation(true)
+    setConsultationError('')
+    setConsultationSuccess(false)
+
+    try {
+      const db = getFirestore()
+      const consultationData = {
+        userName: formData.name.trim(),
+        userEmail: formData.email.trim(),
+        company: formData.company || '',
+        date: Timestamp.fromDate(selectedDate),
+        time: selectedTime,
+        message: formData.message || '',
+        status: 'pending',
+        createdAt: Timestamp.now(),
+        type: 'consultation',
+        // Include userId if user is logged in, otherwise leave it null
+        ...(auth.currentUser && { userId: auth.currentUser.uid })
+      }
+
+      await addDoc(collection(db, 'supportRequests'), consultationData)
+
+      // Send confirmation email
+      const emailResult = await sendConsultationConfirmationEmail(
+        formData.email.trim(),
+        formData.name.trim(),
+        selectedDate,
+        selectedTime
+      )
+
+      if (!emailResult.success) {
+        console.error('Failed to send confirmation email:', emailResult.error)
+        // Still show success message even if email fails
+      }
+
+      setConsultationSuccess(true)
+      setSelectedDate(null)
+      setSelectedTime('')
+      setFormData({
+        name: '',
+        email: '',
+        company: '',
+        message: ''
+      })
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setConsultationSuccess(false)
+      }, 5000)
+    } catch (error) {
+      console.error('Error submitting consultation:', error)
+      setConsultationError('Failed to submit consultation request. Please try again.')
+    } finally {
+      setLoadingConsultation(false)
+    }
   }
 
   return (
@@ -753,32 +883,29 @@ const HomePage = () => {
                         <h3 className="calendar-title">Select a Consultation Date</h3>
                         <div className="calendar-widget">
                           <div className="calendar-header">
-                            <button className="calendar-nav" onClick={() => {}}>‹</button>
-                            <h4 className="calendar-month">January 2024</h4>
-                            <button className="calendar-nav" onClick={() => {}}>›</button>
+                            <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
+                            <h4 className="calendar-month">{monthNames[currentMonth]} {currentYear}</h4>
+                            <button className="calendar-nav" onClick={handleNextMonth}>›</button>
                           </div>
                           <div className="calendar-grid">
                             <div className="calendar-weekdays">
-                              <div className="calendar-weekday">Sun</div>
-                              <div className="calendar-weekday">Mon</div>
-                              <div className="calendar-weekday">Tue</div>
-                              <div className="calendar-weekday">Wed</div>
-                              <div className="calendar-weekday">Thu</div>
-                              <div className="calendar-weekday">Fri</div>
-                              <div className="calendar-weekday">Sat</div>
+                              {weekdays.map((day) => (
+                                <div key={day} className="calendar-weekday">{day}</div>
+                              ))}
                             </div>
                             <div className="calendar-days">
-                              {[...Array(35)].map((_, index) => {
-                                const day = index - 0 + 1
-                                const isAvailable = day > 0 && day <= 31 && day % 3 !== 0
+                              {days.map((dayData, index) => {
+                                if (dayData === null) {
+                                  return <div key={index} className="calendar-day empty"></div>
+                                }
                                 return (
                                   <button
                                     key={index}
-                                    className={`calendar-day ${isAvailable ? 'available' : 'unavailable'}`}
-                                    onClick={() => isAvailable && setSelectedDate(new Date(2024, 0, day))}
-                                    disabled={!isAvailable}
+                                    className={`calendar-day ${dayData.isAvailable ? 'available' : 'unavailable'}`}
+                                    onClick={() => dayData.isAvailable && setSelectedDate(dayData.date)}
+                                    disabled={!dayData.isAvailable}
                                   >
-                                    {day > 0 && day <= 31 ? day : ''}
+                                    {dayData.day}
                                   </button>
                                 )
                               })}
@@ -801,7 +928,7 @@ const HomePage = () => {
                         <div className="time-selection">
                           <label className="form-label">Select Time</label>
                           <div className="time-slots">
-                            {['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'].map((time) => (
+                            {timeSlots.map((time) => (
                               <button
                                 key={time}
                                 className={`time-slot ${selectedTime === time ? 'selected' : ''}`}
@@ -861,8 +988,22 @@ const HomePage = () => {
                           />
                         </div>
 
-                        <button className="btn btn-primary-white submit-button" onClick={() => alert('Consultation scheduled!')}>
-                          Schedule Consultation
+                        {consultationError && (
+                          <div className="alert alert-error" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#fef2f2', color: '#991b1b', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
+                            {consultationError}
+                          </div>
+                        )}
+                        {consultationSuccess && (
+                          <div className="alert alert-success" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#f0fdf4', color: '#166534', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
+                            Consultation request submitted successfully! You will receive a confirmation email shortly.
+                          </div>
+                        )}
+                        <button 
+                          className="btn btn-primary-white submit-button" 
+                          onClick={handleScheduleConsultation}
+                          disabled={loadingConsultation || !selectedTime}
+                        >
+                          {loadingConsultation ? 'Submitting...' : 'Schedule Consultation'}
                         </button>
                       </div>
                     </div>

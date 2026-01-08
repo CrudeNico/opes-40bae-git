@@ -137,6 +137,20 @@ const Support = ({ user }) => {
 
       await addDoc(collection(db, 'supportRequests'), consultationData)
 
+      // Send confirmation email
+      const { sendConsultationConfirmationEmail } = await import('../firebase/email')
+      const emailResult = await sendConsultationConfirmationEmail(
+        consultationFormData.email,
+        consultationFormData.name,
+        selectedDate,
+        selectedTime
+      )
+
+      if (!emailResult.success) {
+        console.error('Failed to send confirmation email:', emailResult.error)
+        // Still show success message even if email fails
+      }
+
       setSuccess('Consultation request submitted successfully! You will receive a confirmation email shortly.')
       setSelectedDate(null)
       setSelectedTime('')

@@ -64,10 +64,11 @@ service cloud.firestore {
 
     // Support Requests collection (consultation requests)
     match /supportRequests/{requestId} {
-      // Users can create their own support requests
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      // Users can read their own support requests
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Allow anyone (authenticated or not) to create support requests
+      // This allows homepage users to schedule consultations without logging in
+      allow create: if true;
+      // Users can read their own support requests (if userId matches)
+      allow read: if isAuthenticated() && (resource.data.userId == null || resource.data.userId == request.auth.uid);
       // Admins can read all support requests
       allow read: if isAdmin();
       // Admins can update support requests

@@ -46,6 +46,7 @@
   width: 100%;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .user-item:hover {
@@ -56,14 +57,6 @@
 .user-item.active {
   background: #eff6ff;
   border-color: #3b82f6;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  flex: 1;
 }
 
 .user-avatar {

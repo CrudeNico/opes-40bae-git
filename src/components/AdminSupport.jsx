@@ -232,17 +232,19 @@ const AdminSupport = () => {
       for (const consultationDoc of snapshot.docs) {
         const consultationData = consultationDoc.data()
         
-        // Get user statuses
+        // Get user statuses (only if userId exists)
         let userStatuses = []
-        try {
-          const userDocRef = doc(db, 'users', consultationData.userId)
-          const userDocSnap = await getDoc(userDocRef)
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data()
-            userStatuses = userData.statuses || []
+        if (consultationData.userId) {
+          try {
+            const userDocRef = doc(db, 'users', consultationData.userId)
+            const userDocSnap = await getDoc(userDocRef)
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data()
+              userStatuses = userData.statuses || []
+            }
+          } catch (error) {
+            console.error('Error loading user data:', error)
           }
-        } catch (error) {
-          console.error('Error loading user data:', error)
         }
 
         consultationsList.push({
@@ -386,8 +388,9 @@ const AdminSupport = () => {
 
         setSelectedConsultation(null)
         setGoogleMeetLink('')
-        alert('Google Meet link sent successfully!')
+        // Success - modal closes automatically, no alert popup
       } else {
+        // Only show error alert if sending fails
         alert('Failed to send email: ' + (result.error || 'Unknown error'))
       }
     } catch (error) {
@@ -433,25 +436,23 @@ const AdminSupport = () => {
                 className={`user-item ${selectedUser?.uid === user.uid ? 'active' : ''}`}
                 onClick={() => setSelectedUser(user)}
               >
-                <div className="user-info">
-                  <div className="user-avatar">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || user.email} />
-                    ) : (
-                      <div className="user-avatar-placeholder">
-                        {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <p className="user-name">{getFirstName(user.displayName || user.email)}</p>
-                  {(user.hasUnreadMessages || unreadUsers.has(user.uid)) && (
-                    <div className="unread-notification">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                      </svg>
+                <div className="user-avatar">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.displayName || user.email} />
+                  ) : (
+                    <div className="user-avatar-placeholder">
+                      {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
+                <p className="user-name">{getFirstName(user.displayName || user.email)}</p>
+                {(user.hasUnreadMessages || unreadUsers.has(user.uid)) && (
+                  <div className="unread-notification">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                    </svg>
+                  </div>
+                )}
               </button>
             ))}
           </div>
@@ -703,6 +704,9 @@ const AdminSupport = () => {
             <div className="modal-body">
               <p><strong>User:</strong> {selectedConsultation.userName}</p>
               <p><strong>Email:</strong> {selectedConsultation.userEmail}</p>
+              {selectedConsultation.company && (
+                <p><strong>Company:</strong> {selectedConsultation.company}</p>
+              )}
               <p><strong>Date:</strong> {
                 selectedConsultation.date?.toDate ? 
                   selectedConsultation.date.toDate().toLocaleDateString('en-US', {
@@ -713,6 +717,14 @@ const AdminSupport = () => {
                   'Date not set'
               }</p>
               <p><strong>Time:</strong> {selectedConsultation.time || 'Time not set'}</p>
+              {selectedConsultation.message && (
+                <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+                  <p><strong>Meeting Details:</strong></p>
+                  <p style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#f9fafb', borderRadius: '0.5rem', whiteSpace: 'pre-wrap' }}>
+                    {selectedConsultation.message}
+                  </p>
+                </div>
+              )}
               
               <div className="form-field">
                 <label>Google Meet Link *</label>

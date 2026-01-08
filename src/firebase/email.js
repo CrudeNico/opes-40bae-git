@@ -343,3 +343,189 @@ This is an automated email. Please do not reply to this message.
   }
 }
 
+/**
+ * Send consultation confirmation email to user
+ * @param {string} userEmail - User's email address
+ * @param {string} userName - User's full name
+ * @param {Date|Timestamp} consultationDate - Date of consultation
+ * @param {string} consultationTime - Time of consultation
+ * @returns {Promise} - Success status
+ */
+export const sendConsultationConfirmationEmail = async (userEmail, userName, consultationDate, consultationTime) => {
+  try {
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY
+    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
+    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+
+    if (!apiKey || !senderEmail) {
+      console.error('Brevo API key or sender email not configured')
+      return { success: false, error: 'Email service not configured' }
+    }
+
+    // Format date
+    const dateStr = consultationDate?.toDate ? 
+      consultationDate.toDate().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        weekday: 'long'
+      }) : 
+      consultationDate instanceof Date ?
+        consultationDate.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          weekday: 'long'
+        }) :
+        'Date TBD'
+
+    // Brevo API endpoint
+    const url = 'https://api.brevo.com/v3/smtp/email'
+
+    // Email content
+    const emailData = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: userEmail,
+          name: userName || userEmail
+        }
+      ],
+      subject: 'Consultation Scheduled - Opessocius',
+      htmlContent: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              .header {
+                background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
+                color: #ffffff;
+                padding: 30px;
+                text-align: center;
+                border-radius: 8px 8px 0 0;
+              }
+              .header h1 {
+                color: #ffffff;
+              }
+              .content {
+                background: #ffffff;
+                padding: 30px;
+                border: 1px solid #e5e7eb;
+                border-top: none;
+                border-radius: 0 0 8px 8px;
+              }
+              .meeting-details {
+                background: #f9fafb;
+                padding: 20px;
+                border-radius: 6px;
+                margin: 20px 0;
+                border-left: 4px solid #3b82f6;
+              }
+              .info-box {
+                background: #eff6ff;
+                padding: 15px;
+                border-radius: 6px;
+                margin: 20px 0;
+                border-left: 4px solid #3b82f6;
+              }
+              .footer {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 12px;
+                color: #6b7280;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Consultation Scheduled</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName || 'Valued Client'},</h2>
+              <p>Thank you for scheduling a consultation with us. Your appointment has been confirmed!</p>
+              
+              <div class="meeting-details">
+                <p><strong>Date:</strong> ${dateStr}</p>
+                <p><strong>Time:</strong> ${consultationTime || 'Time TBD'}</p>
+              </div>
+
+              <div class="info-box">
+                <p><strong>📧 Meeting Link Information</strong></p>
+                <p>You will receive an email with your meeting link <strong>5 minutes before</strong> your scheduled consultation time. Please check your inbox (and spam folder) at that time.</p>
+              </div>
+
+              <p>Our team is looking forward to speaking with you. If you have any questions or need to reschedule, please contact us through your account dashboard.</p>
+              
+              <p>Best regards,<br>The Opessocius Asset Management Team</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated confirmation email. Please do not reply to this message.</p>
+              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
+            </div>
+          </body>
+        </html>
+      `,
+      textContent: `
+Consultation Scheduled
+
+Hello ${userName || 'Valued Client'},
+
+Thank you for scheduling a consultation with us. Your appointment has been confirmed!
+
+Date: ${dateStr}
+Time: ${consultationTime || 'Time TBD'}
+
+Meeting Link Information:
+You will receive an email with your meeting link 5 minutes before your scheduled consultation time. Please check your inbox (and spam folder) at that time.
+
+Our team is looking forward to speaking with you. If you have any questions or need to reschedule, please contact us through your account dashboard.
+
+Best regards,
+The Opessocius Asset Management Team
+
+---
+This is an automated confirmation email. Please do not reply to this message.
+© ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
+      `
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': apiKey
+      },
+      body: JSON.stringify(emailData)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Brevo API error:', errorData)
+      return { 
+        success: false, 
+        error: errorData.message || 'Failed to send email' 
+      }
+    }
+
+    const result = await response.json()
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error('Error sending email:', error)
+    return { success: false, error: error.message || 'Failed to send email' }
+  }
+}
