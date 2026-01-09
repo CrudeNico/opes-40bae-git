@@ -7,6 +7,7 @@ import Settings from '../components/Settings'
 import Portfolio from '../components/Portfolio'
 import News from '../components/News'
 import Learning from '../components/Learning'
+import Community from '../components/Community'
 import Support from '../components/Support'
 import './DashboardPage.css'
 
@@ -161,6 +162,8 @@ const DashboardPage = () => {
             <News />
           ) : activeSection === 'learning' ? (
             <Learning user={user} onStatusUpdate={handleProfileUpdate} />
+          ) : activeSection === 'community' ? (
+            <Community user={user} onStatusUpdate={handleProfileUpdate} />
           ) : activeSection === 'support' ? (
             <Support user={user} />
           ) : (

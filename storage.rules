@@ -63,6 +63,24 @@ service firebase.storage {
       allow write: if isAuthenticated();
     }
 
+    // Community images
+    match /community-images/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Community files
+    match /community-files/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Weekly reports PDFs
+    match /weekly-reports/{reportId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

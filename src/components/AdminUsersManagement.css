@@ -159,6 +159,11 @@
   color: #ffffff;
 }
 
+.user-status-badge.status-community {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
 .user-status-badge.status-pending {
   background: #f59e0b;
   color: #ffffff;

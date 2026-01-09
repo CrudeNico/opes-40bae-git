@@ -9,6 +9,7 @@ import AdminInvestorsManagement from '../components/AdminInvestorsManagement'
 import AdminNewsManagement from '../components/AdminNewsManagement'
 import AdminLearningManagement from '../components/AdminLearningManagement'
 import AdminSupport from '../components/AdminSupport'
+import AdminCommunityManagement from '../components/AdminCommunityManagement'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
@@ -86,6 +87,7 @@ const AdminDashboardPage = () => {
     { id: 'investors', title: 'Investors' },
     { id: 'news', title: 'News' },
     { id: 'learning', title: 'Learning' },
+    { id: 'community', title: 'Community' },
     { id: 'settings', title: 'Admin Settings' },
     { id: 'support', title: 'Support' }
   ]
@@ -191,6 +193,8 @@ const AdminDashboardPage = () => {
                   <AdminNewsManagement />
                 ) : activeSection === 'learning' ? (
                   <AdminLearningManagement />
+                ) : activeSection === 'community' ? (
+                  <AdminCommunityManagement />
                 ) : activeSection === 'support' ? (
                   <AdminSupport />
                 ) : activeSection === 'settings' ? (

@@ -10,7 +10,8 @@ const AdminUsersManagement = () => {
     Admin: false,
     Relations: false,
     Investor: false,
-    Learner: false
+    Learner: false,
+    Community: false
   })
   const [investmentData, setInvestmentData] = useState(null)
   const [editingInvestment, setEditingInvestment] = useState(false)
@@ -20,7 +21,7 @@ const AdminUsersManagement = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   
-  const availableStatuses = ['Admin', 'Relations', 'Investor', 'Learner']
+  const availableStatuses = ['Admin', 'Relations', 'Investor', 'Learner', 'Community']
 
   useEffect(() => {
     loadUsers()
@@ -45,7 +46,8 @@ const AdminUsersManagement = () => {
         Admin: currentStatuses.includes('Admin'),
         Relations: currentStatuses.includes('Relations'),
         Investor: currentStatuses.includes('Investor'),
-        Learner: currentStatuses.includes('Learner')
+        Learner: currentStatuses.includes('Learner'),
+        Community: currentStatuses.includes('Community')
       }
       setUserStatuses(statusMap)
       
@@ -256,7 +258,8 @@ const AdminUsersManagement = () => {
         Admin: currentStatuses.includes('Admin'),
         Relations: currentStatuses.includes('Relations'),
         Investor: currentStatuses.includes('Investor'),
-        Learner: currentStatuses.includes('Learner')
+        Learner: currentStatuses.includes('Learner'),
+        Community: currentStatuses.includes('Community')
       }
       setUserStatuses(statusMap)
     } catch (error) {
