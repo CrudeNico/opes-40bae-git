@@ -22,6 +22,7 @@ const Support = ({ user }) => {
   const [uploadingFile, setUploadingFile] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -31,6 +32,14 @@ const Support = ({ user }) => {
   useEffect(() => {
     scrollToBottom()
   }, [chatMessages])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -555,7 +564,7 @@ const Support = ({ user }) => {
                     onClick={() => handleSendMessage()}
                     disabled={loadingMessage || uploadingFile || (!newMessage.trim() && !uploadingFile)}
                   >
-                    {loadingMessage || uploadingFile ? 'Sending...' : 'Send Message'}
+                    {loadingMessage || uploadingFile ? 'Sending...' : (isMobile ? 'Send' : 'Send Message')}
                   </button>
                 </div>
               </div>

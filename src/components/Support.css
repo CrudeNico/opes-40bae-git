@@ -694,18 +694,34 @@
   .chat-input-container {
     padding: 0.75rem;
     gap: 0.5rem;
+    flex-direction: column;
   }
 
+  /* Mobile: Text box on top */
   .chat-input {
+    order: 1;
     min-height: 50px;
     font-size: 0.85rem;
     padding: 0.625rem 0.75rem;
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Mobile: Actions below text box */
+  .chat-actions {
+    order: 2;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
   }
 
   .chat-attachment-button {
     width: 36px;
     height: 36px;
     padding: 0.5rem;
+    flex-shrink: 0;
   }
 
   .chat-attachment-button svg {
@@ -713,9 +729,15 @@
     height: 18px;
   }
 
+  /* Mobile: Make send button smaller */
   .send-button {
-    padding: 0.625rem 1rem;
-    font-size: 0.85rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: auto;
+    width: auto;
+    max-width: fit-content;
   }
 }
 

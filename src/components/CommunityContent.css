@@ -610,7 +610,7 @@
     margin-top: 0.5rem;
   }
 
-  /* Mobile: Move chat attachments and send button below textarea */
+  /* Mobile: Move send button below textarea, hide image and file buttons */
   .chat-input-wrapper {
     flex-direction: column;
     align-items: stretch;
@@ -622,17 +622,17 @@
     margin-bottom: 0.5rem;
   }
 
+  /* Mobile: Hide image and file buttons */
   .chat-attachments {
-    order: 2;
-    justify-content: flex-start;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
+    display: none;
   }
 
+  /* Mobile: Make send button full width */
   .send-button {
-    order: 3;
+    order: 2;
     width: 100%;
     margin-top: 0;
+    margin-left: 0;
   }
 }
 
