@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { auth } from '../firebase/config'
 import { updateProfile, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail } from 'firebase/auth'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { getFirestore, doc, setDoc } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import './Settings.css'
 
 const Settings = ({ user }) => {
@@ -24,6 +24,8 @@ const Settings = ({ user }) => {
   const [loadingPassword, setLoadingPassword] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -32,8 +34,73 @@ const Settings = ({ user }) => {
       setEmail(user.email || '')
       // Only use photoURL from Auth, don't try to load from Firestore on mount
       setProfileImageUrl(user.photoURL || '')
+      loadNotificationSettings()
     }
   }, [user])
+
+  const loadNotificationSettings = async () => {
+    try {
+      const db = getFirestore()
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const statuses = userData.statuses || []
+        const isCommunityMember = statuses.includes('Community')
+        const notifications = userData.notifications || {}
+        
+        // Check if both are enabled, or default to enabled for Community members
+        const tradeAlerts = notifications.tradeAlerts !== undefined 
+          ? notifications.tradeAlerts 
+          : isCommunityMember
+        const weeklyReports = notifications.weeklyReports !== undefined 
+          ? notifications.weeklyReports 
+          : isCommunityMember
+        
+        // Combined notification is enabled if both are enabled
+        const bothEnabled = tradeAlerts && weeklyReports
+        setNotificationsEnabled(bothEnabled)
+        
+        // If user is Community member and preferences don't exist, save defaults
+        if (isCommunityMember && userData.notifications === undefined) {
+          await setDoc(doc(db, 'users', user.uid), {
+            notifications: {
+              tradeAlerts: true,
+              weeklyReports: true
+            }
+          }, { merge: true })
+        }
+      }
+    } catch (error) {
+      console.error('Error loading notification settings:', error)
+    }
+  }
+
+  const handleNotificationToggle = async () => {
+    setLoadingNotifications(true)
+    try {
+      const db = getFirestore()
+      const newValue = !notificationsEnabled
+      setNotificationsEnabled(newValue)
+      
+      // Update both trade alerts and weekly reports to the same value
+      await setDoc(doc(db, 'users', user.uid), {
+        notifications: {
+          tradeAlerts: newValue,
+          weeklyReports: newValue
+        }
+      }, { merge: true })
+      
+      setSuccess(`Community notifications ${newValue ? 'enabled' : 'disabled'}`)
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (error) {
+      console.error('Error updating notification settings:', error)
+      setError('Failed to update notification settings')
+      // Revert on error
+      setNotificationsEnabled(!notificationsEnabled)
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0]
@@ -527,6 +594,33 @@ service firebase.storage {
             {loadingPassword ? 'Updating...' : 'Update Password'}
           </button>
           </form>
+        </div>
+
+        {/* Notifications Section */}
+        <div className="settings-section">
+          <h2 className="settings-section-title">Notifications</h2>
+          <div className="settings-section-content">
+            <div className="notification-item">
+              <div className="notification-info">
+                <h3 className="notification-title">Community Notifications</h3>
+                <p className="notification-description">
+                  {notificationsEnabled 
+                    ? "You will receive email notifications for new trade alerts and weekly reports posted in the community."
+                    : "Enable to receive email notifications for new trade alerts and weekly reports posted in the community."
+                  }
+                </p>
+              </div>
+              <label className="ios-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={handleNotificationToggle}
+                  disabled={loadingNotifications}
+                />
+                <span className="ios-toggle-slider"></span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>

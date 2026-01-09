@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, deleteDoc, doc, updateDoc, where } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { auth } from '../firebase/config'
+import { sendTradeAlertNotification, sendWeeklyReportNotification } from '../firebase/email'
 import './AdminCommunityManagement.css'
 
 const AdminCommunityManagement = () => {
@@ -232,6 +233,84 @@ const AdminCommunityManagement = () => {
     }
   }
 
+  const sendTradeAlertNotifications = async (alert) => {
+    try {
+      const db = getFirestore()
+      // Get all users with Community status and trade alerts notifications enabled
+      const usersQuery = query(collection(db, 'users'))
+      const usersSnapshot = await getDocs(usersQuery)
+      
+      const notificationPromises = []
+      usersSnapshot.forEach((userDoc) => {
+        const userData = userDoc.data()
+        const statuses = userData.statuses || []
+        const isCommunityMember = statuses.includes('Community')
+        const notifications = userData.notifications || {}
+        
+        // Check if user has Community access and trade alerts enabled
+        // Default to enabled for Community members if not set
+        const tradeAlertsEnabled = notifications.tradeAlerts !== undefined 
+          ? notifications.tradeAlerts 
+          : isCommunityMember
+        
+        if (isCommunityMember && tradeAlertsEnabled && userData.email) {
+          notificationPromises.push(
+            sendTradeAlertNotification(
+              userData.email,
+              userData.displayName || userData.email,
+              alert
+            )
+          )
+        }
+      })
+      
+      // Send all notifications in parallel
+      await Promise.allSettled(notificationPromises)
+      console.log(`Sent ${notificationPromises.length} trade alert notifications`)
+    } catch (error) {
+      console.error('Error sending trade alert notifications:', error)
+    }
+  }
+
+  const sendWeeklyReportNotifications = async (report) => {
+    try {
+      const db = getFirestore()
+      // Get all users with Community status and weekly reports notifications enabled
+      const usersQuery = query(collection(db, 'users'))
+      const usersSnapshot = await getDocs(usersQuery)
+      
+      const notificationPromises = []
+      usersSnapshot.forEach((userDoc) => {
+        const userData = userDoc.data()
+        const statuses = userData.statuses || []
+        const isCommunityMember = statuses.includes('Community')
+        const notifications = userData.notifications || {}
+        
+        // Check if user has Community access and weekly reports enabled
+        // Default to enabled for Community members if not set
+        const weeklyReportsEnabled = notifications.weeklyReports !== undefined 
+          ? notifications.weeklyReports 
+          : isCommunityMember
+        
+        if (isCommunityMember && weeklyReportsEnabled && userData.email) {
+          notificationPromises.push(
+            sendWeeklyReportNotification(
+              userData.email,
+              userData.displayName || userData.email,
+              report
+            )
+          )
+        }
+      })
+      
+      // Send all notifications in parallel
+      await Promise.allSettled(notificationPromises)
+      console.log(`Sent ${notificationPromises.length} weekly report notifications`)
+    } catch (error) {
+      console.error('Error sending weekly report notifications:', error)
+    }
+  }
+
   const handleAddAlert = async (e) => {
     e.preventDefault()
     try {
@@ -246,13 +325,22 @@ const AdminCommunityManagement = () => {
           updatedAt: Timestamp.now()
         })
       } else {
-        await addDoc(collection(db, 'tradeAlerts'), {
+        const alertDocRef = await addDoc(collection(db, 'tradeAlerts'), {
           ...alertFormData,
           price: parseFloat(alertFormData.price),
           takeProfit: alertFormData.takeProfit ? parseFloat(alertFormData.takeProfit) : null,
           stopLoss: alertFormData.stopLoss ? parseFloat(alertFormData.stopLoss) : null,
           chartLink: alertFormData.chartLink || null,
           createdAt: Timestamp.now()
+        })
+        
+        // Send notifications to users who have trade alerts enabled
+        await sendTradeAlertNotifications({
+          ...alertFormData,
+          price: parseFloat(alertFormData.price),
+          takeProfit: alertFormData.takeProfit ? parseFloat(alertFormData.takeProfit) : null,
+          stopLoss: alertFormData.stopLoss ? parseFloat(alertFormData.stopLoss) : null,
+          chartLink: alertFormData.chartLink || null
         })
       }
       setShowAddAlert(false)
@@ -364,6 +452,16 @@ const AdminCommunityManagement = () => {
         if (reportFormData.pdfFile) {
           pdfUrl = await uploadPDF(reportFormData.pdfFile, docRef.id)
           await updateDoc(docRef, { pdfUrl: pdfUrl })
+        }
+        
+        // Send notifications to users who have weekly reports enabled
+        if (!editingReport) {
+          sendWeeklyReportNotifications({
+            title: reportFormData.title,
+            description: reportFormData.description,
+            pdfUrl: pdfUrl,
+            videoUrl: reportFormData.videoUrl || null
+          })
         }
       }
       setShowAddReport(false)

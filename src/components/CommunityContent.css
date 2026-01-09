@@ -56,23 +56,40 @@
 
 .trade-alert-content {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 1rem;
+}
+
+.trade-alert-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.trade-alert-top {
+  display: flex;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.trade-alert-bottom {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .trade-symbol {
-  background: #3b82f6;
-  color: #ffffff;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
+  color: #1f2937;
   font-weight: 600;
   font-size: 0.875rem;
+  text-transform: uppercase;
 }
 
 .trade-action {
-  background: #10b981;
-  color: #ffffff;
   padding: 0.25rem 0.75rem;
   border-radius: 0.375rem;
   font-weight: 600;
@@ -80,28 +97,40 @@
   text-transform: uppercase;
 }
 
-.trade-price {
+.trade-action.buy {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.trade-action.sell {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.trade-entry {
   color: #1f2937;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.875rem;
 }
 
 .trade-take-profit {
-  background: #10b981;
-  color: #ffffff;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
+  color: #1f2937;
   font-weight: 500;
+  font-size: 0.875rem;
+  background: none;
+  padding: 0;
+  border: none;
+  border-radius: 0;
 }
 
 .trade-stop-loss {
-  background: #ef4444;
-  color: #ffffff;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
+  color: #1f2937;
   font-weight: 500;
+  font-size: 0.875rem;
+  background: none;
+  padding: 0;
+  border: none;
+  border-radius: 0;
 }
 
 .trade-alert-time {
@@ -124,6 +153,27 @@
 }
 
 .view-chart-button:hover {
+  background: #2563eb;
+}
+
+.view-chart-button-inline {
+  display: inline-flex;
+  align-items: flex-start;
+  padding: 0.375rem 0.75rem;
+  background: #3b82f6;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: fit-content;
+  margin-top: 0;
+}
+
+.view-chart-button-inline:hover {
   background: #2563eb;
 }
 
@@ -547,6 +597,42 @@
 
   .message-item {
     max-width: 90%;
+  }
+
+  /* Mobile: Move View Chart button below entry */
+  .trade-alert-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-chart-button-inline {
+    align-self: flex-start;
+    margin-top: 0.5rem;
+  }
+
+  /* Mobile: Move chat attachments and send button below textarea */
+  .chat-input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-input {
+    width: 100%;
+    order: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .chat-attachments {
+    order: 2;
+    justify-content: flex-start;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .send-button {
+    order: 3;
+    width: 100%;
+    margin-top: 0;
   }
 }
 

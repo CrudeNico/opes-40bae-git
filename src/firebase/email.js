@@ -1,6 +1,7 @@
 /**
  * Email service using Brevo (Sendinblue)
  * Sends confirmation emails to users after account creation
+ * Sends notification emails for trade alerts and weekly reports
  */
 
 /**
@@ -515,17 +516,269 @@ This is an automated confirmation email. Please do not reply to this message.
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error:', errorData)
+      console.error('Brevo API error (consultation confirmation):', errorData)
       return { 
         success: false, 
-        error: errorData.message || 'Failed to send email' 
+        error: errorData.message || 'Failed to send consultation confirmation email' 
       }
     }
 
     const result = await response.json()
     return { success: true, messageId: result.messageId }
   } catch (error) {
-    console.error('Error sending email:', error)
-    return { success: false, error: error.message || 'Failed to send email' }
+    console.error('Error sending consultation confirmation email:', error)
+    return { success: false, error: error.message || 'Failed to send consultation confirmation email' }
+  }
+}
+
+/**
+ * Send trade alert notification email to users who have it enabled
+ * @param {string} userEmail - User's email address
+ * @param {string} userName - User's name
+ * @param {object} alert - Trade alert data
+ * @returns {Promise} - Success status
+ */
+export const sendTradeAlertNotification = async (userEmail, userName, alert) => {
+  try {
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY
+    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
+    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+
+    if (!apiKey || !senderEmail) {
+      console.error('Brevo API key or sender email not configured')
+      return { success: false, error: 'Email service not configured' }
+    }
+
+    const url = 'https://api.brevo.com/v3/smtp/email'
+
+    const emailData = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: userEmail,
+          name: userName || userEmail
+        }
+      ],
+      subject: 'New Trade Alert - Opessocius',
+      htmlContent: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%); color: #ffffff; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+              .header h1 { color: #ffffff; margin: 0; }
+              .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+              .alert-details { background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; }
+              .alert-item { margin: 10px 0; }
+              .alert-label { font-weight: 600; color: #1f2937; }
+              .cta-button { display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>New Trade Alert</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName || 'Valued Client'},</h2>
+              <p>A new trade alert has been posted in the community. Please log in to view the details.</p>
+              
+              <div class="alert-details">
+                <div class="alert-item">
+                  <span class="alert-label">Symbol:</span> ${alert.symbol || 'N/A'}
+                </div>
+                <div class="alert-item">
+                  <span class="alert-label">Action:</span> ${alert.action || 'N/A'}
+                </div>
+                <div class="alert-item">
+                  <span class="alert-label">Price:</span> ${alert.price || 'N/A'}
+                </div>
+                ${alert.takeProfit ? `<div class="alert-item"><span class="alert-label">Take Profit:</span> ${alert.takeProfit}</div>` : ''}
+                ${alert.stopLoss ? `<div class="alert-item"><span class="alert-label">Stop Loss:</span> ${alert.stopLoss}</div>` : ''}
+              </div>
+
+              <a href="https://opes-40bae.web.app/dashboard" class="cta-button">View Trade Alert</a>
+              
+              <p style="margin-top: 30px;">Best regards,<br>The Opessocius Asset Management Team</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email. Please do not reply to this message.</p>
+              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
+            </div>
+          </body>
+        </html>
+      `,
+      textContent: `
+        New Trade Alert
+
+        Hello ${userName || 'Valued Client'},
+
+        A new trade alert has been posted in the community. Please log in to view the details.
+
+        Symbol: ${alert.symbol || 'N/A'}
+        Action: ${alert.action || 'N/A'}
+        Price: ${alert.price || 'N/A'}
+        ${alert.takeProfit ? `Take Profit: ${alert.takeProfit}` : ''}
+        ${alert.stopLoss ? `Stop Loss: ${alert.stopLoss}` : ''}
+
+        View Trade Alert: https://opes-40bae.web.app/dashboard
+
+        Best regards,
+        The Opessocius Asset Management Team
+
+        ---
+        This is an automated email. Please do not reply to this message.
+        © ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
+      `
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': apiKey
+      },
+      body: JSON.stringify(emailData)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Brevo API error (trade alert notification):', errorData)
+      return { 
+        success: false, 
+        error: errorData.message || 'Failed to send trade alert notification' 
+      }
+    }
+
+    const result = await response.json()
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error('Error sending trade alert notification:', error)
+    return { success: false, error: error.message || 'Failed to send trade alert notification' }
+  }
+}
+
+/**
+ * Send weekly report notification email to users who have it enabled
+ * @param {string} userEmail - User's email address
+ * @param {string} userName - User's name
+ * @param {object} report - Weekly report data
+ * @returns {Promise} - Success status
+ */
+export const sendWeeklyReportNotification = async (userEmail, userName, report) => {
+  try {
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY
+    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
+    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+
+    if (!apiKey || !senderEmail) {
+      console.error('Brevo API key or sender email not configured')
+      return { success: false, error: 'Email service not configured' }
+    }
+
+    const url = 'https://api.brevo.com/v3/smtp/email'
+
+    const emailData = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: userEmail,
+          name: userName || userEmail
+        }
+      ],
+      subject: 'New Weekly Report Available - Opessocius',
+      htmlContent: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%); color: #ffffff; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+              .header h1 { color: #ffffff; margin: 0; }
+              .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+              .report-details { background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; }
+              .cta-button { display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>New Weekly Report Available</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName || 'Valued Client'},</h2>
+              <p>A new weekly report ${report.videoUrl ? 'and video' : ''} has been posted in the community. Please log in to view it.</p>
+              
+              <div class="report-details">
+                <h3 style="margin-top: 0;">${report.title || 'Weekly Report'}</h3>
+                ${report.description ? `<p>${report.description}</p>` : ''}
+              </div>
+
+              <a href="https://opes-40bae.web.app/dashboard" class="cta-button">View Weekly Report</a>
+              
+              <p style="margin-top: 30px;">Best regards,<br>The Opessocius Asset Management Team</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email. Please do not reply to this message.</p>
+              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
+            </div>
+          </body>
+        </html>
+      `,
+      textContent: `
+        New Weekly Report Available
+
+        Hello ${userName || 'Valued Client'},
+
+        A new weekly report ${report.videoUrl ? 'and video' : ''} has been posted in the community. Please log in to view it.
+
+        ${report.title || 'Weekly Report'}
+        ${report.description || ''}
+
+        View Weekly Report: https://opes-40bae.web.app/dashboard
+
+        Best regards,
+        The Opessocius Asset Management Team
+
+        ---
+        This is an automated email. Please do not reply to this message.
+        © ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
+      `
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': apiKey
+      },
+      body: JSON.stringify(emailData)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Brevo API error (weekly report notification):', errorData)
+      return { 
+        success: false, 
+        error: errorData.message || 'Failed to send weekly report notification' 
+      }
+    }
+
+    const result = await response.json()
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error('Error sending weekly report notification:', error)
+    return { success: false, error: error.message || 'Failed to send weekly report notification' }
   }
 }

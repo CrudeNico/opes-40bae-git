@@ -242,14 +242,30 @@ const CommunityContent = ({ user }) => {
               tradeAlerts.slice(0, 2).map((alert) => (
                 <div key={alert.id} className="trade-alert-tag">
                   <div className="trade-alert-content">
-                    <span className="trade-symbol">{alert.symbol || 'N/A'}</span>
-                    <span className="trade-action">{alert.action || 'N/A'}</span>
-                    <span className="trade-price">at {alert.price || 'N/A'}</span>
-                    {alert.takeProfit && (
-                      <span className="trade-take-profit">TP: {alert.takeProfit}</span>
-                    )}
-                    {alert.stopLoss && (
-                      <span className="trade-stop-loss">SL: {alert.stopLoss}</span>
+                    <div className="trade-alert-main">
+                      <div className="trade-alert-top">
+                        <span className="trade-symbol">{alert.symbol || 'N/A'}</span>
+                        <span className={`trade-action ${alert.action?.toLowerCase() || ''}`}>{alert.action || 'N/A'}</span>
+                      </div>
+                      <div className="trade-alert-bottom">
+                        <span className="trade-entry">Entry {alert.price || 'N/A'}</span>
+                        {alert.takeProfit && (
+                          <span className="trade-take-profit">TP: {alert.takeProfit}</span>
+                        )}
+                        {alert.stopLoss && (
+                          <span className="trade-stop-loss">SL: {alert.stopLoss}</span>
+                        )}
+                      </div>
+                    </div>
+                    {alert.chartLink && (
+                      <a 
+                        href={alert.chartLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="view-chart-button-inline"
+                      >
+                        View Chart
+                      </a>
                     )}
                   </div>
                   {alert.createdAt && (
@@ -258,16 +274,6 @@ const CommunityContent = ({ user }) => {
                         alert.createdAt.toDate().toLocaleString() : 
                         new Date(alert.createdAt).toLocaleString()}
                     </span>
-                  )}
-                  {alert.chartLink && (
-                    <a 
-                      href={alert.chartLink} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="view-chart-button"
-                    >
-                      View Chart
-                    </a>
                   )}
                 </div>
               ))
