@@ -19,10 +19,6 @@ const CommunityContent = ({ user }) => {
     loadTradeAlerts()
     loadWeeklyReports()
     setupChatListener()
-    // Auto-scroll to bottom when component mounts
-    setTimeout(() => {
-      scrollToBottom()
-    }, 100)
     
     // Cleanup old messages on mount
     cleanupOldMessages()
@@ -35,15 +31,15 @@ const CommunityContent = ({ user }) => {
     return () => clearInterval(cleanupInterval)
   }, [])
 
-  useEffect(() => {
-    // Auto-scroll to bottom when messages change
-    setTimeout(() => {
-      scrollToBottom()
-    }, 100)
-  }, [chatMessages])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Only scroll the chat messages container, not the page
+    if (messagesEndRef.current) {
+      const chatMessagesContainer = messagesEndRef.current.closest('.chat-messages')
+      if (chatMessagesContainer) {
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight
+      }
+    }
   }
 
   const getFirstName = (name) => {
@@ -76,13 +72,29 @@ const CommunityContent = ({ user }) => {
       orderBy('createdAt', 'asc')
     )
 
+    let isInitialLoad = true
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const messages = []
       snapshot.forEach((doc) => {
         messages.push({ id: doc.id, ...doc.data() })
       })
+      const previousMessageCount = chatMessages.length
       setChatMessages(messages)
       setLoading(false)
+      
+      // On initial load, scroll chat to bottom (but don't scroll the page)
+      if (isInitialLoad && messages.length > 0) {
+        setTimeout(() => {
+          scrollToBottom()
+        }, 200)
+        isInitialLoad = false
+      }
+      // Also scroll if a new message was added after initial load
+      else if (!isInitialLoad && messages.length > previousMessageCount && previousMessageCount > 0) {
+        setTimeout(() => {
+          scrollToBottom()
+        }, 100)
+      }
     })
 
     return () => unsubscribe()
@@ -183,6 +195,9 @@ const CommunityContent = ({ user }) => {
       setNewMessage('')
       setImageFile(null)
       setFileAttachment(null)
+      
+      // Scroll chat to bottom after sending message
+      scrollChatOnNewMessage()
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
