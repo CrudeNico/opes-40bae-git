@@ -81,6 +81,14 @@ service firebase.storage {
       allow write: if isAuthenticated();
     }
 
+    // Admin emails attachments
+    // Note: Admin check via Firestore in Storage rules has limitations
+    // Security is enforced at the application level (only admins can access the admin panel)
+    match /admin-emails/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

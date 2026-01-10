@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { auth } from '../firebase/config'
 import { signOutUser } from '../firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
+import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import Settings from '../components/Settings'
 import Portfolio from '../components/Portfolio'
 import News from '../components/News'
@@ -14,7 +15,7 @@ import './DashboardPage.css'
 const DashboardPage = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState('dashboard')
+  const [activeSection, setActiveSection] = useState('portfolio')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -23,6 +24,39 @@ const DashboardPage = () => {
       if (currentUser) {
         // Reload user to get latest profile data
         await currentUser.reload()
+        
+        // Check if user is Admin or Admin 2 - if so, redirect to admin dashboard
+        const db = getFirestore()
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid)
+          const userDoc = await getDoc(userDocRef)
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            // Handle both old format (isAdmin as array) and new format (statuses as array)
+            let statuses = userData.statuses || []
+            // If statuses doesn't exist but isAdmin does (as array), use isAdmin
+            if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
+              statuses = userData.isAdmin
+            }
+            // If isAdmin is boolean true, convert to array
+            if (statuses.length === 0 && userData.isAdmin === true) {
+              statuses = ['Admin']
+            }
+            
+            // If user is Admin or Admin 2, redirect to admin dashboard
+            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
+              navigate('/admin')
+              setLoading(false)
+              return // Don't set user state, will redirect
+            }
+          }
+        } catch (error) {
+          console.error('Error checking user status:', error)
+          // Continue to regular dashboard on error
+        }
+        
+        // User is not admin/admin2, show regular dashboard
         setUser(currentUser)
       } else {
         // User is not logged in, redirect to login
@@ -57,7 +91,6 @@ const DashboardPage = () => {
   }
 
   const sections = [
-    { id: 'dashboard', title: 'Dashboard' },
     { id: 'portfolio', title: 'Portfolio' },
     { id: 'news', title: 'News' },
     { id: 'learning', title: 'Learning' },
@@ -169,10 +202,10 @@ const DashboardPage = () => {
           ) : (
             <>
               <h1 className="content-title">
-                {sections.find(s => s.id === activeSection)?.title || 'Dashboard'}
+                {sections.find(s => s.id === activeSection)?.title || 'Portfolio'}
               </h1>
               <div className="content-body">
-                <p>Welcome to your {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'dashboard'} section.</p>
+                <p>Welcome to your {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'portfolio'} section.</p>
                 {/* Content will be displayed here based on activeSection */}
               </div>
             </>

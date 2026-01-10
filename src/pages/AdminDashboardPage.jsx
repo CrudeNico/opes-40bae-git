@@ -10,12 +10,14 @@ import AdminNewsManagement from '../components/AdminNewsManagement'
 import AdminLearningManagement from '../components/AdminLearningManagement'
 import AdminSupport from '../components/AdminSupport'
 import AdminCommunityManagement from '../components/AdminCommunityManagement'
+import AdminPortfolio from '../components/AdminPortfolio'
+import AdminEmails from '../components/AdminEmails'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState('dashboard')
+  const [activeSection, setActiveSection] = useState('portfolio')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -41,10 +43,11 @@ const AdminDashboardPage = () => {
               statuses = ['Admin']
             }
             
-            if (statuses.includes('Admin')) {
-              setUser(currentUser)
+            // Allow both Admin and Admin 2 (previously Relations) to access admin dashboard
+            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
+              setUser({ ...currentUser, userStatuses: statuses }) // Store statuses in user object
             } else {
-              // User is not admin, redirect to regular dashboard
+              // User is not admin or admin 2, redirect to regular dashboard
               navigate('/dashboard')
             }
           } else {
@@ -82,13 +85,13 @@ const AdminDashboardPage = () => {
   }
 
   const sections = [
-    { id: 'dashboard', title: 'Admin Dashboard' },
+    { id: 'portfolio', title: 'Portfolio' },
     { id: 'users', title: 'Manage Users' },
     { id: 'investors', title: 'Investors' },
     { id: 'news', title: 'News' },
     { id: 'learning', title: 'Learning' },
     { id: 'community', title: 'Community' },
-    { id: 'settings', title: 'Admin Settings' },
+    { id: 'emails', title: 'Emails' },
     { id: 'support', title: 'Support' }
   ]
 
@@ -181,28 +184,32 @@ const AdminDashboardPage = () => {
       {/* Main Content Area */}
       <main className="dashboard-content">
         <div className="content-wrapper">
-          <h1 className="content-title">
-            {sections.find(s => s.id === activeSection)?.title || 'Admin Dashboard'}
-          </h1>
-          <div className="content-body">
-                {activeSection === 'users' ? (
-                  <AdminUsersManagement />
-                ) : activeSection === 'investors' ? (
-                  <AdminInvestorsManagement />
-                ) : activeSection === 'news' ? (
-                  <AdminNewsManagement />
-                ) : activeSection === 'learning' ? (
-                  <AdminLearningManagement />
-                ) : activeSection === 'community' ? (
-                  <AdminCommunityManagement />
-                ) : activeSection === 'support' ? (
-                  <AdminSupport />
-                ) : activeSection === 'settings' ? (
-                  <p>Admin specific settings will go here.</p>
-                ) : (
-                  <p>Welcome to the {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'admin dashboard'} section.</p>
-                )}
-          </div>
+          {activeSection === 'portfolio' ? (
+            <AdminPortfolio user={user} userStatuses={user?.userStatuses || []} />
+          ) : activeSection === 'users' ? (
+            <AdminUsersManagement currentUserStatuses={user?.userStatuses || []} />
+          ) : activeSection === 'investors' ? (
+            <AdminInvestorsManagement userStatuses={user?.userStatuses || []} />
+          ) : activeSection === 'news' ? (
+            <AdminNewsManagement />
+          ) : activeSection === 'learning' ? (
+            <AdminLearningManagement />
+          ) : activeSection === 'community' ? (
+            <AdminCommunityManagement />
+          ) : activeSection === 'emails' ? (
+            <AdminEmails />
+          ) : activeSection === 'support' ? (
+            <AdminSupport />
+          ) : (
+            <>
+              <h1 className="content-title">
+                {sections.find(s => s.id === activeSection)?.title || 'Portfolio'}
+              </h1>
+              <div className="content-body">
+                <p>Welcome to the {sections.find(s => s.id === activeSection)?.title.toLowerCase() || 'portfolio'} section.</p>
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>

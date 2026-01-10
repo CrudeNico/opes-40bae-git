@@ -39,7 +39,8 @@ const LoginPage = () => {
               statuses = ['Admin']
             }
             
-            if (statuses.includes('Admin')) {
+            // Check if user is Admin or Admin 2 - redirect to admin dashboard
+            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
               navigate('/admin')
             } else {
               navigate('/dashboard')
@@ -87,7 +88,8 @@ const LoginPage = () => {
               statuses = ['Admin']
             }
             
-            if (statuses.includes('Admin')) {
+            // Check if user is Admin or Admin 2 - redirect to admin dashboard
+            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
               navigate('/admin')
             } else {
               navigate('/dashboard')

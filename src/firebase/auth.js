@@ -26,7 +26,7 @@ const sendWelcomeMessage = async (userId, userEmail, userName) => {
       userId: userId,
       userName: userName || userEmail,
       userEmail: userEmail,
-      message: 'Welcome to your account.\n\nOn the left, you will find the calendar, where you can schedule meetings regarding your investments. This chat log is available to contact customer support 24/7.',
+      message: '', // Empty message - only show admin response
       status: 'read',
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),

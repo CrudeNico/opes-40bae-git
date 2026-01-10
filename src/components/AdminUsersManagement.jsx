@@ -2,13 +2,19 @@ import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
 import './AdminUsersManagement.css'
 
-const AdminUsersManagement = () => {
+const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
+  // Check if current user is Admin 2 (has limited permissions)
+  // Explicitly check for Admin 2 status - if found, restrict permissions
+  const isAdmin2 = currentUserStatuses && (currentUserStatuses.includes('Admin 2') || currentUserStatuses.includes('Relations'))
+  const canModifyStatuses = !isAdmin2
+  const canApproveInvestments = !isAdmin2
+  const canEditInvestments = !isAdmin2
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [userStatuses, setUserStatuses] = useState({
     Admin: false,
-    Relations: false,
+    'Admin 2': false,
     Investor: false,
     Learner: false,
     Community: false
@@ -21,7 +27,7 @@ const AdminUsersManagement = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   
-  const availableStatuses = ['Admin', 'Relations', 'Investor', 'Learner', 'Community']
+  const availableStatuses = ['Admin', 'Admin 2', 'Investor', 'Learner', 'Community']
 
   useEffect(() => {
     loadUsers()
@@ -44,7 +50,7 @@ const AdminUsersManagement = () => {
       // Initialize status checkboxes based on user's current statuses
       const statusMap = {
         Admin: currentStatuses.includes('Admin'),
-        Relations: currentStatuses.includes('Relations'),
+        'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'), // Support old Relations status
         Investor: currentStatuses.includes('Investor'),
         Learner: currentStatuses.includes('Learner'),
         Community: currentStatuses.includes('Community')
@@ -59,6 +65,7 @@ const AdminUsersManagement = () => {
         setInvestmentData(null)
         setEditedInvestmentData({})
       }
+      // Always reset edit mode when selecting a user - Admin 2 will never be able to enter edit mode
       setEditingInvestment(false)
     }
   }, [selectedUser])
@@ -156,6 +163,12 @@ const AdminUsersManagement = () => {
 
   const handleSaveInvestment = async () => {
     if (!selectedUser || !investmentData) return
+    
+    // Prevent Admin 2 from editing investments
+    if (!canEditInvestments) {
+      setError('You do not have permission to edit investments.')
+      return
+    }
 
     setLoadingSave(true)
     setError('')
@@ -189,6 +202,12 @@ const AdminUsersManagement = () => {
 
   const handleApproveInvestment = async () => {
     if (!selectedUser || !investmentData) return
+    
+    // Prevent Admin 2 from approving investments
+    if (!canApproveInvestments) {
+      setError('You do not have permission to approve investments.')
+      return
+    }
 
     setLoadingApprove(true)
     setError('')
@@ -256,7 +275,7 @@ const AdminUsersManagement = () => {
       // Update status checkboxes
       const statusMap = {
         Admin: currentStatuses.includes('Admin'),
-        Relations: currentStatuses.includes('Relations'),
+        'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'), // Support old Relations status
         Investor: currentStatuses.includes('Investor'),
         Learner: currentStatuses.includes('Learner'),
         Community: currentStatuses.includes('Community')
@@ -276,6 +295,12 @@ const AdminUsersManagement = () => {
 
   const handleSaveChanges = async () => {
     if (!selectedUser) return
+    
+    // Prevent Admin 2 from modifying statuses
+    if (!canModifyStatuses) {
+      setError('You do not have permission to modify user statuses.')
+      return
+    }
 
     setLoadingSave(true)
     setError('')
@@ -284,6 +309,8 @@ const AdminUsersManagement = () => {
     try {
       // Build array of selected statuses
       const selectedStatuses = availableStatuses.filter(status => userStatuses[status])
+      
+      console.log('Saving statuses:', selectedStatuses, 'for user:', selectedUser.id)
       
       const db = getFirestore()
       const updates = {
@@ -295,15 +322,43 @@ const AdminUsersManagement = () => {
       // Note: We keep the old isAdmin field for backward compatibility, but statuses takes precedence
       const userDocRef = doc(db, 'users', selectedUser.id)
       await updateDoc(userDocRef, updates)
+      
+      console.log('Statuses saved successfully to Firestore')
 
+      // Verify the update was successful by reading the document back
+      const updatedDoc = await getDoc(userDocRef)
+      if (!updatedDoc.exists()) {
+        throw new Error('User document not found after update')
+      }
+      
+      const updatedUserData = updatedDoc.data()
+      const savedStatuses = updatedUserData.statuses || []
+      
+      console.log('Verified saved statuses from Firestore:', savedStatuses)
+      
       setSuccess('User statuses updated successfully!')
       
       // Reload users to update the list
       await loadUsers()
       
-      // Update selected user with new data
-      const updatedUser = { ...selectedUser, statuses: selectedStatuses }
+      // Update selected user with fresh data from Firestore
+      const updatedUser = {
+        ...selectedUser,
+        ...updatedUserData,
+        id: selectedUser.id,
+        statuses: savedStatuses
+      }
       setSelectedUser(updatedUser)
+      
+      // Update status checkboxes immediately to reflect the saved state
+      const statusMap = {
+        Admin: savedStatuses.includes('Admin'),
+        'Admin 2': savedStatuses.includes('Admin 2') || savedStatuses.includes('Relations'),
+        Investor: savedStatuses.includes('Investor'),
+        Learner: savedStatuses.includes('Learner'),
+        Community: savedStatuses.includes('Community')
+      }
+      setUserStatuses(statusMap)
     } catch (error) {
       console.error('Error updating user:', error)
       if (error.code === 'permission-denied') {
@@ -353,11 +408,15 @@ const AdminUsersManagement = () => {
                     <h3 className="user-card-name">{user.displayName || 'No name'}</h3>
                     <p className="user-card-email">{user.email}</p>
                     <div className="user-status-badges">
-                      {(user.statuses || []).map((status) => (
-                        <span key={status} className={`user-status-badge status-${status.toLowerCase()}`}>
-                          {status}
-                        </span>
-                      ))}
+                      {(user.statuses || []).map((status) => {
+                        // Convert status to valid CSS class name (replace spaces with hyphens, handle special cases)
+                        const statusClass = status.toLowerCase().replace(/\s+/g, '-')
+                        return (
+                          <span key={status} className={`user-status-badge status-${statusClass}`}>
+                            {status}
+                          </span>
+                        )
+                      })}
                       {user.investmentData && user.investmentData.status === 'pending' && (
                         <span className="user-status-badge status-pending">
                           Pending
@@ -430,23 +489,30 @@ const AdminUsersManagement = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="investment-actions">
-                        <button
-                          onClick={() => setEditingInvestment(true)}
-                          className="btn-edit"
-                        >
-                          Edit Investment
-                        </button>
-                        <button
-                          onClick={handleApproveInvestment}
-                          disabled={loadingApprove}
-                          className="btn-approve"
-                        >
-                          {loadingApprove ? 'Approving...' : 'Approve Investment'}
-                        </button>
-                      </div>
+                      {/* Completely hide action buttons for Admin 2 - only show if user has permissions */}
+                      {!isAdmin2 && (
+                        <div className="investment-actions">
+                          {canEditInvestments && (
+                            <button
+                              onClick={() => setEditingInvestment(true)}
+                              className="btn-edit"
+                            >
+                              Edit Investment
+                            </button>
+                          )}
+                          {canApproveInvestments && (
+                            <button
+                              onClick={handleApproveInvestment}
+                              disabled={loadingApprove}
+                              className="btn-approve"
+                            >
+                              {loadingApprove ? 'Approving...' : 'Approve Investment'}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ) : (
+                  ) : editingInvestment && canEditInvestments && !isAdmin2 ? (
                     <div className="investment-edit-form">
                       <div className="form-row">
                         <div className="form-group">
@@ -535,21 +601,26 @@ const AdminUsersManagement = () => {
                         </button>
                       </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               )}
 
               {/* User Statuses */}
               <div className="user-detail-section">
                 <h3 className="section-title">User Statuses</h3>
-                <p className="section-description">Select one or more statuses to grant access to different features.</p>
+                <p className="section-description">
+                  {canModifyStatuses 
+                    ? 'Select one or more statuses to grant access to different features.'
+                    : 'You do not have permission to modify user statuses. This feature is only available to full administrators.'}
+                </p>
                 <div className="statuses-list">
                   {availableStatuses.map((status) => (
-                    <label key={status} className="status-checkbox-label">
+                    <label key={status} className={`status-checkbox-label ${!canModifyStatuses ? 'disabled' : ''}`}>
                       <input
                         type="checkbox"
                         checked={userStatuses[status]}
                         onChange={() => handleStatusChange(status)}
+                        disabled={!canModifyStatuses}
                         className="status-checkbox-input"
                       />
                       <span className="status-checkbox-text">{status}</span>
@@ -558,14 +629,16 @@ const AdminUsersManagement = () => {
                 </div>
               </div>
 
-              {/* Save Button */}
-              <button
-                onClick={handleSaveChanges}
-                disabled={loadingSave || loadingApprove}
-                className="btn-save"
-              >
-                {loadingSave ? 'Saving...' : 'Save Statuses'}
-              </button>
+              {/* Save Button - Only show for full admins */}
+              {canModifyStatuses && (
+                <button
+                  onClick={handleSaveChanges}
+                  disabled={loadingSave || loadingApprove}
+                  className="btn-save"
+                >
+                  {loadingSave ? 'Saving...' : 'Save Statuses'}
+                </button>
+              )}
 
             </div>
           ) : (

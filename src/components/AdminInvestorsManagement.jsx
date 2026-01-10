@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore'
 import './AdminInvestorsManagement.css'
 
-const AdminInvestorsManagement = () => {
+const AdminInvestorsManagement = ({ userStatuses = [] }) => {
+  // Check if user is Admin 2 (has limited permissions)
+  const isAdmin2 = userStatuses.includes('Admin 2') || userStatuses.includes('Relations')
+  const canAddPerformance = !isAdmin2
+  const canEditPerformance = !isAdmin2
+  const canModifyStatuses = !isAdmin2
   const [investors, setInvestors] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedInvestor, setSelectedInvestor] = useState(null)
@@ -84,6 +89,9 @@ const AdminInvestorsManagement = () => {
   }
 
   const handleRecordClick = (record, index) => {
+    // Prevent Admin 2 from editing records
+    if (!canEditPerformance) return
+    
     setEditingRecord({ ...record, index })
     setEditedRecordData({
       month: record.month,
@@ -563,15 +571,17 @@ const AdminInvestorsManagement = () => {
                 >
                   View Performance
                 </button>
-                <button
-                  onClick={() => {
-                    setShowAddPerformance(true)
-                    setShowViewPerformance(false)
-                  }}
-                  className="btn-action btn-add"
-                >
-                  Add New Performance
-                </button>
+                {canAddPerformance && (
+                  <button
+                    onClick={() => {
+                      setShowAddPerformance(true)
+                      setShowViewPerformance(false)
+                    }}
+                    className="btn-action btn-add"
+                  >
+                    Add New Performance
+                  </button>
+                )}
               </div>
 
               {/* View Performance Table */}
@@ -591,8 +601,8 @@ const AdminInvestorsManagement = () => {
                       {selectedInvestor.investmentData.monthlyHistory.map((record, index) => (
                         <div 
                           key={index} 
-                          className="history-row clickable"
-                          onClick={() => handleRecordClick(record, index)}
+                          className={`history-row ${canEditPerformance ? 'clickable' : ''}`}
+                          onClick={canEditPerformance ? () => handleRecordClick(record, index) : undefined}
                         >
                           <div>{record.month} {record.year}</div>
                           <div>{record.percentageGrowth}%</div>
@@ -609,8 +619,8 @@ const AdminInvestorsManagement = () => {
                 </div>
               )}
 
-              {/* Add Performance Form */}
-              {showAddPerformance && (
+              {/* Add Performance Form - Only show for admins with full permissions */}
+              {showAddPerformance && canAddPerformance && (
                 <div className="add-performance-section">
                   <h3 className="section-title">Add Monthly Performance</h3>
                   <div className="monthly-update-form">
@@ -844,8 +854,8 @@ const AdminInvestorsManagement = () => {
                 </div>
               )}
 
-              {/* Edit Record Modal */}
-              {editingRecord && (
+              {/* Edit Record Modal - Only show for admins with full permissions */}
+              {editingRecord && canEditPerformance && (
                 <div className="edit-record-modal">
                   <div className="modal-backdrop" onClick={() => {
                     setEditingRecord(null)

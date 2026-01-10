@@ -423,8 +423,8 @@ const Support = ({ user }) => {
                 ) : (
                   chatMessages.map((msg) => (
                     <div key={msg.id} className="message-item">
-                      {/* Only show user message if there's actual content (message, image, or file) */}
-                      {(msg.message || msg.imageUrl || msg.fileUrl) && (
+                      {/* Only show user message if there's actual content (non-empty message, image, or file) */}
+                      {((msg.message && msg.message.trim()) || msg.imageUrl || msg.fileUrl) && (
                         <>
                           <div className="message-header">
                             <span className="message-author">You</span>
@@ -442,7 +442,7 @@ const Support = ({ user }) => {
                             </span>
                           </div>
                           <div className="message-content">
-                            {msg.message && <p>{msg.message}</p>}
+                            {msg.message && msg.message.trim() && <p>{msg.message}</p>}
                             {msg.imageUrl && (
                               <div className="message-attachment">
                                 <img src={msg.imageUrl} alt="Uploaded image" className="message-image" />
