@@ -18,6 +18,7 @@ const Community = ({ user, onStatusUpdate }) => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [selectedPaymentType, setSelectedPaymentType] = useState(null)
+  const [showUnderConstruction, setShowUnderConstruction] = useState(false)
 
   const monthlyPrice = 20 // Monthly price in EUR
   const annualPrice = 199 // Annual price in EUR
@@ -25,8 +26,11 @@ const Community = ({ user, onStatusUpdate }) => {
   const annualPaymentLink = 'https://stripe.opessocius.com/community-annual' // Placeholder Stripe link
 
   const handleContinueToPayment = (paymentType) => {
-    setSelectedPaymentType(paymentType)
-    setShowForm(true)
+    setShowUnderConstruction(true)
+  }
+
+  const closeUnderConstruction = () => {
+    setShowUnderConstruction(false)
   }
 
   useEffect(() => {
@@ -294,8 +298,7 @@ const Community = ({ user, onStatusUpdate }) => {
                 <button 
                   className="btn btn-primary btn-payment"
                   onClick={() => {
-                    const link = selectedPaymentType === 'monthly' ? monthlyPaymentLink : annualPaymentLink
-                    window.open(link, '_blank')
+                    setShowUnderConstruction(true)
                   }}
                 >
                   Continue to Payment (€{selectedPaymentType === 'monthly' ? monthlyPrice : annualPrice})
@@ -303,6 +306,28 @@ const Community = ({ user, onStatusUpdate }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Under Construction Modal */}
+      {showUnderConstruction && (
+        <div className="under-construction-overlay" onClick={closeUnderConstruction}>
+          <div className="under-construction-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="under-construction-close" onClick={closeUnderConstruction}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            
+            <div className="under-construction-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" />
+              </svg>
+            </div>
+            
+            <h2 className="under-construction-title">Under Construction</h2>
+            <p className="under-construction-message">Currently it's under construction.</p>
+          </div>
         </div>
       )}
     </div>

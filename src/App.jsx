@@ -6,6 +6,7 @@ import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import FirstAdminSetupPage from './pages/FirstAdminSetupPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import './App.css'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/first-admin-setup" element={<FirstAdminSetupPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </div>
     </Router>

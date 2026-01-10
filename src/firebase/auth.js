@@ -5,7 +5,10 @@ import {
   signOut,
   updateProfile,
   GoogleAuthProvider,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  confirmPasswordReset as confirmPasswordResetFirebase,
+  verifyPasswordResetCode as verifyPasswordResetCodeFirebase
 } from 'firebase/auth'
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, Timestamp } from 'firebase/firestore'
 import { auth } from './config'
@@ -203,6 +206,77 @@ export const signOutUser = async () => {
     return { success: true }
   } catch (error) {
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Send password reset email to user
+ * @param {string} email - User's email
+ * @returns {Promise}
+ */
+export const sendPasswordReset = async (email) => {
+  try {
+    const actionCodeSettings = {
+      url: `${window.location.origin}/reset-password`,
+      handleCodeInApp: true
+    }
+    await sendPasswordResetEmail(auth, email, actionCodeSettings)
+    return { success: true }
+  } catch (error) {
+    let errorMessage = error.message
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'No account found with this email address.'
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Please enter a valid email address.'
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage = 'Too many password reset requests. Please try again later.'
+    } else if (error.code === 'auth/network-request-failed') {
+      errorMessage = 'Network error. Please check your internet connection.'
+    }
+    return { success: false, error: errorMessage }
+  }
+}
+
+/**
+ * Verify password reset code
+ * @param {string} actionCode - Password reset code from email link
+ * @returns {Promise}
+ */
+export const verifyPasswordResetCode = async (actionCode) => {
+  try {
+    const email = await verifyPasswordResetCodeFirebase(auth, actionCode)
+    return { success: true, email }
+  } catch (error) {
+    let errorMessage = error.message
+    if (error.code === 'auth/expired-action-code') {
+      errorMessage = 'The password reset link has expired. Please request a new one.'
+    } else if (error.code === 'auth/invalid-action-code') {
+      errorMessage = 'The password reset link is invalid or has already been used.'
+    }
+    return { success: false, error: errorMessage }
+  }
+}
+
+/**
+ * Confirm password reset with new password
+ * @param {string} actionCode - Password reset code from email link
+ * @param {string} newPassword - New password
+ * @returns {Promise}
+ */
+export const confirmPasswordReset = async (actionCode, newPassword) => {
+  try {
+    await confirmPasswordResetFirebase(auth, actionCode, newPassword)
+    return { success: true }
+  } catch (error) {
+    let errorMessage = error.message
+    if (error.code === 'auth/expired-action-code') {
+      errorMessage = 'The password reset link has expired. Please request a new one.'
+    } else if (error.code === 'auth/invalid-action-code') {
+      errorMessage = 'The password reset link is invalid or has already been used.'
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Please use at least 6 characters.'
+    }
+    return { success: false, error: errorMessage }
   }
 }
 

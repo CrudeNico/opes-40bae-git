@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { signInWithEmail, signInWithGoogle } from '../firebase/auth'
+import { signInWithEmail, signInWithGoogle, sendPasswordReset } from '../firebase/auth'
 import { auth } from '../firebase/config'
 import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import './LoginPage.css'
@@ -11,6 +11,11 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetError, setResetError] = useState('')
+  const [resetSuccess, setResetSuccess] = useState(false)
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -112,6 +117,42 @@ const LoginPage = () => {
     }
   }
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setResetError('')
+    setResetSuccess(false)
+    setResetLoading(true)
+
+    try {
+      const result = await sendPasswordReset(resetEmail)
+      if (result.success) {
+        setResetSuccess(true)
+        setResetEmail('')
+      } else {
+        setResetError(result.error)
+      }
+    } catch (err) {
+      setResetError('An error occurred. Please try again.')
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
+  const handleForgotPasswordClick = (e) => {
+    e.preventDefault()
+    setShowForgotPassword(true)
+    setResetEmail(email) // Pre-fill with current email if available
+    setResetError('')
+    setResetSuccess(false)
+  }
+
+  const closeForgotPassword = () => {
+    setShowForgotPassword(false)
+    setResetEmail('')
+    setResetError('')
+    setResetSuccess(false)
+  }
+
 
   return (
     <div className="login-page">
@@ -170,7 +211,14 @@ const LoginPage = () => {
               <div className="form-group">
                 <div className="form-label-row">
                   <label htmlFor="password" className="form-label">Password</label>
-                  <Link to="#" className="forgot-password">Forgot your password?</Link>
+                  <button 
+                    type="button"
+                    onClick={handleForgotPasswordClick}
+                    className="forgot-password"
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem', color: '#6b7280' }}
+                  >
+                    Forgot your password?
+                  </button>
                 </div>
                 <div className="input-wrapper password-input-wrapper">
                   <input
@@ -242,6 +290,65 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="forgot-password-overlay" onClick={closeForgotPassword}>
+          <div className="forgot-password-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="forgot-password-close" onClick={closeForgotPassword}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            
+            <h2 className="forgot-password-title">Reset Password</h2>
+            <p className="forgot-password-subtitle">Enter your email address and we'll send you a link to reset your password.</p>
+
+            {resetSuccess ? (
+              <div className="reset-success-message">
+                <div className="reset-success-icon">
+                  <svg width="48" height="48" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 18.3333C14.6024 18.3333 18.3333 14.6024 18.3333 9.99999C18.3333 5.39762 14.6024 1.66666 10 1.66666C5.39763 1.66666 1.66667 5.39762 1.66667 9.99999C1.66667 14.6024 5.39763 18.3333 10 18.3333Z" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M7.5 10L9.16667 11.6667L12.5 8.33333" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <h3 className="reset-success-title">Email Sent!</h3>
+                <p className="reset-success-text">We've sent a password reset link to your email address. Please check your inbox and follow the instructions to reset your password.</p>
+                <button className="reset-success-button" onClick={closeForgotPassword}>Close</button>
+              </div>
+            ) : (
+              <form className="forgot-password-form" onSubmit={handleForgotPassword}>
+                {resetError && (
+                  <div className="reset-error-message">
+                    {resetError}
+                  </div>
+                )}
+                
+                <div className="form-group">
+                  <label htmlFor="reset-email" className="form-label">Email</label>
+                  <input
+                    type="email"
+                    id="reset-email"
+                    className="form-input"
+                    placeholder="Enter your email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="reset-button" disabled={resetLoading}>
+                  {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+                
+                <button type="button" className="reset-cancel-button" onClick={closeForgotPassword}>
+                  Cancel
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

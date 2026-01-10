@@ -563,3 +563,180 @@
   }
 }
 
+/* Forgot Password Modal */
+.forgot-password-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+.forgot-password-modal {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 2.5rem;
+  max-width: 450px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.3s ease;
+}
+
+.forgot-password-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+}
+
+.forgot-password-close:hover {
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+.forgot-password-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.forgot-password-subtitle {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.forgot-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.reset-error-message {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.reset-success-message {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.reset-success-icon {
+  margin: 0 auto 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-success-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+}
+
+.reset-success-text {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.reset-success-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: #14b8a6;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.reset-success-button:hover {
+  background: #0d9488;
+}
+
+.reset-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: #14b8a6;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.reset-button:hover:not(:disabled) {
+  background: #0d9488;
+}
+
+.reset-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reset-cancel-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-cancel-button:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+@media (max-width: 768px) {
+  .forgot-password-modal {
+    padding: 2rem 1.5rem;
+    max-width: 90%;
+  }
+
+  .forgot-password-title {
+    font-size: 1.25rem;
+  }
+
+  .forgot-password-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
