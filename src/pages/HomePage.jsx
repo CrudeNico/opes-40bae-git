@@ -26,50 +26,123 @@ const HomePage = () => {
   const [dropdownFading, setDropdownFading] = useState(false)
   const dropdownRef = useRef(null)
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
+  const dropdownWidgetRef = useRef(null)
+  const closeTimeoutRef = useRef(null)
   const [loadingConsultation, setLoadingConsultation] = useState(false)
   const [consultationSuccess, setConsultationSuccess] = useState(false)
   const [consultationError, setConsultationError] = useState('')
 
-  // Close new nav sections when clicking outside
+  // Handle hover navigation - simple and stable
+  const handleNavSectionEnter = (section) => {
+    // Clear any existing timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+    setDropdownFading(false)
+    setOpenNavSection(section)
+  }
+
+  const handleNavSectionLeave = () => {
+    // Start closing after a delay to allow moving to widget
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+    }
+    closeTimeoutRef.current = setTimeout(() => {
+      setDropdownFading(true)
+      setTimeout(() => {
+        setOpenNavSection(null)
+        setDropdownFading(false)
+        closeTimeoutRef.current = null
+      }, 300)
+    }, 200)
+  }
+
+  const handleDropdownWidgetEnter = () => {
+    // Cancel any pending close when entering widget
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+    setDropdownFading(false)
+  }
+
+  const handleDropdownWidgetLeave = () => {
+    // Close when leaving widget
+    setDropdownFading(true)
+    setTimeout(() => {
+      setOpenNavSection(null)
+      setDropdownFading(false)
+    }, 300)
+  }
+
+  // Handle scroll - fade out dropdown when scrolling
   useEffect(() => {
-    const handleClickOutsideNew = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        if (!event.target.closest('.nav-link-button-new')) {
+    const handleScroll = () => {
+      if (openNavSection) {
+        setDropdownFading(true)
+        setTimeout(() => {
           setOpenNavSection(null)
-        }
+          setDropdownFading(false)
+        }, 300)
       }
     }
 
-    if (openNavSection) {
-      document.addEventListener('mousedown', handleClickOutsideNew)
-    }
-
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
     return () => {
-      document.removeEventListener('mousedown', handleClickOutsideNew)
+      window.removeEventListener('scroll', handleScroll)
     }
   }, [openNavSection])
 
-  // Position dropdown widget to span from Section 1 to Section 4
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
   useEffect(() => {
     if (openNavSection && navItemsRef.current.section1 && navItemsRef.current.section4) {
-      const section1 = navItemsRef.current.section1
-      const section4 = navItemsRef.current.section4
-      const dropdownWidget = document.querySelector('.nav-dropdown-widget')
+      const updatePosition = () => {
+        const section1 = navItemsRef.current.section1
+        const section4 = navItemsRef.current.section4
+        const dropdownWidget = document.querySelector('.nav-dropdown-widget')
+        
+        if (dropdownWidget && section1 && section4) {
+          const rect1 = section1.getBoundingClientRect()
+          const rect4 = section4.getBoundingClientRect()
+          
+          // Use viewport coordinates for fixed positioning
+          // Extend 80px to the left and right (making it wider)
+          const left = rect1.left - 80
+          const width = (rect4.right - rect1.left) + 160 // Add 160px total (80px each side)
+          const top = rect4.bottom + 24 // 24px = 1.5rem spacing (fixed uses viewport coordinates)
+          
+          dropdownWidget.style.left = `${left}px`
+          dropdownWidget.style.top = `${top}px`
+          dropdownWidget.style.width = `${width}px`
+          dropdownWidget.style.transform = 'none'
+        }
+      }
       
-      if (dropdownWidget && section1 && section4) {
-        const rect1 = section1.getBoundingClientRect()
-        const rect4 = section4.getBoundingClientRect()
-        
-        // Use viewport coordinates for fixed positioning
-        // Extend 80px to the left and right (making it wider)
-        const left = rect1.left - 80
-        const width = (rect4.right - rect1.left) + 160 // Add 160px total (80px each side)
-        const top = rect4.bottom + 24 // 24px = 1.5rem spacing (fixed uses viewport coordinates)
-        
-        dropdownWidget.style.left = `${left}px`
-        dropdownWidget.style.top = `${top}px`
-        dropdownWidget.style.width = `${width}px`
-        dropdownWidget.style.transform = 'none'
+      // Position immediately when opened
+      updatePosition()
+      
+      // Only update on window resize, not on scroll
+      const handleResize = () => {
+        if (openNavSection) {
+          updatePosition()
+        }
+      }
+      
+      window.addEventListener('resize', handleResize)
+      
+      return () => {
+        window.removeEventListener('resize', handleResize)
       }
     }
   }, [openNavSection])
@@ -256,15 +329,17 @@ const HomePage = () => {
       <header className="header">
         <nav className="nav">
           <div className="nav-container">
-            <div className="logo">
+            <Link to="/" className="logo">
               <h1>Opessocius</h1>
-            </div>
+            </Link>
             <div className="nav-links-wrapper" ref={dropdownRef}>
               <ul className="nav-links">
                 <li className={`nav-item-new ${openNavSection === 'section1' ? 'open' : ''}`} ref={el => navItemsRef.current.section1 = el}>
                   <button 
                     className="nav-link-button-new"
-                    onClick={() => setOpenNavSection(openNavSection === 'section1' ? null : 'section1')}
+                    onMouseEnter={() => handleNavSectionEnter('section1')}
+                    onMouseLeave={handleNavSectionLeave}
+                    onClick={() => handleNavSectionEnter('section1')}
                   >
                     Company
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="nav-icon">
@@ -275,7 +350,9 @@ const HomePage = () => {
                 <li className={`nav-item-new ${openNavSection === 'section2' ? 'open' : ''}`} ref={el => navItemsRef.current.section2 = el}>
                   <button 
                     className="nav-link-button-new"
-                    onClick={() => setOpenNavSection(openNavSection === 'section2' ? null : 'section2')}
+                    onMouseEnter={() => handleNavSectionEnter('section2')}
+                    onMouseLeave={handleNavSectionLeave}
+                    onClick={() => handleNavSectionEnter('section2')}
                   >
                     Solutions
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="nav-icon">
@@ -286,7 +363,9 @@ const HomePage = () => {
                 <li className={`nav-item-new ${openNavSection === 'section3' ? 'open' : ''}`} ref={el => navItemsRef.current.section3 = el}>
                   <button 
                     className="nav-link-button-new"
-                    onClick={() => setOpenNavSection(openNavSection === 'section3' ? null : 'section3')}
+                    onMouseEnter={() => handleNavSectionEnter('section3')}
+                    onMouseLeave={handleNavSectionLeave}
+                    onClick={() => handleNavSectionEnter('section3')}
                   >
                     Investments
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="nav-icon">
@@ -297,7 +376,9 @@ const HomePage = () => {
                 <li className={`nav-item-new ${openNavSection === 'section4' ? 'open' : ''}`} ref={el => navItemsRef.current.section4 = el}>
                   <button 
                     className="nav-link-button-new"
-                    onClick={() => setOpenNavSection(openNavSection === 'section4' ? null : 'section4')}
+                    onMouseEnter={() => handleNavSectionEnter('section4')}
+                    onMouseLeave={handleNavSectionLeave}
+                    onClick={() => handleNavSectionEnter('section4')}
                   >
                     Resources
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="nav-icon">
@@ -307,26 +388,31 @@ const HomePage = () => {
                 </li>
               </ul>
               {openNavSection && (
-                <div className="nav-dropdown-widget">
+                <div 
+                  className={`nav-dropdown-widget ${dropdownFading ? 'fading-out' : ''}`}
+                  ref={dropdownWidgetRef}
+                  onMouseEnter={handleDropdownWidgetEnter}
+                  onMouseLeave={handleDropdownWidgetLeave}
+                >
                   <div className="nav-dropdown-widget-content">
                     {openNavSection === 'section1' && (
                       <>
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <a href="#">Careers</a>
+                              <Link to="/careers">Careers</Link>
                               <span className="nav-dropdown-widget-subtext">Build the future with Opessocius</span>
                             </li>
                             <li>
-                              <a href="#">Contact</a>
+                              <Link to="/contact">Contact</Link>
                               <span className="nav-dropdown-widget-subtext">How to reach us</span>
                             </li>
                             <li>
-                              <a href="#">Our Team</a>
+                              <Link to="/our-team">Our Team</Link>
                               <span className="nav-dropdown-widget-subtext">Team and offices</span>
                             </li>
                             <li>
-                              <a href="#">Partners</a>
+                              <Link to="/partners">Partners</Link>
                               <span className="nav-dropdown-widget-subtext">Our ecosystem</span>
                             </li>
                           </ul>
@@ -341,19 +427,19 @@ const HomePage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <a href="#">Crude Oil Strategies</a>
+                              <Link to="/crude-oil-strategies">Crude Oil Strategies</Link>
                               <span className="nav-dropdown-widget-subtext">Energy-focused trading systems</span>
                             </li>
                             <li>
-                              <a href="#">Portfolio Models</a>
+                              <Link to="/portfolio-models">Portfolio Models</Link>
                               <span className="nav-dropdown-widget-subtext">Structured investment portfolios</span>
                             </li>
                             <li>
-                              <a href="#">Risk Management</a>
+                              <Link to="/risk-management">Risk Management</Link>
                               <span className="nav-dropdown-widget-subtext">Controlled downside exposure</span>
                             </li>
                             <li>
-                              <a href="#">Execution & Technology</a>
+                              <Link to="/execution-technology">Execution & Technology</Link>
                               <span className="nav-dropdown-widget-subtext">Data-driven execution</span>
                             </li>
                           </ul>
@@ -368,19 +454,19 @@ const HomePage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <a href="#">Investment Calculator</a>
+                              <Link to="/investment-calculator">Investment Calculator</Link>
                               <span className="nav-dropdown-widget-subtext">Estimate potential outcomes</span>
                             </li>
                             <li>
-                              <a href="#">Managed Portfolios</a>
+                              <Link to="/managed-portfolios">Managed Portfolios</Link>
                               <span className="nav-dropdown-widget-subtext">Professionally managed capital</span>
                             </li>
                             <li>
-                              <a href="#">Performance Tracking</a>
+                              <Link to="/performance-tracking">Performance Tracking</Link>
                               <span className="nav-dropdown-widget-subtext">Transparent reporting</span>
                             </li>
                             <li>
-                              <a href="#">Onboarding</a>
+                              <Link to="/onboarding">Onboarding</Link>
                               <span className="nav-dropdown-widget-subtext">Simple account setup</span>
                             </li>
                           </ul>
@@ -395,19 +481,19 @@ const HomePage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <a href="#">Learning</a>
+                              <Link to="/learning">Learning</Link>
                               <span className="nav-dropdown-widget-subtext">Education and indicators</span>
                             </li>
                             <li>
-                              <a href="#">Macro Insights</a>
+                              <Link to="/macro-insights">Macro Insights</Link>
                               <span className="nav-dropdown-widget-subtext">Global market drivers</span>
                             </li>
                             <li>
-                              <a href="#">Risk Guidance</a>
+                              <Link to="/risk-guidance">Risk Guidance</Link>
                               <span className="nav-dropdown-widget-subtext">Probabilities and expectations</span>
                             </li>
                             <li>
-                              <a href="#">Compliance</a>
+                              <Link to="/compliance">Compliance</Link>
                               <span className="nav-dropdown-widget-subtext">Legal and disclosures</span>
                             </li>
                           </ul>
@@ -439,7 +525,10 @@ const HomePage = () => {
               <li className="mobile-nav-item">
                 <button 
                   className="mobile-nav-button"
-                  onClick={() => setOpenMobileNavSection(openMobileNavSection === 'section1' ? null : 'section1')}
+                  onClick={() => {
+                    if (!isMenuOpen) setIsMenuOpen(true)
+                    setOpenMobileNavSection(openMobileNavSection === 'section1' ? null : 'section1')
+                  }}
                   aria-expanded={openMobileNavSection === 'section1'}
                 >
                   Company
@@ -447,17 +536,20 @@ const HomePage = () => {
                 </button>
                 {openMobileNavSection === 'section1' && (
                   <ul className="mobile-submenu">
-                    <li><a href="#" onClick={toggleMenu}>Careers</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Contact</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Our Team</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Partners</a></li>
+                    <li><Link to="/careers" onClick={toggleMenu}>Careers</Link></li>
+                    <li><Link to="/contact" onClick={toggleMenu}>Contact</Link></li>
+                    <li><Link to="/our-team" onClick={toggleMenu}>Our Team</Link></li>
+                    <li><Link to="/partners" onClick={toggleMenu}>Partners</Link></li>
                   </ul>
                 )}
               </li>
               <li className="mobile-nav-item">
                 <button 
                   className="mobile-nav-button"
-                  onClick={() => setOpenMobileNavSection(openMobileNavSection === 'section2' ? null : 'section2')}
+                  onClick={() => {
+                    if (!isMenuOpen) setIsMenuOpen(true)
+                    setOpenMobileNavSection(openMobileNavSection === 'section2' ? null : 'section2')
+                  }}
                   aria-expanded={openMobileNavSection === 'section2'}
                 >
                   Solutions
@@ -465,17 +557,20 @@ const HomePage = () => {
                 </button>
                 {openMobileNavSection === 'section2' && (
                   <ul className="mobile-submenu">
-                    <li><a href="#" onClick={toggleMenu}>Crude Oil Strategies</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Portfolio Models</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Risk Management</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Execution & Technology</a></li>
+                    <li><Link to="/crude-oil-strategies" onClick={toggleMenu}>Crude Oil Strategies</Link></li>
+                    <li><Link to="/portfolio-models" onClick={toggleMenu}>Portfolio Models</Link></li>
+                    <li><Link to="/risk-management" onClick={toggleMenu}>Risk Management</Link></li>
+                    <li><Link to="/execution-technology" onClick={toggleMenu}>Execution & Technology</Link></li>
                   </ul>
                 )}
               </li>
               <li className="mobile-nav-item">
                 <button 
                   className="mobile-nav-button"
-                  onClick={() => setOpenMobileNavSection(openMobileNavSection === 'section3' ? null : 'section3')}
+                  onClick={() => {
+                    if (!isMenuOpen) setIsMenuOpen(true)
+                    setOpenMobileNavSection(openMobileNavSection === 'section3' ? null : 'section3')
+                  }}
                   aria-expanded={openMobileNavSection === 'section3'}
                 >
                   Investments
@@ -483,17 +578,20 @@ const HomePage = () => {
                 </button>
                 {openMobileNavSection === 'section3' && (
                   <ul className="mobile-submenu">
-                    <li><a href="#" onClick={toggleMenu}>Investment Calculator</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Managed Portfolios</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Performance Tracking</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Onboarding</a></li>
+                    <li><Link to="/investment-calculator" onClick={toggleMenu}>Investment Calculator</Link></li>
+                    <li><Link to="/managed-portfolios" onClick={toggleMenu}>Managed Portfolios</Link></li>
+                    <li><Link to="/performance-tracking" onClick={toggleMenu}>Performance Tracking</Link></li>
+                    <li><Link to="/onboarding" onClick={toggleMenu}>Onboarding</Link></li>
                   </ul>
                 )}
               </li>
               <li className="mobile-nav-item">
                 <button 
                   className="mobile-nav-button"
-                  onClick={() => setOpenMobileNavSection(openMobileNavSection === 'section4' ? null : 'section4')}
+                  onClick={() => {
+                    if (!isMenuOpen) setIsMenuOpen(true)
+                    setOpenMobileNavSection(openMobileNavSection === 'section4' ? null : 'section4')
+                  }}
                   aria-expanded={openMobileNavSection === 'section4'}
                 >
                   Resources
@@ -501,10 +599,10 @@ const HomePage = () => {
                 </button>
                 {openMobileNavSection === 'section4' && (
                   <ul className="mobile-submenu">
-                    <li><a href="#" onClick={toggleMenu}>Learning</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Macro Insights</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Risk Guidance</a></li>
-                    <li><a href="#" onClick={toggleMenu}>Compliance</a></li>
+                    <li><Link to="/learning" onClick={toggleMenu}>Learning</Link></li>
+                    <li><Link to="/macro-insights" onClick={toggleMenu}>Macro Insights</Link></li>
+                    <li><Link to="/risk-guidance" onClick={toggleMenu}>Risk Guidance</Link></li>
+                    <li><Link to="/compliance" onClick={toggleMenu}>Compliance</Link></li>
                   </ul>
                 )}
               </li>
