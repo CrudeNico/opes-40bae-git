@@ -5,6 +5,9 @@
   flex-direction: column;
   background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
   color: #ffffff;
+  overflow-x: hidden;
+  position: relative;
+  max-width: 100vw;
 }
 
 /* Header Styles */
@@ -17,6 +20,7 @@
 
 .nav {
   width: 100%;
+  overflow-x: hidden;
 }
 
 .nav-container {
@@ -38,6 +42,14 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+.nav-links-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
 .nav-links {
   display: flex;
   list-style: none;
@@ -55,34 +67,32 @@
 
 
 .nav-link-button {
-  background: none;
-  border: none;
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
   font-size: 0.95rem;
   transition: color 0.3s ease;
-  position: relative;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 0;
   display: flex;
   align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
 }
 
 .nav-link-button:hover {
   color: #ffffff;
+  background: none;
 }
 
 .nav-link-button::after {
   content: '›';
   font-size: 1.1rem;
-  margin-left: 0.4rem;
   opacity: 0.7;
-  vertical-align: middle;
-  display: inline-block;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  transform: rotate(90deg);
+  margin-left: 0.4rem;
+  transition: transform 0.3s ease, opacity 0.3s ease;
   font-weight: 300;
 }
 
@@ -197,6 +207,128 @@
   color: #4b5563;
 }
 
+/* New Navigation Sections */
+.nav-item-new {
+  position: relative;
+}
+
+.nav-link-button-new {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+}
+
+.nav-link-button-new:hover {
+  color: #ffffff;
+}
+
+.nav-icon {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.nav-item-new.open .nav-icon {
+  transform: rotate(180deg);
+}
+
+.nav-dropdown-widget {
+  position: fixed;
+  background: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 10001;
+}
+
+.nav-dropdown-widget-content {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 0;
+}
+
+.nav-dropdown-widget-left {
+  padding: 1.5rem;
+}
+
+.nav-dropdown-widget-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.nav-dropdown-widget-list li {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.nav-dropdown-widget-list li:hover {
+  background-color: #f3f4f6;
+}
+
+.nav-dropdown-widget-list a {
+  display: block;
+  color: #1f2937;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.nav-dropdown-widget-list li:hover a {
+  color: #3b82f6;
+}
+
+.nav-dropdown-widget-subtext {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+  transition: color 0.2s ease;
+}
+
+.nav-dropdown-widget-list li:hover .nav-dropdown-widget-subtext {
+  color: #4b5563;
+}
+
+.nav-dropdown-widget-image {
+  width: 100%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  border-left: 1px solid #e5e7eb;
+  border-radius: 0 0.75rem 0.75rem 0;
+  min-height: 200px;
+}
+
+.nav-dropdown-widget-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -286,6 +418,7 @@
   position: absolute;
   top: 100%;
   left: 0;
+  right: 0;
   width: 100%;
   background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
   padding: 2rem 0;
@@ -295,6 +428,7 @@
   z-index: 1000;
   max-height: 0;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .mobile-menu.open {
@@ -312,6 +446,8 @@
   flex-direction: column;
   gap: 1.5rem;
   padding: 0 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mobile-nav-links li {
@@ -1801,6 +1937,14 @@
   }
 
   .nav-links {
+    display: none;
+  }
+
+  .nav-links-wrapper {
+    display: none;
+  }
+
+  .nav-dropdown-widget {
     display: none;
   }
 
