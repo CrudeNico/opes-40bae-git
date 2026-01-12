@@ -125,7 +125,7 @@ const HomePage = () => {
   useEffect(() => {
     const loadMedia = async () => {
       // Load video
-      const videoUrl = await getImageUrl('homepage/documentary.mp4')
+      const videoUrl = await getImageUrl('homepage/Documentary.mp4')
       if (videoUrl) setVideoUrl(videoUrl)
 
       // Load profile image
@@ -158,13 +158,26 @@ const HomePage = () => {
     loadMedia()
   }, [])
 
-  const handleVideoClick = () => {
+  const handleVideoClick = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!videoUrl) {
+      console.log('Video not loaded yet. Please upload Documentary.mp4 to Firebase Storage.')
+      return
+    }
+
     if (videoRef.current) {
       if (isVideoPlaying) {
+        // If playing, pause it
         videoRef.current.pause()
         setIsVideoPlaying(false)
       } else {
-        videoRef.current.play()
+        // If paused, play it with audio
+        videoRef.current.muted = false
+        videoRef.current.play().catch(err => {
+          console.error('Error playing video:', err)
+        })
         setIsVideoPlaying(true)
       }
     }
@@ -722,32 +735,68 @@ const HomePage = () => {
 
             {/* Video Widget */}
             <div className="video-widget">
-              <div className="video-container" onClick={handleVideoClick} style={{ cursor: 'pointer' }}>
+              <div 
+                className="video-container" 
+                onClick={handleVideoClick} 
+                style={{ 
+                  cursor: videoUrl ? 'pointer' : 'default', 
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%'
+                }}
+              >
                 {videoUrl ? (
                   <>
                     <video
                       ref={videoRef}
                       src={videoUrl}
                       className="homepage-video"
-                      controls={isVideoPlaying}
+                      controls={false}
+                      preload="metadata"
+                      muted={false}
                       style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
-                        borderRadius: '1rem'
+                        borderRadius: '1rem',
+                        display: 'block',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 2
                       }}
                       onPlay={() => setIsVideoPlaying(true)}
                       onPause={() => setIsVideoPlaying(false)}
+                      onEnded={() => setIsVideoPlaying(false)}
+                      onError={(e) => {
+                        console.error('Video error:', e)
+                        setIsVideoPlaying(false)
+                      }}
+                      onClick={handleVideoClick}
                     />
                     {!isVideoPlaying && (
-                      <div className="video-play-overlay">
+                      <div 
+                        className="video-play-overlay" 
+                        onClick={handleVideoClick}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <div className="video-play-button">▶</div>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="video-play-button">▶</div>
+                  <div style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    background: '#f3f4f6',
+                    borderRadius: '1rem',
+                    position: 'relative',
+                    zIndex: 1
+                  }}>
+                    <div className="video-play-button" style={{ color: '#9ca3af', opacity: 0.5, fontSize: '4rem' }}>▶</div>
                   </div>
                 )}
               </div>

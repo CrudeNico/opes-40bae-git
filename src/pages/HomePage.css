@@ -1238,6 +1238,7 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
+  min-height: 400px;
 }
 
 .video-container::before {
@@ -1245,9 +1246,14 @@
   font-size: 4rem;
   color: #9ca3af;
   opacity: 0.5;
+  z-index: 1;
 }
 
 .video-container:has(video)::before {
+  display: none;
+}
+
+.video-container:has(.homepage-video)::before {
   display: none;
 }
 
@@ -1256,6 +1262,10 @@
   height: 100%;
   object-fit: cover;
   border-radius: 1rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
 }
 
 .video-play-overlay {
@@ -1271,6 +1281,7 @@
   border-radius: 1rem;
   cursor: pointer;
   transition: background 0.3s ease;
+  z-index: 3;
 }
 
 .video-play-overlay:hover {
@@ -1283,6 +1294,7 @@
   opacity: 0.9;
   transition: transform 0.3s ease, opacity 0.3s ease;
   pointer-events: none;
+  z-index: 4;
 }
 
 .video-play-overlay:hover .video-play-button {
