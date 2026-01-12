@@ -66,6 +66,15 @@ const OnboardingPage = () => {
     }, 300)
   }
 
+  const handleLinkClick = () => {
+    // Close dropdown immediately when a link is clicked
+    setDropdownFading(true)
+    setTimeout(() => {
+      setOpenNavSection(null)
+      setDropdownFading(false)
+    }, 100)
+  }
+
   // Handle scroll - fade out dropdown when scrolling
   useEffect(() => {
     const handleScroll = () => {
@@ -212,19 +221,19 @@ const OnboardingPage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <Link to="/careers">Careers</Link>
+                              <Link to="/careers" onClick={handleLinkClick}>Careers</Link>
                               <span className="nav-dropdown-widget-subtext">Build the future with Opessocius</span>
                             </li>
                             <li>
-                              <Link to="/contact">Contact</Link>
+                              <Link to="/contact" onClick={handleLinkClick}>Contact</Link>
                               <span className="nav-dropdown-widget-subtext">How to reach us</span>
                             </li>
                             <li>
-                              <Link to="/our-team">Our Team</Link>
+                              <Link to="/our-team" onClick={handleLinkClick}>Our Team</Link>
                               <span className="nav-dropdown-widget-subtext">Team and offices</span>
                             </li>
                             <li>
-                              <Link to="/partners">Partners</Link>
+                              <Link to="/partners" onClick={handleLinkClick}>Partners</Link>
                               <span className="nav-dropdown-widget-subtext">Our ecosystem</span>
                             </li>
                           </ul>
@@ -239,19 +248,19 @@ const OnboardingPage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <Link to="/crude-oil-strategies">Crude Oil Strategies</Link>
+                              <Link to="/crude-oil-strategies" onClick={handleLinkClick}>Crude Oil Strategies</Link>
                               <span className="nav-dropdown-widget-subtext">Energy-focused trading systems</span>
                             </li>
                             <li>
-                              <Link to="/portfolio-models">Portfolio Models</Link>
+                              <Link to="/portfolio-models" onClick={handleLinkClick}>Portfolio Models</Link>
                               <span className="nav-dropdown-widget-subtext">Structured investment portfolios</span>
                             </li>
                             <li>
-                              <Link to="/risk-management">Risk Management</Link>
+                              <Link to="/risk-management" onClick={handleLinkClick}>Risk Management</Link>
                               <span className="nav-dropdown-widget-subtext">Controlled downside exposure</span>
                             </li>
                             <li>
-                              <Link to="/execution-technology">Execution & Technology</Link>
+                              <Link to="/execution-technology" onClick={handleLinkClick}>Execution & Technology</Link>
                               <span className="nav-dropdown-widget-subtext">Data-driven execution</span>
                             </li>
                           </ul>
@@ -266,19 +275,19 @@ const OnboardingPage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <Link to="/investment-calculator">Investment Calculator</Link>
+                              <Link to="/investment-calculator" onClick={handleLinkClick}>Investment Calculator</Link>
                               <span className="nav-dropdown-widget-subtext">Estimate potential outcomes</span>
                             </li>
                             <li>
-                              <Link to="/managed-portfolios">Managed Portfolios</Link>
+                              <Link to="/managed-portfolios" onClick={handleLinkClick}>Managed Portfolios</Link>
                               <span className="nav-dropdown-widget-subtext">Professionally managed capital</span>
                             </li>
                             <li>
-                              <Link to="/performance-tracking">Performance Tracking</Link>
+                              <Link to="/performance-tracking" onClick={handleLinkClick}>Performance Tracking</Link>
                               <span className="nav-dropdown-widget-subtext">Transparent reporting</span>
                             </li>
                             <li>
-                              <Link to="/onboarding">Onboarding</Link>
+                              <Link to="/onboarding" onClick={handleLinkClick}>Onboarding</Link>
                               <span className="nav-dropdown-widget-subtext">Simple account setup</span>
                             </li>
                           </ul>
@@ -293,19 +302,19 @@ const OnboardingPage = () => {
                         <div className="nav-dropdown-widget-left">
                           <ul className="nav-dropdown-widget-list">
                             <li>
-                              <Link to="/learning">Learning</Link>
+                              <Link to="/learning" onClick={handleLinkClick}>Learning</Link>
                               <span className="nav-dropdown-widget-subtext">Education and indicators</span>
                             </li>
                             <li>
-                              <Link to="/macro-insights">Macro Insights</Link>
+                              <Link to="/macro-insights" onClick={handleLinkClick}>Macro Insights</Link>
                               <span className="nav-dropdown-widget-subtext">Global market drivers</span>
                             </li>
                             <li>
-                              <Link to="/risk-guidance">Risk Guidance</Link>
+                              <Link to="/risk-guidance" onClick={handleLinkClick}>Risk Guidance</Link>
                               <span className="nav-dropdown-widget-subtext">Probabilities and expectations</span>
                             </li>
                             <li>
-                              <Link to="/compliance">Compliance</Link>
+                              <Link to="/compliance" onClick={handleLinkClick}>Compliance</Link>
                               <span className="nav-dropdown-widget-subtext">Legal and disclosures</span>
                             </li>
                           </ul>
@@ -534,8 +543,8 @@ const OnboardingPage = () => {
                 </button>
                 <ul className={`footer-link-list ${expandedFooterSection === 'company' ? 'expanded' : ''}`}>
                   <li><a href="#">About Us</a></li>
-                  <li><Link to="/careers">Careers</Link></li>
-                  <li><Link to="/contact">Contact</Link></li>
+                  <li><Link to="/careers" onClick={handleLinkClick}>Careers</Link></li>
+                  <li><Link to="/contact" onClick={handleLinkClick}>Contact</Link></li>
                   <li><a href="#">News</a></li>
                 </ul>
               </div>
