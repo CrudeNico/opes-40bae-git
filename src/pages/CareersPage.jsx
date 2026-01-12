@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import './CareersPage.css'
 import './HomePage.css'
+import { getImageUrl } from '../utils/imageStorage'
 
 const CareersPage = () => {
   const [openNavSection, setOpenNavSection] = useState(null)
@@ -38,6 +39,8 @@ const CareersPage = () => {
   const [showTalentNetwork, setShowTalentNetwork] = useState(false)
   const [talentNetworkEmail, setTalentNetworkEmail] = useState('')
   const [talentNetworkJoined, setTalentNetworkJoined] = useState(false)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [videoWidgetImageUrl, setVideoWidgetImageUrl] = useState(null)
   
   // Job listings data
   const [jobs] = useState([
@@ -356,6 +359,21 @@ const CareersPage = () => {
     return () => {
       document.removeEventListener('click', handleClickOutside)
     }
+  }, [])
+
+  // Load images from Firebase Storage
+  useEffect(() => {
+    const loadImages = async () => {
+      // Load banner image
+      const bannerUrl = await getImageUrl('careers/212.jpg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+
+      // Load video widget image
+      const videoWidgetUrl = await getImageUrl('careers/2122.jpeg')
+      if (videoWidgetUrl) setVideoWidgetImageUrl(videoWidgetUrl)
+    }
+
+    loadImages()
   }, [])
 
   // Handle scroll - fade out dropdown when scrolling
@@ -706,8 +724,15 @@ const CareersPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
@@ -737,8 +762,17 @@ const CareersPage = () => {
 
             {/* Video Widget */}
             <div className="video-widget">
-              <div className="video-container">
-                {/* Image will be placed here */}
+              <div 
+                className="video-container"
+                style={{
+                  backgroundImage: videoWidgetImageUrl ? `url(${videoWidgetImageUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  minHeight: '400px',
+                  borderRadius: '8px'
+                }}
+              >
               </div>
             </div>
           </div>

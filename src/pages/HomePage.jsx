@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getFirestore, collection, addDoc, Timestamp } from 'firebase/firestore'
 import { auth } from '../firebase/config'
 import { sendConsultationConfirmationEmail } from '../firebase/email'
+import { getImageUrl } from '../utils/imageStorage'
 import './HomePage.css'
 
 const HomePage = () => {
@@ -28,6 +29,13 @@ const HomePage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [videoUrl, setVideoUrl] = useState(null)
+  const [profileImageUrl, setProfileImageUrl] = useState(null)
+  const [transactImageUrl, setTransactImageUrl] = useState(null)
+  const [featuredImages, setFeaturedImages] = useState({})
+  const [ctaBackgroundUrl, setCtaBackgroundUrl] = useState(null)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const videoRef = useRef(null)
   const [loadingConsultation, setLoadingConsultation] = useState(false)
   const [consultationSuccess, setConsultationSuccess] = useState(false)
   const [consultationError, setConsultationError] = useState('')
@@ -112,6 +120,55 @@ const HomePage = () => {
       }
     }
   }, [])
+
+  // Load images and video from Firebase Storage
+  useEffect(() => {
+    const loadMedia = async () => {
+      // Load video
+      const videoUrl = await getImageUrl('homepage/documentary.mp4')
+      if (videoUrl) setVideoUrl(videoUrl)
+
+      // Load profile image
+      const profileUrl = await getImageUrl('homepage/diegorequena.JPG')
+      if (profileUrl) setProfileImageUrl(profileUrl)
+
+      // Load transact image
+      const transactUrl = await getImageUrl('homepage/homepage.jpeg')
+      if (transactUrl) setTransactImageUrl(transactUrl)
+
+      // Load featured card images
+      const featuredUrls = await Promise.all([
+        getImageUrl('homepage/oilplant.jpeg'),
+        getImageUrl('homepage/opec.jpeg'),
+        getImageUrl('homepage/peace.jpeg'),
+        getImageUrl('homepage/Managment.jpeg')
+      ])
+      setFeaturedImages({
+        oilplant: featuredUrls[0],
+        opec: featuredUrls[1],
+        peace: featuredUrls[2],
+        managment: featuredUrls[3]
+      })
+
+      // Load CTA background
+      const ctaUrl = await getImageUrl('homepage/stockexchnage6.jpeg')
+      if (ctaUrl) setCtaBackgroundUrl(ctaUrl)
+    }
+
+    loadMedia()
+  }, [])
+
+  const handleVideoClick = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause()
+        setIsVideoPlaying(false)
+      } else {
+        videoRef.current.play()
+        setIsVideoPlaying(true)
+      }
+    }
+  }
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
   useEffect(() => {
@@ -665,8 +722,34 @@ const HomePage = () => {
 
             {/* Video Widget */}
             <div className="video-widget">
-              <div className="video-container">
-                {/* Video will be added here */}
+              <div className="video-container" onClick={handleVideoClick} style={{ cursor: 'pointer' }}>
+                {videoUrl ? (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      className="homepage-video"
+                      controls={isVideoPlaying}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '1rem'
+                      }}
+                      onPlay={() => setIsVideoPlaying(true)}
+                      onPause={() => setIsVideoPlaying(false)}
+                    />
+                    {!isVideoPlaying && (
+                      <div className="video-play-overlay">
+                        <div className="video-play-button">▶</div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="video-play-button">▶</div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -870,7 +953,12 @@ const HomePage = () => {
                     <div className="calendar-layout">
                       <div className="advisor-section">
                         <div className="advisor-profile">
-                          <div className="advisor-avatar">
+                          <div className="advisor-avatar" style={{
+                            backgroundImage: profileImageUrl ? `url(${profileImageUrl})` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat'
+                          }}>
                             <div className="live-indicator"></div>
                           </div>
                           <h4 className="advisor-name">John Smith</h4>
@@ -1045,8 +1133,18 @@ const HomePage = () => {
           <div className="container">
             <div className="light-blue-content">
               <div className="light-blue-image">
-                <div className="image-placeholder">
-                  {/* Image will be added here */}
+                <div 
+                  className="image-placeholder"
+                  style={{
+                    backgroundImage: transactImageUrl ? `url(${transactImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '8px'
+                  }}
+                >
                 </div>
               </div>
               <div className="light-blue-text">
@@ -1067,8 +1165,15 @@ const HomePage = () => {
             </div>
             <div className="featured-cards-grid">
               <div className="featured-card">
-                <div className="featured-card-image">
-                  {/* Image will be added here */}
+                <div 
+                  className="featured-card-image"
+                  style={{
+                    backgroundImage: featuredImages.oilplant ? `url(${featuredImages.oilplant})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
                 <div className="featured-card-content">
                   <div className="featured-card-tags">CBL, FEATURED NEWS, MARKET</div>
@@ -1076,8 +1181,15 @@ const HomePage = () => {
                 </div>
               </div>
               <div className="featured-card">
-                <div className="featured-card-image">
-                  {/* Image will be added here */}
+                <div 
+                  className="featured-card-image"
+                  style={{
+                    backgroundImage: featuredImages.opec ? `url(${featuredImages.opec})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
                 <div className="featured-card-content">
                   <div className="featured-card-tags">EMA, FEATURED NEWS, PRODUCT</div>
@@ -1085,8 +1197,15 @@ const HomePage = () => {
                 </div>
               </div>
               <div className="featured-card">
-                <div className="featured-card-image">
-                  {/* Image will be added here */}
+                <div 
+                  className="featured-card-image"
+                  style={{
+                    backgroundImage: featuredImages.peace ? `url(${featuredImages.peace})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
                 <div className="featured-card-content">
                   <div className="featured-card-tags">ACE, CBL, FEATURED NEWS, MARKET</div>
@@ -1094,8 +1213,15 @@ const HomePage = () => {
                 </div>
               </div>
               <div className="featured-card">
-                <div className="featured-card-image">
-                  {/* Image will be added here */}
+                <div 
+                  className="featured-card-image"
+                  style={{
+                    backgroundImage: featuredImages.managment ? `url(${featuredImages.managment})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
                 <div className="featured-card-content">
                   <div className="featured-card-tags">FEATURED NEWS</div>
@@ -1110,8 +1236,15 @@ const HomePage = () => {
         <section className="white-section">
           <div className="container">
             <div className="cta-widget">
-              <div className="cta-widget-background">
-                {/* Background image will be added here */}
+              <div 
+                className="cta-widget-background"
+                style={{
+                  backgroundImage: ctaBackgroundUrl ? `url(${ctaBackgroundUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              >
               </div>
               <div className="cta-widget-content">
                 <h2 className="cta-title">Ready to transact with confidence?</h2>

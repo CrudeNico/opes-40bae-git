@@ -68,6 +68,11 @@
 
 /* Footer and Header styles are imported from HomePage.css */
 
+/* Hide play button on video widget */
+.careers-page .video-container::before {
+  display: none;
+}
+
 /* Jobs Section */
 .jobs-section {
   background: #f5f5f0;
@@ -710,14 +715,35 @@
     padding: 3rem 1.5rem;
   }
 
+  .jobs-search-bar {
+    margin-bottom: 1.5rem;
+  }
+
   .jobs-search-inputs {
     flex-direction: column;
     gap: 1rem;
+    align-items: stretch;
+  }
+
+  .jobs-search-field {
+    width: 100%;
+  }
+
+  .jobs-search-label {
+    font-size: 0.7rem;
+    margin-bottom: 0.375rem;
+  }
+
+  .jobs-search-input {
+    width: 100%;
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9375rem;
   }
 
   .jobs-search-button {
     width: 100%;
     height: 48px;
+    margin-top: 0.5rem;
   }
 
   .jobs-filters {
@@ -751,8 +777,51 @@
   }
 
   .job-modal-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     padding-right: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .job-modal-info {
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .job-modal-info-item {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .job-modal-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .job-modal-section-title {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .job-modal-text {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+  }
+
+  .job-modal-list li {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+    padding-left: 1.25rem;
+  }
+
+  .job-modal-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+  }
+
+  .job-modal-apply-btn {
+    padding: 0.875rem 2rem;
+    font-size: 0.9375rem;
   }
 
   .jobs-filter-dropdown-wrapper {
