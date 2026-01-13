@@ -68,6 +68,118 @@
 
 /* Footer and Header styles are imported from HomePage.css */
 
+/* Contact Info Section */
+.contact-info-section {
+  padding: 1rem 2rem 4rem;
+  background: #ffffff;
+}
+
+.contact-info-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.contact-info-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0 0 1rem 0;
+}
+
+.contact-info-subtitle {
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin: 0 0 3rem 0;
+  line-height: 1.6;
+}
+
+.contact-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.contact-info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: #f9fafb;
+  border-radius: 1rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-info-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.contact-info-icon {
+  width: 64px;
+  height: 64px;
+  background: #1e40af;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.contact-info-details {
+  text-align: center;
+}
+
+.contact-info-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 0.5rem 0;
+}
+
+.contact-info-value {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* Schedule Section */
+.schedule-section {
+  padding: 4rem 2rem;
+  background: #f9fafb;
+}
+
+.schedule-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.schedule-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0 0 1rem 0;
+}
+
+.schedule-subtitle {
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.schedule-button {
+  display: inline-block;
+  text-decoration: none;
+}
+
 /* Remove underline from logo link */
 .logo {
   text-decoration: none !important;
@@ -124,5 +236,20 @@
   .footer-bottom {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .contact-info-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .contact-info-title,
+  .schedule-title {
+    font-size: 2rem;
+  }
+
+  .contact-info-subtitle,
+  .schedule-subtitle {
+    font-size: 1rem;
   }
 }

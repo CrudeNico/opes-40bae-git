@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './ContactPage.css'
 import './HomePage.css'
 
 const ContactPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,6 +14,7 @@ const ContactPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +104,15 @@ const ContactPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load banner image from Firebase Storage
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const bannerUrl = await getImageUrl('contact/callcenter.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+    }
+    loadBannerImage()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -423,13 +435,116 @@ const ContactPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Contact</h1>
               <p className="page-banner-subtitle">How to reach us</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Get in Touch With Our Team</h2>
+              <p className="white-hero-subtitle">
+                For general inquiries, partnerships, or client-related matters, contact us directly. Our team will route your request to the appropriate department and respond promptly.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  navigate('/')
+                  // Scroll to calendar section on homepage after navigation with offset
+                  setTimeout(() => {
+                    const calendarSection = document.querySelector('.third-widget-section')
+                    if (calendarSection) {
+                      const elementPosition = calendarSection.getBoundingClientRect().top
+                      const offsetPosition = elementPosition + window.pageYOffset - 100 // 100px offset from top
+                      window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                      })
+                    }
+                  }, 300)
+                }}
+              >
+                Schedule appointment →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Contact Information Section */}
+        <section className="white-section contact-info-section">
+          <div className="container">
+            <div className="contact-info-content">
+              <h2 className="contact-info-title">Client Assistance Services</h2>
+              <div className="contact-info-grid">
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="24" height="24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                    </svg>
+                  </div>
+                  <div className="contact-info-details">
+                    <h3 className="contact-info-label">Phone</h3>
+                    <p className="contact-info-value">+44 20 7946 3817</p>
+                  </div>
+                </div>
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="24" height="24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    </svg>
+                  </div>
+                  <div className="contact-info-details">
+                    <h3 className="contact-info-label">Email</h3>
+                    <p className="contact-info-value">relations@opessocius.support</p>
+                  </div>
+                </div>
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="24" height="24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    </svg>
+                  </div>
+                  <div className="contact-info-details">
+                    <h3 className="contact-info-label">Address</h3>
+                    <p className="contact-info-value">Banco de Bilbao Tower, 28046 Madrid</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Schedule Appointment Section */}
+        <section className="white-section schedule-section">
+          <div className="container">
+            <div className="schedule-content">
+              <h2 className="schedule-title">Where We Operate</h2>
+              <p className="schedule-subtitle">Global presence across key financial hubs, including Spain, Dubai, Amsterdam, and London.</p>
+              <button 
+                className="btn btn-primary-white schedule-button"
+                onClick={() => {
+                  navigate('/our-team')
+                  handleLinkClick()
+                }}
+              >
+                View Locations →
+              </button>
             </div>
           </div>
         </section>
