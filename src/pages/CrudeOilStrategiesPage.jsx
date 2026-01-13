@@ -12,6 +12,7 @@ const CrudeOilStrategiesPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const tradingViewWidgetRef = useRef(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -99,6 +100,48 @@ const CrudeOilStrategiesPage = () => {
     return () => {
       if (closeTimeoutRef.current) {
         clearTimeout(closeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Load TradingView widget
+  useEffect(() => {
+    const container = tradingViewWidgetRef.current
+    if (container && !container.querySelector('script')) {
+      // Clear any existing content first
+      container.innerHTML = '<div class="tradingview-widget-container__widget"></div>'
+      
+      const script = document.createElement('script')
+      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+      script.type = 'text/javascript'
+      script.async = true
+      script.innerHTML = JSON.stringify({
+        "autosize": false,
+        "width": "100%",
+        "height": "750",
+        "symbol": "TVC:USOIL",
+        "interval": "5",
+        "timezone": "Etc/UTC",
+        "theme": "light",
+        "style": "1",
+        "locale": "en",
+        "enable_publishing": false,
+        "allow_symbol_change": false,
+        "calendar": false,
+        "support_host": "https://www.tradingview.com",
+        "hide_top_toolbar": false,
+        "hide_legend": false,
+        "save_image": false,
+        "container_id": "tradingview_widget"
+      })
+      container.appendChild(script)
+    }
+    
+    // Cleanup function to prevent multiple loads
+    return () => {
+      if (container) {
+        const scripts = container.querySelectorAll('script')
+        scripts.forEach(s => s.remove())
       }
     }
   }, [])
@@ -345,6 +388,98 @@ const CrudeOilStrategiesPage = () => {
             <div className="page-banner-content">
               <h1 className="page-banner-title">Crude Oil Strategies</h1>
               <p className="page-banner-subtitle">Energy-focused trading systems</p>
+            </div>
+          </div>
+        </section>
+
+        {/* TradingView Chart Section */}
+        <section className="white-section chart-section">
+          <div className="container">
+            <div className="tradingview-widget-container" ref={tradingViewWidgetRef}>
+              <div className="tradingview-widget-container__widget"></div>
+            </div>
+          </div>
+        </section>
+
+        {/* Text Section */}
+        <section className="white-section strategy-text-section">
+          <div className="container">
+            <div className="strategy-text-content">
+              <p className="strategy-text-small">
+                Our systematic approach to crude oil trading leverages quantitative models and real-time market analysis to identify and capitalize on structural inefficiencies in energy markets.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Positioning & Exposure Control Section */}
+        <section className="white-section positioning-section">
+          <div className="container">
+            <div className="positioning-content">
+              <div className="positioning-text">
+                <h2 className="positioning-title">Positioning & Exposure Control</h2>
+                <div className="positioning-body">
+                  <p>Our crude oil strategy is based on disciplined position sizing and controlled leverage usage. While leverage is applied to enhance market participation, we consistently maintain an operational buffer equivalent to six unused positions, preserving sufficient margin at all times. This structure allows the portfolio to absorb adverse price movements, avoid forced liquidations, and retain execution flexibility. Entries, scaling, and exits are managed within predefined risk thresholds, ensuring that leverage increases potential without compromising capital stability or overall market safety.</p>
+                </div>
+              </div>
+              <div className="positioning-image">
+                <div className="positioning-image-widget">
+                  {/* Image will be placed here */}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Market Sentiment & Technical Analysis Section */}
+        <section className="white-section sentiment-section">
+          <div className="container">
+            <div className="sentiment-content">
+              <div className="sentiment-image">
+                <div className="sentiment-image-widget">
+                  {/* Image will be placed here */}
+                </div>
+              </div>
+              <div className="sentiment-text">
+                <h2 className="sentiment-title">Market Sentiment & Technical Analysis</h2>
+                <div className="sentiment-body">
+                  <p>Our strategy integrates market sentiment analysis with technical indicators to assess price behavior directly from the chart. Tools such as RSI, momentum oscillators, volatility measures, and trend structure are evaluated alongside greed and fear dynamics to identify overstretched conditions and confirm trade quality. This combined framework helps filter emotional market noise, reduce false signals, and ensure entries, scaling, and exits are driven by data rather than speculation.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Geopolitical Events & Macro Awareness Section */}
+        <section className="white-section geopolitical-section">
+          <div className="container">
+            <div className="geopolitical-content">
+              <div className="geopolitical-text">
+                <h2 className="geopolitical-title">Geopolitical Events & Macro Awareness</h2>
+                <div className="geopolitical-body">
+                  <p>Crude oil markets are highly sensitive to geopolitical developments and macroeconomic events. We actively monitor key drivers such as OPEC decisions, FOMC announcements, supply disruptions, and global conflicts that may impact volatility and liquidity. Dedicated systems and internal coordination ensure timely information flow across the team, allowing risk exposure to be adjusted proactively when market conditions shift due to external events.</p>
+                </div>
+              </div>
+              <div className="geopolitical-image">
+                <div className="geopolitical-image-widget">
+                  {/* Image will be placed here */}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="white-section cta-section">
+          <div className="container">
+            <div className="cta-content">
+              <h2 className="cta-title">Structured Portfolio Solutions for Capital Growth</h2>
+              <p className="cta-subtitle">
+                Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
+              </p>
+              <button className="btn btn-primary-white">
+                Calculate your investment →
+              </button>
             </div>
           </div>
         </section>
