@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './RiskManagementPage.css'
 import './HomePage.css'
 
@@ -12,6 +13,30 @@ const RiskManagementPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  
+  // Refs for scroll navigation
+  const sectionRefs = {
+    regulatory: useRef(null),
+    legal: useRef(null),
+    eligibility: useRef(null),
+    risk: useRef(null),
+    data: useRef(null),
+    conflict: useRef(null),
+    terms: useRef(null)
+  }
+
+  const scrollToSection = (sectionKey) => {
+    const section = sectionRefs[sectionKey]?.current
+    if (section) {
+      const offset = 100
+      const elementPosition = section.getBoundingClientRect().top + window.scrollY
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: 'smooth'
+      })
+    }
+  }
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +126,15 @@ const RiskManagementPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load banner image from Firebase Storage
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const bannerUrl = await getImageUrl('Risk-Management/compliancesign.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+    }
+    loadBannerImage()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -423,14 +457,142 @@ const RiskManagementPage = () => {
       </header>
 
       <main className="main-content">
+        {/* Page Banner */}
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Risk Management</h1>
               <p className="page-banner-subtitle">Controlled downside exposure</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Navigation Section */}
+        <section className="white-section risk-nav-section">
+          <div className="container">
+            <div className="risk-nav-grid">
+              <button className="risk-nav-item" onClick={() => scrollToSection('regulatory')}>
+                Regulatory Compliance
+              </button>
+              <button className="risk-nav-item" onClick={() => scrollToSection('legal')}>
+                Legal Disclosures
+              </button>
+              <button className="risk-nav-item" onClick={() => scrollToSection('eligibility')}>
+                Investor Eligibility
+              </button>
+              <button className="risk-nav-item" onClick={() => scrollToSection('risk')}>
+                Risk Warnings
+              </button>
+              <button className="risk-nav-item" onClick={() => scrollToSection('data')}>
+                Data Protection & Privacy
+              </button>
+              <button className="risk-nav-item" onClick={() => scrollToSection('conflict')}>
+                Conflict-of-Interest Policy
+              </button>
+              <button className="risk-nav-item" onClick={() => scrollToSection('terms')}>
+                Terms of Use & Liability Limitations
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Content Sections */}
+        <section className="white-section risk-content-section">
+          <div className="container">
+            {/* Regulatory Compliance */}
+            <div className="risk-section" ref={sectionRefs.regulatory}>
+              <h2 className="risk-section-title">Regulatory Compliance</h2>
+              <div className="risk-section-content">
+                <p>Our investment philosophy centers on identifying and capitalizing on structural inefficiencies within crude oil markets through systematic, rules-based methodologies. We operate under the principle that energy markets exhibit recurring patterns driven by fundamental supply-demand dynamics, macroeconomic forces, and geopolitical considerations that create exploitable opportunities when approached with disciplined analytical frameworks.</p>
+                <p>The primary objective of our strategy is to generate consistent, risk-adjusted returns by maintaining directional exposure to crude oil price movements while implementing sophisticated risk controls that limit capital drawdown during adverse market conditions. We seek to achieve superior risk-adjusted performance compared to passive index strategies through active position management, dynamic sizing algorithms, and systematic entry and exit protocols that respond to evolving market structure.</p>
+                <p>Our approach rejects discretionary decision-making in favor of quantitative models that process multiple data streams simultaneously, including volatility regimes, volume profiles, inter-market correlations, and fundamental inventory flows. This systematic framework allows us to maintain consistency in execution while removing emotional biases that often compromise trading performance in volatile commodity markets.</p>
+              </div>
+            </div>
+
+            {/* Legal Disclosures */}
+            <div className="risk-section" ref={sectionRefs.legal}>
+              <h2 className="risk-section-title">Legal Disclosures</h2>
+              <div className="risk-section-content">
+                <p>Our strategy focuses exclusively on crude oil markets, specifically West Texas Intermediate (WTI) and Brent crude oil futures and their associated derivative instruments. This concentrated market focus enables deep specialization in understanding the structural drivers, seasonal patterns, inventory cycles, and geopolitical sensitivities that influence price discovery in global energy markets.</p>
+                <p>The opportunity set encompasses multiple time horizons, from intraday volatility exploitation to multi-week trend continuation trades based on fundamental shifts in supply-demand balance. We systematically identify opportunities across volatility regimes, recognizing that different market environments require distinct tactical approaches while maintaining alignment with our core strategic framework.</p>
+                <p>Our market analysis incorporates assessment of OPEC+ production decisions, non-OPEC supply responses, refinery utilization rates, strategic petroleum reserve releases or builds, inventory drawdowns at key storage hubs, and shifts in global demand patterns driven by economic growth cycles, transportation trends, and industrial consumption. We monitor these factors continuously to identify periods where market pricing may diverge from underlying fundamentals, creating opportunities for systematic exploitation.</p>
+                <p>Additionally, we evaluate cross-market relationships between crude oil and other asset classes, including currency pairs, equity indices, and bond markets, to identify correlated movements that may signal broader macroeconomic shifts affecting energy pricing. This multi-dimensional analysis expands our opportunity set beyond single-market considerations while maintaining our core expertise in crude oil dynamics.</p>
+              </div>
+            </div>
+
+            {/* Investor Eligibility */}
+            <div className="risk-section" ref={sectionRefs.eligibility}>
+              <h2 className="risk-section-title">Investor Eligibility</h2>
+              <div className="risk-section-content">
+                <p>The core architecture of our strategy combines multiple systematic approaches designed to capture returns across different market regimes. We employ quantitative models that analyze price action, volume patterns, volatility metrics, and fundamental data to generate trade signals that align with our risk parameters and expected return profiles.</p>
+                <p>Our signal generation process integrates multiple analytical layers, including statistical pattern recognition, momentum indicators calibrated to different timeframes, volatility-adjusted entry criteria, and fundamental overlay filters that validate trade setups against our assessment of underlying market conditions. This multi-factor approach increases the robustness of our trading decisions while maintaining consistency with our systematic framework.</p>
+                <p>Position sizing algorithms dynamically adjust exposure based on account equity, current market volatility, correlation with existing positions, and predefined risk limits. This adaptive sizing mechanism ensures that our capital allocation remains aligned with market conditions while preventing overexposure during periods of elevated uncertainty or when multiple positions share similar directional bias.</p>
+                <p>Execution protocols emphasize precision in trade entry and exit, utilizing limit orders when market conditions permit to minimize transaction costs, while maintaining stop-loss orders and profit-taking mechanisms that automatically manage position risk according to predefined parameters. This systematic execution approach removes discretion from trade management, ensuring consistency in how positions are handled regardless of market volatility or psychological pressures.</p>
+                <p>The strategy architecture includes real-time monitoring systems that continuously assess portfolio risk metrics, position correlation, margin utilization, and exposure limits. These systems trigger automated alerts and, in certain conditions, automatic position adjustments to maintain compliance with our risk management framework throughout all market conditions.</p>
+              </div>
+            </div>
+
+            {/* Risk Warnings */}
+            <div className="risk-section" ref={sectionRefs.risk}>
+              <h2 className="risk-section-title">Risk Warnings</h2>
+              <div className="risk-section-content">
+                <p>Risk management represents the cornerstone of our operational approach, with every trading decision filtered through comprehensive risk assessment protocols before execution. Our framework operates at multiple levels: individual position risk, portfolio-level exposure, correlation analysis, and overall capital preservation mechanisms that collectively protect investor capital while allowing for strategic risk-taking aligned with return objectives.</p>
+                <p>At the position level, we implement strict risk limits that cap the maximum capital exposure per trade relative to total account equity. These limits adjust dynamically based on current market volatility, recognizing that higher volatility environments require smaller position sizes to maintain equivalent risk profiles. Stop-loss orders accompany every position, automatically limiting downside exposure should market movements invalidate our trade thesis.</p>
+                <p>Portfolio-level risk controls monitor aggregate exposure across all positions, including assessment of directional bias, correlation coefficients between positions, and total margin utilization relative to available capital. These controls prevent overconcentration in any single market view while ensuring that our portfolio maintains appropriate diversification characteristics even when multiple positions express similar directional expectations.</p>
+                <p>We employ volatility-adjusted position sizing that scales exposure inversely to market volatility, reducing position sizes during periods of elevated uncertainty while maintaining full exposure during stable market conditions. This adaptive approach prevents overexposure during market stress while maximizing capital efficiency during favorable trading environments.</p>
+                <p>Drawdown controls operate through multiple mechanisms, including automatic position reduction protocols triggered at predefined loss thresholds, temporary trading halts when risk metrics exceed acceptable parameters, and mandatory portfolio review processes that assess strategy performance and risk-adjusted metrics before resuming normal operations. These controls ensure that capital preservation remains the primary priority during adverse market conditions.</p>
+              </div>
+            </div>
+
+            {/* Data Protection & Privacy */}
+            <div className="risk-section" ref={sectionRefs.data}>
+              <h2 className="risk-section-title">Data Protection & Privacy</h2>
+              <div className="risk-section-content">
+                <p>Capital protection mechanisms form the foundation of our risk management philosophy, with multiple layers of defense designed to preserve investor capital during adverse market conditions. These controls operate automatically, removing discretionary judgment from critical risk management decisions to ensure consistent application regardless of market volatility or psychological pressures.</p>
+                <p>Maximum drawdown limits establish absolute boundaries beyond which the strategy automatically reduces exposure or temporarily halts trading activity. These limits are calculated as percentage reductions from peak equity levels and trigger progressively more restrictive risk controls as drawdown levels increase. This cascading system of protections ensures that capital erosion cannot accelerate beyond predefined thresholds.</p>
+                <p>Daily loss limits cap the maximum acceptable loss within any single trading session, automatically closing positions or preventing new trade entries if these limits are approached or exceeded. These intraday controls prevent single-session losses from materially impacting overall portfolio performance while allowing the strategy to resume normal operations once risk parameters normalize.</p>
+                <p>Correlation-adjusted exposure limits recognize that positions with similar directional bias or high correlation coefficients effectively represent concentrated exposure regardless of the number of individual positions. These limits cap total exposure to correlated market views, ensuring that portfolio diversification remains meaningful even when multiple positions express similar directional expectations based on related fundamental drivers.</p>
+                <p>Margin utilization controls monitor total margin requirements relative to available capital, automatically reducing exposure if margin usage approaches predefined thresholds. These controls prevent overleverage that could amplify losses during adverse market movements while ensuring sufficient capital reserves to maintain positions through normal volatility cycles.</p>
+                <p>Recovery protocols activate automatically following significant drawdowns, requiring verification that market conditions have stabilized and risk parameters have normalized before allowing full resumption of trading activity. These protocols include mandatory review processes that assess strategy performance, risk-adjusted metrics, and alignment with expected return profiles before authorizing return to normal operations.</p>
+              </div>
+            </div>
+
+            {/* Conflict-of-Interest Policy */}
+            <div className="risk-section" ref={sectionRefs.conflict}>
+              <h2 className="risk-section-title">Conflict-of-Interest Policy</h2>
+              <div className="risk-section-content">
+                <p>Our operational infrastructure supports continuous market monitoring, real-time trade execution, and comprehensive risk management through integrated technology systems designed for reliability, speed, and precision. The technology stack encompasses data acquisition, signal processing, risk calculation, order management, and performance analytics components that operate seamlessly to execute our systematic trading approach.</p>
+                <p>Market data feeds provide real-time pricing information from multiple sources, ensuring redundancy and reliability in our information flow. These feeds include direct exchange connections where available, supplemented by multiple independent data providers to minimize latency and ensure continuous market access. Data validation protocols automatically detect and filter anomalous price feeds that could trigger erroneous trading signals.</p>
+                <p>Signal generation systems process incoming market data through our quantitative models, continuously updating trade signals based on evolving market conditions. These systems operate with low latency, ensuring that trading opportunities are identified and acted upon promptly while maintaining consistency with our systematic framework. Signal validation protocols verify that all trade recommendations comply with current risk parameters before execution authorization.</p>
+                <p>Order management systems handle trade execution through automated protocols that prioritize execution quality, transaction cost minimization, and compliance with regulatory requirements. These systems support various order types including limit orders, stop-loss orders, and profit-taking mechanisms, automatically managing position lifecycle according to predefined parameters while maintaining flexibility to adapt to changing market conditions.</p>
+                <p>Risk monitoring infrastructure operates continuously, calculating portfolio-level risk metrics in real-time, monitoring position exposure, correlation analysis, and compliance with all risk limits. Alert systems notify operational staff of approaching risk thresholds or system anomalies, while automated protocols execute predefined risk responses without requiring manual intervention during critical situations.</p>
+                <p>Performance analytics systems track all trading activity, calculating risk-adjusted returns, win rates, average trade duration, and other key performance metrics that inform strategy evaluation and ongoing refinement. These systems generate comprehensive reporting that enables transparent communication of strategy performance while supporting internal analysis of trading effectiveness across different market regimes.</p>
+                <p>Backup and disaster recovery protocols ensure operational continuity through redundant systems, regular data backups, and failover mechanisms that maintain trading capabilities even during system outages or technical failures. These protocols are tested regularly to verify effectiveness and ensure that capital protection mechanisms remain functional under all operational conditions.</p>
+              </div>
+            </div>
+
+            {/* Terms of Use & Liability Limitations */}
+            <div className="risk-section" ref={sectionRefs.terms}>
+              <h2 className="risk-section-title">Terms of Use & Liability Limitations</h2>
+              <div className="risk-section-content">
+                <p>Our performance reporting adheres to institutional standards for transparency, accuracy, and comprehensive disclosure of strategy results, risk metrics, and operational performance. We employ recognized methodologies for calculating returns, risk-adjusted performance measures, and comparative benchmarks that enable meaningful evaluation of strategy effectiveness across different market environments.</p>
+                <p>Return calculation methodologies follow industry-standard practices, calculating both gross and net returns after transaction costs, management fees, and performance fees where applicable. We report returns across multiple timeframes including daily, weekly, monthly, quarterly, and annual periods, enabling assessment of strategy performance across different investment horizons. Returns are presented on both absolute and risk-adjusted bases, incorporating measures such as Sharpe ratio, Sortino ratio, and maximum drawdown to provide comprehensive evaluation of risk-return characteristics.</p>
+                <p>Performance attribution analysis breaks down returns by contributing factors including market direction, volatility regime, trade duration, position sizing decisions, and execution quality. This granular analysis enables identification of return drivers and assessment of strategy effectiveness across different market conditions, supporting ongoing refinement and optimization of our systematic approach.</p>
+                <p>Risk metrics reporting includes comprehensive disclosure of volatility measures, correlation analysis, leverage utilization, exposure concentrations, and drawdown characteristics. These metrics are calculated using consistent methodologies and reported alongside return figures to provide complete context for strategy performance. We disclose maximum drawdown, average drawdown, recovery periods, and other risk measures that enable investors to assess strategy characteristics relative to their risk tolerance and investment objectives.</p>
+                <p>Comparative benchmarking provides context for strategy performance through comparison to relevant market indices, passive strategies, and peer group performance where available. These comparisons are conducted on risk-adjusted bases to ensure meaningful evaluation that accounts for different risk profiles between strategies and benchmarks. Benchmark selection reflects the specific market focus and risk characteristics of our strategy to ensure comparability.</p>
+                <p>Reporting frequency and format align with investor needs, providing regular updates through standardized reports supplemented by ad-hoc analysis when significant market events or performance anomalies occur. All reporting maintains consistency in methodology and presentation, enabling trend analysis and performance tracking over extended periods while supporting transparent communication of strategy results to investors and stakeholders.</p>
+                <p>Operational performance reporting includes disclosure of system uptime, execution quality metrics, trade slippage analysis, and other operational indicators that demonstrate effectiveness of our technology infrastructure and execution protocols. These metrics support assessment of operational reliability and identification of areas for improvement in our trading systems and processes.</p>
+              </div>
             </div>
           </div>
         </section>
