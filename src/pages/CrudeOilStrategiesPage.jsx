@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './CrudeOilStrategiesPage.css'
 import './HomePage.css'
 
@@ -13,6 +14,10 @@ const CrudeOilStrategiesPage = () => {
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
   const tradingViewWidgetRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [positioningImageUrl, setPositioningImageUrl] = useState(null)
+  const [sentimentImageUrl, setSentimentImageUrl] = useState(null)
+  const [geopoliticalImageUrl, setGeopoliticalImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -102,6 +107,26 @@ const CrudeOilStrategiesPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load images from Firebase Storage
+  useEffect(() => {
+    const loadImages = async () => {
+      // Load banner image
+      const bannerUrl = await getImageUrl('Crude-Oil-Strategies/oilocean.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+
+      // Load section images
+      const positioningUrl = await getImageUrl('Crude-Oil-Strategies/Stockexchange.jpeg')
+      if (positioningUrl) setPositioningImageUrl(positioningUrl)
+
+      const sentimentUrl = await getImageUrl('Crude-Oil-Strategies/stockexchnage5.jpeg')
+      if (sentimentUrl) setSentimentImageUrl(sentimentUrl)
+
+      const geopoliticalUrl = await getImageUrl('Crude-Oil-Strategies/stockexchnage6.jpeg')
+      if (geopoliticalUrl) setGeopoliticalImageUrl(geopoliticalUrl)
+    }
+    loadImages()
   }, [])
 
   // Load TradingView widget
@@ -381,8 +406,15 @@ const CrudeOilStrategiesPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
@@ -423,8 +455,15 @@ const CrudeOilStrategiesPage = () => {
                 </div>
               </div>
               <div className="positioning-image">
-                <div className="positioning-image-widget">
-                  {/* Image will be placed here */}
+                <div 
+                  className="positioning-image-widget"
+                  style={{
+                    backgroundImage: positioningImageUrl ? `url(${positioningImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
               </div>
             </div>
@@ -436,8 +475,15 @@ const CrudeOilStrategiesPage = () => {
           <div className="container">
             <div className="sentiment-content">
               <div className="sentiment-image">
-                <div className="sentiment-image-widget">
-                  {/* Image will be placed here */}
+                <div 
+                  className="sentiment-image-widget"
+                  style={{
+                    backgroundImage: sentimentImageUrl ? `url(${sentimentImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
               </div>
               <div className="sentiment-text">
@@ -461,8 +507,15 @@ const CrudeOilStrategiesPage = () => {
                 </div>
               </div>
               <div className="geopolitical-image">
-                <div className="geopolitical-image-widget">
-                  {/* Image will be placed here */}
+                <div 
+                  className="geopolitical-image-widget"
+                  style={{
+                    backgroundImage: geopoliticalImageUrl ? `url(${geopoliticalImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
               </div>
             </div>
@@ -477,9 +530,9 @@ const CrudeOilStrategiesPage = () => {
               <p className="cta-subtitle">
                 Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
               </p>
-              <button className="btn btn-primary-white">
+              <Link to="/investment-calculator" className="btn btn-primary-white">
                 Calculate your investment →
-              </button>
+              </Link>
             </div>
           </div>
         </section>
