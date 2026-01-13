@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './OurTeamPage.css'
 import './HomePage.css'
 
@@ -12,6 +13,25 @@ const OurTeamPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [leaderImages, setLeaderImages] = useState({})
+  const [officeImages, setOfficeImages] = useState({})
+  
+  // Executive board members data
+  const leaders = [
+    { id: 1, name: 'John Smith', title: 'Chief Executive Officer' },
+    { id: 2, name: 'Sarah Johnson', title: 'Chief Technology Officer' },
+    { id: 3, name: 'Michael Chen', title: 'Chief Risk Officer' },
+    { id: 4, name: 'Emma Williams', title: 'Chief Operations Officer' }
+  ]
+  
+  // Offices data
+  const offices = [
+    { id: 1, city: 'Madrid' },
+    { id: 2, city: 'Dubai' },
+    { id: 3, city: 'London' },
+    { id: 4, city: 'Amsterdam' }
+  ]
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +121,45 @@ const OurTeamPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load images from Firebase Storage
+  useEffect(() => {
+    const loadImages = async () => {
+      // Load banner image
+      const bannerUrl = await getImageUrl('our-team/BookaCall.png')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+
+      // Load leader images (commented out until images are provided)
+      // Will be uncommented and updated when leader images are ready
+      // const leaderUrls = await Promise.all([
+      //   getImageUrl('our-team/leader1.jpg'),
+      //   getImageUrl('our-team/leader2.jpg'),
+      //   getImageUrl('our-team/leader3.jpg'),
+      //   getImageUrl('our-team/leader4.jpg')
+      // ])
+      // setLeaderImages({
+      //   leader1: leaderUrls[0],
+      //   leader2: leaderUrls[1],
+      //   leader3: leaderUrls[2],
+      //   leader4: leaderUrls[3]
+      // })
+
+      // Load office images with specific filenames
+      const officeUrls = await Promise.all([
+        getImageUrl('our-team/building2.png'), // Madrid
+        getImageUrl('our-team/2building1.png'), // Dubai
+        getImageUrl('our-team/towe.png'), // London
+        getImageUrl('our-team/towe3.png') // Amsterdam
+      ])
+      setOfficeImages({
+        madrid: officeUrls[0],
+        dubai: officeUrls[1],
+        london: officeUrls[2],
+        amsterdam: officeUrls[3]
+      })
+    }
+    loadImages()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -424,13 +483,86 @@ const OurTeamPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Our Team</h1>
               <p className="page-banner-subtitle">Team and offices</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Leadership & Team</h2>
+              <p className="white-hero-subtitle">
+                Our team brings together experience across trading, technology, risk, and operations. We operate with clear accountability and disciplined execution.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Executive Board Section */}
+        <section className="white-section team-section">
+          <div className="container">
+            <h2 className="team-section-title">Executive Board</h2>
+            <div className="team-grid">
+              {leaders.map((leader, index) => (
+                <div key={leader.id} className="team-card">
+                  <div 
+                    className="team-card-image"
+                    style={{
+                      backgroundImage: leaderImages[`leader${index + 1}`] ? `url(${leaderImages[`leader${index + 1}`]})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat'
+                    }}
+                  >
+                  </div>
+                  <div className="team-card-content">
+                    <h3 className="team-card-name">{leader.name}</h3>
+                    <p className="team-card-title">{leader.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Offices Section */}
+        <section className="white-section offices-section">
+          <div className="container">
+            <h2 className="team-section-title">Our Offices</h2>
+            <div className="team-grid">
+              {offices.map((office) => (
+                <div key={office.id} className="team-card">
+                  <div 
+                    className="team-card-image"
+                    style={{
+                      backgroundImage: officeImages[office.city.toLowerCase()] ? `url(${officeImages[office.city.toLowerCase()]})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: officeImages[office.city.toLowerCase()] ? 'transparent' : '#f3f4f6'
+                    }}
+                  >
+                  </div>
+                  <div className="team-card-content">
+                    <h3 className="team-card-name">{office.city}</h3>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

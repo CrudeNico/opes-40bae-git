@@ -107,6 +107,18 @@ service firebase.storage {
       allow write: if isAuthenticated(); // Only authenticated users can upload
     }
 
+    // Our Team images - public read access for website images
+    match /our-team/{fileName} {
+      allow read: if true; // Public read access - no authentication required
+      allow write: if isAuthenticated(); // Only authenticated users can upload
+    }
+
+    // Partners images - public read access for website images
+    match /partners/{fileName} {
+      allow read: if true; // Public read access - no authentication required
+      allow write: if isAuthenticated(); // Only authenticated users can upload
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

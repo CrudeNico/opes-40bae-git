@@ -68,6 +68,76 @@
 
 /* Footer and Header styles are imported from HomePage.css */
 
+/* Team Section */
+.team-section {
+  padding: 2rem 2rem 4rem;
+  background: #ffffff;
+}
+
+.offices-section {
+  padding: 4rem 2rem 6rem;
+  background: #ffffff;
+}
+
+.team-section-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1e40af;
+  text-align: center;
+  margin: 0 0 3rem 0;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.team-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.team-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.team-card-image {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #f3f4f6;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.team-card-content {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.team-card-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.team-card-title {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* Remove underline from logo link */
 .logo {
   text-decoration: none !important;
@@ -124,5 +194,26 @@
   .footer-bottom {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .team-section,
+  .offices-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .team-section-title {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    .team-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }

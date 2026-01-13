@@ -68,6 +68,68 @@
 
 /* Footer and Header styles are imported from HomePage.css */
 
+/* White Hero Section - Reduce bottom margin */
+.partners-page .white-section .white-hero {
+  margin-bottom: 1rem;
+}
+
+/* Partners Grid Section */
+.partners-grid-section {
+  padding: 0 2rem 4rem;
+  margin-top: -1rem;
+  background: #ffffff;
+}
+
+.partners-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.partner-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.partner-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.partner-card-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #f3f4f6;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+.partner-card-content {
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.partner-card-description {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.6;
+  text-align: center;
+}
+
 /* Remove underline from logo link */
 .logo {
   text-decoration: none !important;
@@ -124,5 +186,20 @@
   .footer-bottom {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .partners-grid-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .partners-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    .partners-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }

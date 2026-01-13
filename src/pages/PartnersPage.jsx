@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './PartnersPage.css'
 import './HomePage.css'
 
@@ -12,6 +13,48 @@ const PartnersPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [partnerImages, setPartnerImages] = useState({})
+  
+  // Partners data
+  const partners = [
+    { 
+      id: 1, 
+      name: 'Partner 1',
+      description: 'Primary brokerage partner enabling CFD execution across global markets with reliable liquidity, pricing, and order routing.',
+      image: 'partner1.png'
+    },
+    { 
+      id: 2, 
+      name: 'Partner 2',
+      description: 'Market data provider delivering real-time pricing, historical data, and analytical feeds to support trading and risk decisions.',
+      image: 'partner2.jpg'
+    },
+    { 
+      id: 3, 
+      name: 'Partner 3',
+      description: 'Independent fund protection partner ensuring segregation and safeguarding of client assets held with the executing broker.',
+      image: 'partner3.jpg'
+    },
+    { 
+      id: 4, 
+      name: 'Partner 4',
+      description: 'Payment services partner providing debit card access and streamlined withdrawal solutions for efficient fund mobility.',
+      image: 'partner4.jpg'
+    },
+    { 
+      id: 5, 
+      name: 'Partner 5',
+      description: 'Regulated banking and custodial partner supporting account infrastructure, payment processing, and capital protection.',
+      image: 'partner5.jpg'
+    },
+    { 
+      id: 6, 
+      name: 'Partner 6',
+      description: 'Risk management and capital protection partner implementing mechanisms designed to reduce drawdowns and prevent forced liquidation.',
+      image: 'partner6.jpg'
+    }
+  ]
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +144,34 @@ const PartnersPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load images from Firebase Storage
+  useEffect(() => {
+    const loadImages = async () => {
+      // Load banner image
+      const bannerUrl = await getImageUrl('partners/Managment.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+
+      // Load partner images with specific filenames
+      const partnerUrls = await Promise.all([
+        getImageUrl('partners/partner1.png'),
+        getImageUrl('partners/partner2.jpg'),
+        getImageUrl('partners/partner3.jpg'),
+        getImageUrl('partners/partner4.jpg'),
+        getImageUrl('partners/partner5.jpg'),
+        getImageUrl('partners/partner6.jpg')
+      ])
+      setPartnerImages({
+        'partner1.png': partnerUrls[0],
+        'partner2.jpg': partnerUrls[1],
+        'partner3.jpg': partnerUrls[2],
+        'partner4.jpg': partnerUrls[3],
+        'partner5.jpg': partnerUrls[4],
+        'partner6.jpg': partnerUrls[5]
+      })
+    }
+    loadImages()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -424,13 +495,58 @@ const PartnersPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Partners</h1>
               <p className="page-banner-subtitle">Our ecosystem</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Built on Trusted Partnerships</h2>
+              <p className="white-hero-subtitle">
+                We collaborate with established counterparties and service providers to support our trading, operational, and technological capabilities.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Partners Grid Section */}
+        <section className="white-section partners-grid-section">
+          <div className="container">
+            <div className="partners-grid">
+              {partners.map((partner) => (
+                <div key={partner.id} className="partner-card">
+                  <div 
+                    className="partner-card-image"
+                    style={{
+                      backgroundImage: partnerImages[partner.image] ? `url(${partnerImages[partner.image]})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: partnerImages[partner.image] ? 'transparent' : '#f3f4f6'
+                    }}
+                  >
+                  </div>
+                  <div className="partner-card-content">
+                    <p className="partner-card-description">{partner.description}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
