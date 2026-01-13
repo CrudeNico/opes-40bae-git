@@ -11,3 +11,494 @@
   position: relative;
   max-width: 100vw;
 }
+
+/* Portfolio Models Section */
+.portfolio-models-section {
+  padding: 0.5rem 2rem 4rem;
+  background: #ffffff;
+  margin-top: -2rem;
+}
+
+.portfolio-models-title {
+  font-size: 3rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  line-height: 1.1;
+}
+
+.portfolio-models-subtitle {
+  font-size: 1.25rem;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 2rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+.portfolio-models-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.portfolio-model-card {
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.portfolio-model-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.portfolio-model-card.expanded {
+  border-color: #3b82f6;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+}
+
+.portfolio-model-card.high-risk {
+  border-color: #f59e0b;
+}
+
+.portfolio-model-card.high-risk:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.15);
+}
+
+.portfolio-model-card.high-risk.expanded {
+  border-color: #f59e0b;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+}
+
+.portfolio-model-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.portfolio-model-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.portfolio-model-icon.low-risk {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+}
+
+.portfolio-model-icon.high-risk {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.portfolio-model-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.portfolio-model-info {
+  flex: 1;
+}
+
+.portfolio-model-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.portfolio-model-growth {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.growth-rate {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.portfolio-model-card.high-risk .growth-rate {
+  color: #f59e0b;
+}
+
+.growth-period {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.portfolio-model-arrow {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.portfolio-model-card.expanded .portfolio-model-arrow {
+  transform: rotate(180deg);
+}
+
+.portfolio-model-arrow svg {
+  width: 24px;
+  height: 24px;
+}
+
+.portfolio-model-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, padding 0.4s ease;
+  padding-top: 0;
+}
+
+.portfolio-model-card.expanded .portfolio-model-details {
+  max-height: 1000px;
+  padding-top: 2rem;
+  margin-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.portfolio-model-description {
+  margin-bottom: 1.5rem;
+}
+
+.portfolio-model-description p {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.portfolio-model-features {
+  margin-bottom: 2rem;
+}
+
+.portfolio-model-features h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.portfolio-model-features ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.portfolio-model-features li {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+  line-height: 1.5;
+}
+
+.portfolio-model-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #10b981;
+  font-weight: 600;
+}
+
+.portfolio-model-cta {
+  display: flex;
+  justify-content: center;
+}
+
+.portfolio-model-cta .btn {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Investor Choice Section */
+.investor-choice-section {
+  padding: 4rem 2rem;
+  background: #f9fafb;
+}
+
+.investor-choice-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.investor-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.investor-choice-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.investor-choice-description {
+  font-size: 1.125rem;
+  color: #4b5563;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.investor-choice-stats {
+  display: flex;
+  gap: 3rem;
+  margin-top: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #3b82f6;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.investor-choice-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.pie-chart {
+  width: 300px;
+  height: 300px;
+  max-width: 100%;
+}
+
+.pie-segment {
+  transition: opacity 0.3s ease;
+}
+
+.pie-center {
+  pointer-events: none;
+}
+
+.pie-center-text {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.pie-center-label {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9375rem;
+  color: #4b5563;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.legend-color.low-risk {
+  background: #10b981;
+}
+
+.legend-color.high-risk {
+  background: #f59e0b;
+}
+
+/* Portfolio Information Section */
+.portfolio-info-section {
+  padding: 4rem 2rem;
+  background: #ffffff;
+}
+
+.portfolio-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.portfolio-info-card {
+  background: #f3f4f6;
+  border-radius: 1rem;
+  padding: 2rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.portfolio-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.portfolio-info-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.3;
+}
+
+.portfolio-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.portfolio-info-text p {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .portfolio-models-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .portfolio-models-title {
+    font-size: 2rem;
+  }
+
+  .portfolio-models-subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .portfolio-models-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .portfolio-model-card {
+    padding: 1.5rem;
+  }
+
+  .portfolio-model-header {
+    gap: 1rem;
+  }
+
+  .portfolio-model-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .portfolio-model-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .portfolio-model-name {
+    font-size: 1.25rem;
+  }
+
+  .growth-rate {
+    font-size: 1.75rem;
+  }
+
+  .investor-choice-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .investor-choice-content {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .investor-choice-title {
+    font-size: 2rem;
+  }
+
+  .investor-choice-description {
+    font-size: 1rem;
+  }
+
+  .investor-choice-stats {
+    gap: 2rem;
+  }
+
+  .stat-value {
+    font-size: 2.5rem;
+  }
+
+  .pie-chart {
+    width: 250px;
+    height: 250px;
+  }
+
+  .portfolio-info-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .portfolio-info-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .portfolio-info-card {
+    padding: 1.5rem;
+  }
+
+  .portfolio-info-title {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .portfolio-info-text p {
+    font-size: 0.875rem;
+  }
+}

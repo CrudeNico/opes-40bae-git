@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './PortfolioModelsPage.css'
 import './HomePage.css'
 
@@ -12,6 +13,9 @@ const PortfolioModelsPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [expandedModel, setExpandedModel] = useState(null)
+  const modelsSectionRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -103,6 +107,15 @@ const PortfolioModelsPage = () => {
     }
   }, [])
 
+  // Load banner image from Firebase Storage
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const bannerUrl = await getImageUrl('Portfolio-Models/Stockexchange.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+    }
+    loadBannerImage()
+  }, [])
+
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
   useEffect(() => {
     if (openNavSection && navItemsRef.current.section1 && navItemsRef.current.section4) {
@@ -144,6 +157,23 @@ const PortfolioModelsPage = () => {
     }
   }, [openNavSection])
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Load banner image from Firebase Storage
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const bannerUrl = await getImageUrl('Portfolio-Models/Stockexchange.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+    }
+    loadBannerImage()
+  }, [])
 
   return (
     <div className="portfolio-models-page">
@@ -423,14 +453,289 @@ const PortfolioModelsPage = () => {
       </header>
 
       <main className="main-content">
+        {/* Page Banner */}
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Portfolio Models</h1>
               <p className="page-banner-subtitle">Structured investment portfolios</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Structured Portfolio Solutions for Capital Growth</h2>
+              <p className="white-hero-subtitle">
+                Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  if (modelsSectionRef.current) {
+                    modelsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }}
+              >
+                Calculate your investment →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Portfolio Models Section */}
+        <section className="white-section portfolio-models-section" ref={modelsSectionRef}>
+          <div className="container">
+            <h2 className="portfolio-models-title">Our Portfolio Models</h2>
+            <p className="portfolio-models-subtitle">Choose the investment strategy that aligns with your goals</p>
+            
+            <div className="portfolio-models-grid">
+              <div 
+                className={`portfolio-model-card ${expandedModel === 'low' ? 'expanded' : ''}`}
+                onClick={() => setExpandedModel(expandedModel === 'low' ? null : 'low')}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="portfolio-model-header">
+                  <div className="portfolio-model-icon low-risk">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="portfolio-model-info">
+                    <h3 className="portfolio-model-name">Low Risk Portfolio</h3>
+                    <div className="portfolio-model-growth">
+                      <span className="growth-rate">2%</span>
+                      <span className="growth-period">Monthly Growth</span>
+                    </div>
+                  </div>
+                  <div className="portfolio-model-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="portfolio-model-details">
+                  <div className="portfolio-model-description">
+                    <p>Our Low Risk Portfolio is designed for conservative investors seeking steady, predictable returns with minimal volatility. This model focuses on capital preservation while delivering consistent monthly growth.</p>
+                  </div>
+                  <div className="portfolio-model-features">
+                    <h4>Key Features:</h4>
+                    <ul>
+                      <li>2% guaranteed monthly growth</li>
+                      <li>Capital preservation focus</li>
+                      <li>Lower volatility and risk exposure</li>
+                      <li>Diversified across stable assets</li>
+                      <li>Regular performance reporting</li>
+                      <li>Flexible withdrawal options</li>
+                    </ul>
+                  </div>
+                  <div className="portfolio-model-cta">
+                    <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); /* Handle investment */ }}>
+                      Invest Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className={`portfolio-model-card ${expandedModel === 'high' ? 'expanded' : ''} high-risk`}
+                onClick={() => setExpandedModel(expandedModel === 'high' ? null : 'high')}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="portfolio-model-header">
+                  <div className="portfolio-model-icon high-risk">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                  </div>
+                  <div className="portfolio-model-info">
+                    <h3 className="portfolio-model-name">High Risk Portfolio</h3>
+                    <div className="portfolio-model-growth">
+                      <span className="growth-rate">4%</span>
+                      <span className="growth-period">Monthly Growth</span>
+                    </div>
+                  </div>
+                  <div className="portfolio-model-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="portfolio-model-details">
+                  <div className="portfolio-model-description">
+                    <p>Our High Risk Portfolio is designed for experienced investors who are comfortable with higher volatility in exchange for potentially greater returns. This model targets aggressive growth through strategic market positions.</p>
+                  </div>
+                  <div className="portfolio-model-features">
+                    <h4>Key Features:</h4>
+                    <ul>
+                      <li>4% target monthly growth</li>
+                      <li>Aggressive growth strategy</li>
+                      <li>Higher risk and reward potential</li>
+                      <li>Active portfolio management</li>
+                      <li>Real-time market analysis</li>
+                      <li>Advanced trading strategies</li>
+                    </ul>
+                  </div>
+                  <div className="portfolio-model-cta">
+                    <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); /* Handle investment */ }}>
+                      Invest Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Investor Choice Section */}
+        <section className="white-section investor-choice-section">
+          <div className="container">
+            <div className="investor-choice-content">
+              <div className="investor-choice-text">
+                <h2 className="investor-choice-title">What Our Investors Choose</h2>
+                <p className="investor-choice-description">
+                  Our investors have shown a strong preference for our Low Risk Portfolio, with over 82% choosing this conservative approach. This demonstrates trust in our steady, predictable returns and capital preservation strategy.
+                </p>
+                <div className="investor-choice-stats">
+                  <div className="stat-item">
+                    <div className="stat-value">82%</div>
+                    <div className="stat-label">Low Risk Portfolio</div>
+                  </div>
+                  <div className="stat-item">
+                    <div className="stat-value">18%</div>
+                    <div className="stat-label">High Risk Portfolio</div>
+                  </div>
+                </div>
+              </div>
+              <div className="investor-choice-chart">
+                <svg viewBox="0 0 200 200" className="pie-chart">
+                  {/* Low Risk - 82% (295.2 degrees) */}
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="80"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="40"
+                    strokeDasharray={`${82 * 5.0265} ${100 * 5.0265}`}
+                    strokeDashoffset="0"
+                    transform="rotate(-90 100 100)"
+                    className="pie-segment low-risk"
+                  />
+                  {/* High Risk - 18% (64.8 degrees) */}
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="80"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="40"
+                    strokeDasharray={`${18 * 5.0265} ${100 * 5.0265}`}
+                    strokeDashoffset={`-${82 * 5.0265}`}
+                    transform="rotate(-90 100 100)"
+                    className="pie-segment high-risk"
+                  />
+                  {/* Center circle for donut effect */}
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="50"
+                    fill="#ffffff"
+                    className="pie-center"
+                  />
+                  {/* Percentage text in center */}
+                  <text
+                    x="100"
+                    y="95"
+                    textAnchor="middle"
+                    className="pie-center-text"
+                    fontSize="24"
+                    fontWeight="600"
+                    fill="#1f2937"
+                  >
+                    82%
+                  </text>
+                  <text
+                    x="100"
+                    y="115"
+                    textAnchor="middle"
+                    className="pie-center-label"
+                    fontSize="12"
+                    fill="#6b7280"
+                  >
+                    Low Risk
+                  </text>
+                </svg>
+                <div className="chart-legend">
+                  <div className="legend-item">
+                    <div className="legend-color low-risk"></div>
+                    <span>Low Risk Portfolio (82%)</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="legend-color high-risk"></div>
+                    <span>High Risk Portfolio (18%)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Portfolio Information Section */}
+        <section className="white-section portfolio-info-section">
+          <div className="container">
+            <div className="portfolio-info-grid">
+              <div className="portfolio-info-card">
+                <h3 className="portfolio-info-title">1. Low-Risk Profile Portfolio</h3>
+                <div className="portfolio-info-text">
+                  <p>This portfolio is designed for capital preservation with moderate, consistent growth. The primary objective is to protect the initial investment amount throughout the full contracted duration, while targeting a monthly return of approximately 2%. Capital allocation, position sizing, and exposure limits are structured conservatively, with strict downside controls applied at all times.</p>
+                  <p>Returns are not guaranteed. However, based on a verified performance history exceeding seven consecutive months, the portfolio has demonstrated stable execution under varying market conditions. During a private consultation, historical trade data, drawdown metrics, and operational reports can be provided for review.</p>
+                  <p>Expected performance may vary depending on the invested capital and prevailing market conditions. Within typical allocation ranges — generally between €5,000 and €100,000 — the strategy is structured to operate efficiently and within defined risk tolerances. For larger or smaller allocations, return targets and risk parameters may be adjusted accordingly.</p>
+                  <p>This portfolio is suitable for investors prioritizing capital stability, controlled exposure, and long-term compounding over aggressive short-term returns.</p>
+                </div>
+              </div>
+
+              <div className="portfolio-info-card">
+                <h3 className="portfolio-info-title">2. High-Risk Profile Portfolio</h3>
+                <div className="portfolio-info-text">
+                  <p>This portfolio is structured for investors seeking accelerated growth and who fully understand that capital is 100% at risk. There are no capital protection mechanisms in place beyond standard operational risk controls. Volatility, drawdowns, and short-term losses are expected components of this strategy.</p>
+                  <p>The target return is approximately 4% per month, achieved through increased leverage, larger position sizing, and more aggressive exposure management. Risk mitigation techniques are still applied, but tolerances are materially wider than in the low-risk portfolio.</p>
+                  <p>This portfolio is not suitable for capital that cannot withstand loss. Investors should assume full downside exposure and participate only if they are comfortable with higher risk in exchange for higher potential returns.</p>
+                  <p>Performance figures are targets, not promises. As with all strategies, results depend on market behavior, liquidity conditions, and execution efficiency.</p>
+                </div>
+              </div>
+
+              <div className="portfolio-info-card">
+                <h3 className="portfolio-info-title">3. Capital Pooling & Joint Account Structure</h3>
+                <div className="portfolio-info-text">
+                  <p>All portfolios operate within a joint capital framework, where funds are aggregated across managed accounts. This structure improves overall margin efficiency, reduces liquidation risk, and enhances operational flexibility during periods of market stress.</p>
+                  <p>By consolidating capital, the portfolio benefits from stronger margin safety, improved execution quality, and greater resilience against isolated volatility events. While individual allocations remain segregated for reporting and accounting purposes, risk management is applied at the aggregate level.</p>
+                  <p>Operational strategies across portfolios are similar in nature; however, risk parameters, leverage usage, and position sizing differ significantly depending on the selected risk profile.</p>
+                  <p>This structure is a key component of the firm's defensive risk management approach.</p>
+                </div>
+              </div>
+
+              <div className="portfolio-info-card">
+                <h3 className="portfolio-info-title">4. Risk, Compounding & Exposure</h3>
+                <div className="portfolio-info-text">
+                  <p>Both portfolios benefit from compounding, meaning that reinvested gains can result in annual growth exceeding the simple sum of monthly targets. Actual annual performance will vary depending on market conditions and reinvestment decisions.</p>
+                  <p>In the event of adverse market conditions or losses, a strict risk hierarchy is applied. The high-risk portfolio absorbs exposure before any impact is transferred to the low-risk portfolio. This prioritization is intentional and designed to preserve the integrity of the capital-preservation strategy.</p>
+                  <p>Leverage, exposure limits, and position concentration are always higher in the high-risk portfolio, reflecting its role as the primary risk-bearing vehicle within the overall structure.</p>
+                  <p>Investors should select a portfolio based on their financial objectives, risk tolerance, and understanding of market exposure — not solely on target returns.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
