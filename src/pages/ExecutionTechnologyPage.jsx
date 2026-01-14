@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './ExecutionTechnologyPage.css'
 import './HomePage.css'
 
 const ExecutionTechnologyPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,6 +14,10 @@ const ExecutionTechnologyPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [positioningImageUrl, setPositioningImageUrl] = useState(null)
+  const [sentimentImageUrl, setSentimentImageUrl] = useState(null)
+  const [geopoliticalImageUrl, setGeopoliticalImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +107,24 @@ const ExecutionTechnologyPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load images
+  useEffect(() => {
+    const loadImages = async () => {
+      const bannerUrl = await getImageUrl('Execution-Technology/banner.jpg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+      
+      const positioningUrl = await getImageUrl('Execution-Technology/positioning.jpg')
+      if (positioningUrl) setPositioningImageUrl(positioningUrl)
+      
+      const sentimentUrl = await getImageUrl('Execution-Technology/sentiment.jpg')
+      if (sentimentUrl) setSentimentImageUrl(sentimentUrl)
+      
+      const geopoliticalUrl = await getImageUrl('Execution-Technology/geopolitical.jpg')
+      if (geopoliticalUrl) setGeopoliticalImageUrl(geopoliticalUrl)
+    }
+    loadImages()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -424,13 +448,187 @@ const ExecutionTechnologyPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
-          </div>
+          <div
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          />
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Execution & Technology</h1>
               <p className="page-banner-subtitle">Data-driven execution</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Model Your Execution Performance</h2>
+              <p className="white-hero-subtitle">
+                Estimate potential outcomes based on our execution framework, risk controls, and capital allocation logic. Use our calculator to understand how technology and discipline translate into results.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  navigate('/investment-calculator')
+                  handleLinkClick()
+                }}
+              >
+                Calculate Returns →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Process Timeline Section */}
+        <section className="white-section process-timeline-section">
+          <div className="container">
+            <div className="process-timeline-content">
+              <h2 className="process-timeline-title">Our Execution Process</h2>
+              <p className="process-timeline-subtitle">A rigorous multi-step process ensures every operation is thoroughly analyzed before execution.</p>
+              
+              <div className="process-timeline">
+                <div className="timeline-line"></div>
+                
+                {/* Step 1 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">1</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Signal Generation & Data Filtering</h3>
+                    <p className="timeline-widget-text">Multi-layer analyzers continuously process market data to identify executable conditions, filtering noise and invalid setups before any operation is produced.</p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">2</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Programmatic Signal Dispatch</h3>
+                    <p className="timeline-widget-text">Validated conditions are transmitted through our execution system in near real time, generating structured operations within seconds of detection.</p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">3</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Operator Review & Authorization</h3>
+                    <p className="timeline-widget-text">Live operators assess each operation against execution context, liquidity, and risk parameters, authorizing only those that meet predefined criteria.</p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">4</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Execution & Live Monitoring</h3>
+                    <p className="timeline-widget-text">Approved operations are routed to the broker for CFD execution, followed by continuous monitoring and real-time risk management throughout the position lifecycle.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Positioning & Exposure Control Section */}
+        <section className="white-section positioning-section">
+          <div className="container">
+            <div className="positioning-content">
+              <div className="positioning-text">
+                <h2 className="positioning-title">Structure & Market Access</h2>
+                <div className="positioning-body">
+                  <p>Our execution stack is built on institutional-grade brokerage infrastructure with real-time pricing and deep liquidity access, powered by Interactive Brokers. This framework enables precise order routing, reliable fills, and immediate visibility across instruments. Live pricing, execution reports, and position data are streamed directly into our systems, ensuring the team operates on the most current market information at all times.</p>
+                </div>
+              </div>
+              <div className="positioning-image">
+                <div 
+                  className="positioning-image-widget"
+                  style={{
+                    backgroundImage: positioningImageUrl ? `url(${positioningImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Market Sentiment & Technical Analysis Section */}
+        <section className="white-section sentiment-section">
+          <div className="container">
+            <div className="sentiment-content">
+              <div className="sentiment-image">
+                <div 
+                  className="sentiment-image-widget"
+                  style={{
+                    backgroundImage: sentimentImageUrl ? `url(${sentimentImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
+                </div>
+              </div>
+              <div className="sentiment-text">
+                <h2 className="sentiment-title">Automated Signal</h2>
+                <div className="sentiment-body">
+                  <p>Trade candidates generated by our systems are transmitted through dedicated execution channels designed for speed and clarity. Automated workflows allow the team to review a high volume of operations daily, with each signal presented in a standardized, time-sensitive format. This structure ensures rapid assessment, minimizes operational friction, and allows only a controlled subset of validated operations to progress to execution.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Geopolitical Events & Macro Awareness Section */}
+        <section className="white-section geopolitical-section">
+          <div className="container">
+            <div className="geopolitical-content">
+              <div className="geopolitical-text">
+                <h2 className="geopolitical-title">Reporting & Feedback</h2>
+                <div className="geopolitical-body">
+                  <p>Post-execution data is consolidated into real-time reporting streams that provide continuous visibility on fills, exposure, and execution quality. Internal feedback loops allow operators to evaluate performance metrics, latency behavior, and execution consistency throughout the trading day. This ongoing oversight supports informed decision-making, systematic refinement, and disciplined deployment without relying on delayed or manual reporting processes.</p>
+                </div>
+              </div>
+              <div className="geopolitical-image">
+                <div 
+                  className="geopolitical-image-widget"
+                  style={{
+                    backgroundImage: geopoliticalImageUrl ? `url(${geopoliticalImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Where We Operate Section */}
+        <section className="white-section schedule-section">
+          <div className="container">
+            <div className="schedule-content">
+              <h2 className="schedule-title">Where We Operate</h2>
+              <p className="schedule-subtitle">Global presence across key financial hubs, including Spain, Dubai, Amsterdam, and London.</p>
+              <button 
+                className="btn btn-primary-white schedule-button"
+                onClick={() => {
+                  navigate('/our-team')
+                  handleLinkClick()
+                }}
+              >
+                View Locations →
+              </button>
             </div>
           </div>
         </section>

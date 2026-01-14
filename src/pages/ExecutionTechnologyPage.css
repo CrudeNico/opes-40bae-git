@@ -11,3 +11,374 @@
   position: relative;
   max-width: 100vw;
 }
+
+/* Process Timeline Section */
+.process-timeline-section {
+  padding: 1rem 2rem 4rem;
+  background: #ffffff;
+  margin-top: -2rem;
+}
+
+.process-timeline-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.process-timeline-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.process-timeline-subtitle {
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin: 0 0 3rem 0;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.process-timeline {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 2rem 0;
+  margin-top: 3rem;
+}
+
+.timeline-line {
+  position: absolute;
+  top: 3.625rem;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background: #e5e7eb;
+  z-index: 1;
+}
+
+.timeline-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+}
+
+.timeline-number {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: #1e40af;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 4px solid #ffffff;
+  position: relative;
+}
+
+.timeline-widget {
+  background: #f3f4f6;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 260px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.timeline-widget:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.timeline-widget-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.3;
+}
+
+.timeline-widget-text {
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .process-timeline-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .process-timeline-title {
+    font-size: 2rem;
+  }
+
+  .process-timeline-subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .process-timeline {
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem 0;
+    margin-top: 2rem;
+  }
+
+  .timeline-line {
+    display: none;
+  }
+
+  .timeline-step {
+    width: 100%;
+  }
+
+  .timeline-widget {
+    max-width: 100%;
+  }
+}
+
+/* Positioning & Exposure Control Section */
+.positioning-section {
+  padding: 4rem 2rem;
+  background: #ffffff;
+}
+
+.positioning-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.positioning-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.positioning-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.positioning-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.positioning-body p {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.positioning-image {
+  width: 100%;
+}
+
+.positioning-image-widget {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Market Sentiment & Technical Analysis Section */
+.sentiment-section {
+  padding: 4rem 2rem;
+  background: #ffffff;
+}
+
+.sentiment-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sentiment-image {
+  width: 100%;
+}
+
+.sentiment-image-widget {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.sentiment-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sentiment-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.sentiment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sentiment-body p {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* Geopolitical Events & Macro Awareness Section */
+.geopolitical-section {
+  padding: 4rem 2rem;
+  background: #ffffff;
+}
+
+.geopolitical-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.geopolitical-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.geopolitical-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.geopolitical-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.geopolitical-body p {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.geopolitical-image {
+  width: 100%;
+}
+
+.geopolitical-image-widget {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Where We Operate Section */
+.schedule-section {
+  padding: 4rem 2rem;
+  background: #f9fafb;
+}
+
+.schedule-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.schedule-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0 0 1rem 0;
+}
+
+.schedule-subtitle {
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.schedule-button {
+  display: inline-block;
+  text-decoration: none;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .positioning-section,
+  .sentiment-section,
+  .geopolitical-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .positioning-content,
+  .sentiment-content,
+  .geopolitical-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .positioning-title,
+  .sentiment-title,
+  .geopolitical-title {
+    font-size: 2rem;
+  }
+
+  .positioning-body p,
+  .sentiment-body p,
+  .geopolitical-body p {
+    font-size: 0.9375rem;
+  }
+
+  .schedule-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .schedule-title {
+    font-size: 2rem;
+  }
+}
