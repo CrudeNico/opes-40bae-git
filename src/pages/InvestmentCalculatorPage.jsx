@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './InvestmentCalculatorPage.css'
 import './HomePage.css'
 
 const InvestmentCalculatorPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,10 +14,20 @@ const InvestmentCalculatorPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [riskProfile, setRiskProfile] = useState('low') // 'low' or 'high'
+  const [initialCapital, setInitialCapital] = useState(10000)
+  const [monthlyContribution, setMonthlyContribution] = useState(1000)
+  const [projectionData, setProjectionData] = useState({ compound: [], simple: [] })
+  const [totalValue, setTotalValue] = useState(0)
+  const [totalProfit, setTotalProfit] = useState(0)
+  const [totalGrowth, setTotalGrowth] = useState(0)
+  const [hoveredPoint, setHoveredPoint] = useState(null)
+  const chartRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
-      setOpenMobileNavSection(openMobileNavSection === 'main' ? null : 'main')
+    setOpenMobileNavSection(openMobileNavSection === 'main' ? null : 'main')
     } else {
       // If a section is open, just close it but keep menu open
       setOpenMobileNavSection('main')
@@ -88,7 +100,7 @@ const InvestmentCalculatorPage = () => {
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll)
     }
@@ -102,6 +114,76 @@ const InvestmentCalculatorPage = () => {
       }
     }
   }, [])
+
+  // Load banner image
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      try {
+        const url = await getImageUrl('Investment-Calculator/exchnage.jpeg')
+        if (url) {
+          setBannerImageUrl(url)
+        } else {
+          console.warn('Banner image not found: Investment-Calculator/exchnage.jpeg')
+        }
+      } catch (error) {
+        console.error('Error loading banner image:', error)
+      }
+    }
+    loadBannerImage()
+  }, [])
+
+  // Calculate investment projection
+  useEffect(() => {
+    const monthlyRate = riskProfile === 'low' ? 0.02 : 0.04 // 2% or 4% monthly
+    const months = 120 // 10 years
+    const data = []
+    const simpleData = [] // Simple interest - gains never compound
+    let currentValue = initialCapital
+    let simplePrincipal = initialCapital // Principal (initial + deposits)
+    let simpleAccumulatedGains = 0 // Accumulated gains (never become principal)
+
+    for (let month = 0; month <= months; month++) {
+      if (month > 0) {
+        // Blue line: Full monthly compounding
+        // Apply growth to current value (which includes previous gains), then add contribution
+        // The ending balance becomes the starting balance for next month
+        currentValue = currentValue * (1 + monthlyRate)
+        currentValue += monthlyContribution
+        
+        // Gray line: Simple interest - gains never compound
+        // Step 1: Add deposit to principal (deposits compound because they increase principal)
+        simplePrincipal += monthlyContribution
+        // Step 2: Calculate gain on current principal
+        const monthlyGain = simplePrincipal * monthlyRate
+        // Step 3: Add gain to accumulated gains (gains never become principal)
+        simpleAccumulatedGains += monthlyGain
+      }
+      
+      // Calculate simple value for this month
+      const simpleValue = simplePrincipal + simpleAccumulatedGains
+      
+      data.push({
+        month,
+        value: currentValue,
+        year: Math.floor(month / 12),
+        monthInYear: (month % 12) + 1
+      })
+      simpleData.push({
+        month,
+        value: simpleValue
+      })
+    }
+
+    setProjectionData({ compound: data, simple: simpleData })
+    const finalValue = currentValue
+    const totalInvested = initialCapital + (monthlyContribution * months)
+    const profit = finalValue - totalInvested
+    const growth = ((finalValue - totalInvested) / totalInvested) * 100
+
+    setTotalValue(finalValue)
+    setTotalProfit(profit)
+    setTotalGrowth(growth)
+  }, [riskProfile, initialCapital, monthlyContribution])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
   useEffect(() => {
@@ -423,14 +505,393 @@ const InvestmentCalculatorPage = () => {
       </header>
 
       <main className="main-content">
+        {/* Page Banner */}
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
-          </div>
+          <div
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          />
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Investment Calculator</h1>
               <p className="page-banner-subtitle">Estimate potential outcomes</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section calculator-hero-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Model Your Capital Growth</h2>
+              <p className="white-hero-subtitle">
+                Simulate how capital evolves over time using our return calculator. Understand outcomes before committing capital and align expectations with real market mechanics.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  navigate('/')
+                  // Scroll to calendar section on homepage after navigation with offset
+                  setTimeout(() => {
+                    const calendarSection = document.querySelector('.third-widget-section')
+                    if (calendarSection) {
+                      const elementPosition = calendarSection.getBoundingClientRect().top
+                      const offsetPosition = elementPosition + window.pageYOffset - 200 // 200px offset from top
+                      window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                      })
+                    }
+                  }, 300)
+                }}
+              >
+                Schedule Consultation →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Calculator Widget Section */}
+        <section className="white-section calculator-widget-section">
+          <div className="container">
+            <div className="calculator-widget">
+              <div className="calculator-inputs">
+                <div className="calculator-input-group">
+                  <label className="calculator-label">Risk Profile</label>
+                  <div className="risk-profile-selector">
+                    <button
+                      className={`risk-profile-btn ${riskProfile === 'low' ? 'active' : ''}`}
+                      onClick={() => setRiskProfile('low')}
+                    >
+                      Low Risk (2% Monthly)
+                    </button>
+                    <button
+                      className={`risk-profile-btn ${riskProfile === 'high' ? 'active' : ''}`}
+                      onClick={() => setRiskProfile('high')}
+                    >
+                      High Risk (4% Monthly)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="calculator-input-group">
+                  <label className="calculator-label">
+                    Initial Capital: €{initialCapital.toLocaleString()}
+                  </label>
+                  <input
+                    type="range"
+                    min="1000"
+                    max="100000"
+                    step="1000"
+                    value={initialCapital}
+                    onChange={(e) => setInitialCapital(Number(e.target.value))}
+                    className="calculator-slider"
+                  />
+                  <div className="slider-labels">
+                    <span>€1,000</span>
+                    <span>€100,000</span>
+                  </div>
+                </div>
+
+                <div className="calculator-input-group">
+                  <label className="calculator-label">
+                    Monthly Contribution: €{monthlyContribution.toLocaleString()}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10000"
+                    step="100"
+                    value={monthlyContribution}
+                    onChange={(e) => setMonthlyContribution(Number(e.target.value))}
+                    className="calculator-slider"
+                  />
+                  <div className="slider-labels">
+                    <span>€0</span>
+                    <span>€10,000</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="calculator-results">
+                <div className="results-summary">
+                  <div className="result-item">
+                    <div className="result-label">Total Value (10 years)</div>
+                    <div className="result-value">€{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div className="result-item">
+                    <div className="result-label">Total Profit</div>
+                    <div className="result-value profit">€{totalProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div className="result-item">
+                    <div className="result-label">Total Growth</div>
+                    <div className="result-value growth">{totalGrowth.toFixed(1)}%</div>
+                  </div>
+                </div>
+
+                <div className="projection-chart">
+                  <h3 className="chart-title">10-Year Projection</h3>
+                  <div className="chart-container" ref={chartRef}>
+                    <svg className="chart-svg" viewBox="0 0 900 400" preserveAspectRatio="xMidYMid meet" style={{ overflow: 'visible' }}>
+                      {projectionData.compound.length > 0 && (() => {
+                        const compoundData = projectionData.compound
+                        const simpleData = projectionData.simple
+                        const allValues = [...compoundData.map(d => d.value), ...simpleData.map(d => d.value)]
+                        const maxValue = Math.max(...allValues)
+                        const minValue = Math.min(...allValues)
+                        const range = maxValue - minValue || 1
+                        const width = 900
+                        const height = 400
+                        const paddingLeft = 80
+                        const paddingRight = 40
+                        const paddingTop = 40
+                        const paddingBottom = 60
+                        const chartWidth = width - paddingLeft - paddingRight
+                        const chartHeight = height - paddingTop - paddingBottom
+
+                        // Calculate points for both lines
+                        const compoundPoints = compoundData.map((d, i) => {
+                          const x = paddingLeft + (chartWidth / compoundData.length) * i
+                          const y = paddingTop + chartHeight - ((d.value - minValue) / range) * chartHeight
+                          return { x, y, data: d }
+                        })
+
+                        const simplePoints = simpleData.map((d, i) => {
+                          const x = paddingLeft + (chartWidth / simpleData.length) * i
+                          const y = paddingTop + chartHeight - ((d.value - minValue) / range) * chartHeight
+                          return { x, y, data: d }
+                        })
+
+                        // Create area paths
+                        const simpleAreaPath = `M ${simplePoints[0].x} ${height - paddingBottom} ${simplePoints.map(p => `L ${p.x} ${p.y}`).join(' ')} L ${simplePoints[simplePoints.length - 1].x} ${height - paddingBottom} Z`
+                        const compoundAreaPath = `M ${compoundPoints[0].x} ${height - paddingBottom} ${compoundPoints.map(p => `L ${p.x} ${p.y}`).join(' ')} L ${compoundPoints[compoundPoints.length - 1].x} ${height - paddingBottom} Z`
+
+                        // Y-axis labels
+                        const yAxisLabels = []
+                        for (let i = 0; i <= 10; i++) {
+                          const value = minValue + (range / 10) * (10 - i)
+                          const y = paddingTop + (chartHeight / 10) * i
+                          yAxisLabels.push(
+                            <text
+                              key={`y-label-${i}`}
+                              x={paddingLeft - 10}
+                              y={y + 4}
+                              textAnchor="end"
+                              fontSize="12"
+                              fill="#6b7280"
+                            >
+                              €{(value / 1000).toFixed(0)}k
+                            </text>
+                          )
+                        }
+
+                        // X-axis labels (years)
+                        const xAxisLabels = []
+                        for (let year = 0; year <= 10; year++) {
+                          const month = year * 12
+                          const x = paddingLeft + (chartWidth / compoundData.length) * month
+                          xAxisLabels.push(
+                            <text
+                              key={`x-label-${year}`}
+                              x={x}
+                              y={height - paddingBottom + 20}
+                              textAnchor="middle"
+                              fontSize="12"
+                              fill="#6b7280"
+                            >
+                              Year {year}
+                            </text>
+                          )
+                        }
+
+                        // Grid lines
+                        const gridLines = []
+                        for (let i = 0; i <= 10; i++) {
+                          const y = paddingTop + (chartHeight / 10) * i
+                          gridLines.push(
+                            <line
+                              key={`grid-${i}`}
+                              x1={paddingLeft}
+                              y1={y}
+                              x2={width - paddingRight}
+                              y2={y}
+                              stroke="#e5e7eb"
+                              strokeWidth="1"
+                            />
+                          )
+                        }
+
+                        // Vertical grid lines for years
+                        for (let year = 0; year <= 10; year++) {
+                          const month = year * 12
+                          const x = paddingLeft + (chartWidth / compoundData.length) * month
+                          gridLines.push(
+                            <line
+                              key={`grid-v-${year}`}
+                              x1={x}
+                              y1={paddingTop}
+                              x2={x}
+                              y2={height - paddingBottom}
+                              stroke="#e5e7eb"
+                              strokeWidth="1"
+                              strokeDasharray="2,2"
+                            />
+                          )
+                        }
+
+                        // Create polyline paths
+                        const compoundPolyline = compoundPoints.map(p => `${p.x},${p.y}`).join(' ')
+                        const simplePolyline = simplePoints.map(p => `${p.x},${p.y}`).join(' ')
+
+                        return (
+                          <>
+                            {/* Grid lines */}
+                            {gridLines}
+                            
+                            {/* Y-axis labels */}
+                            {yAxisLabels}
+                            
+                            {/* X-axis labels */}
+                            {xAxisLabels}
+                            
+                            {/* Axis lines */}
+                            <line
+                              x1={paddingLeft}
+                              y1={paddingTop}
+                              x2={paddingLeft}
+                              y2={height - paddingBottom}
+                              stroke="#9ca3af"
+                              strokeWidth="2"
+                            />
+                            <line
+                              x1={paddingLeft}
+                              y1={height - paddingBottom}
+                              x2={width - paddingRight}
+                              y2={height - paddingBottom}
+                              stroke="#9ca3af"
+                              strokeWidth="2"
+                            />
+                            
+                            {/* Shaded areas */}
+                            <path
+                              d={simpleAreaPath}
+                              fill="#e5e7eb"
+                              fillOpacity="0.3"
+                            />
+                            <path
+                              d={`M ${simplePoints[0].x} ${simplePoints[0].y} ${simplePoints.map(p => `L ${p.x} ${p.y}`).join(' ')} ${compoundPoints.slice().reverse().map(p => `L ${p.x} ${p.y}`).join(' ')} Z`}
+                              fill="#3b82f6"
+                              fillOpacity="0.2"
+                            />
+                            
+                            {/* Lines */}
+                            <polyline
+                              points={simplePolyline}
+                              fill="none"
+                              stroke="#9ca3af"
+                              strokeWidth="2"
+                            />
+                            <polyline
+                              points={compoundPolyline}
+                              fill="none"
+                              stroke="#3b82f6"
+                              strokeWidth="3"
+                            />
+                            
+                            {/* Interactive points with hover */}
+                            {compoundPoints.map((point, i) => {
+                              if (i % 3 === 0 || hoveredPoint === i) { // Show every 3 months or hovered
+                                return (
+                                  <g key={`point-group-${i}`}>
+                                    <circle
+                                      cx={point.x}
+                                      cy={point.y}
+                                      r={hoveredPoint === i ? "6" : "4"}
+                                      fill={hoveredPoint === i ? "#2563eb" : "#3b82f6"}
+                                      stroke="#ffffff"
+                                      strokeWidth="2"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseEnter={() => setHoveredPoint(i)}
+                                      onMouseLeave={() => setHoveredPoint(null)}
+                                    />
+                                    {hoveredPoint === i && (() => {
+                                      // Show tooltip at top for first half, bottom for second half
+                                      const isFirstHalf = i < compoundPoints.length / 2
+                                      const tooltipY = isFirstHalf ? point.y - 100 : point.y + 30
+                                      const textY1 = isFirstHalf ? point.y - 80 : point.y + 50
+                                      const textY2 = isFirstHalf ? point.y - 60 : point.y + 70
+                                      const textY3 = isFirstHalf ? point.y - 40 : point.y + 90
+                                      
+                                      return (
+                                        <g>
+                                          <rect
+                                            x={point.x - 80}
+                                            y={tooltipY}
+                                            width="160"
+                                            height="70"
+                                            fill="#1f2937"
+                                            rx="6"
+                                          />
+                                          <text
+                                            x={point.x}
+                                            y={textY1}
+                                            textAnchor="middle"
+                                            fontSize="12"
+                                            fill="#ffffff"
+                                            fontWeight="600"
+                                          >
+                                            Month {point.data.month}
+                                          </text>
+                                          <text
+                                            x={point.x}
+                                            y={textY2}
+                                            textAnchor="middle"
+                                            fontSize="11"
+                                            fill="#9ca3af"
+                                          >
+                                            Ending Capital
+                                          </text>
+                                          <text
+                                            x={point.x}
+                                            y={textY3}
+                                            textAnchor="middle"
+                                            fontSize="13"
+                                            fill="#3b82f6"
+                                            fontWeight="600"
+                                          >
+                                            €{point.data.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                          </text>
+                                        </g>
+                                      )
+                                    })()}
+                                  </g>
+                                )
+                              }
+                              return null
+                            })}
+                          </>
+                        )
+                      })()}
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Text Section */}
+        <section className="white-section calculator-text-section">
+          <div className="container">
+            <div className="calculator-text-content">
+              <p className="calculator-text-small">
+                Calculator outputs are illustrative only and do not constitute financial advice. Any investment decision must be discussed with a qualified specialist and formalized through appropriate agreements.
+              </p>
             </div>
           </div>
         </section>

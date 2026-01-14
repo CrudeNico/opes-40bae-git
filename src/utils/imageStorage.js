@@ -13,16 +13,17 @@ export const getImageUrl = async (imagePath) => {
     const url = await getDownloadURL(imageRef)
     return url
   } catch (error) {
-    // Silently handle missing files - they may not be uploaded yet
-    // Don't log 404 errors to console as they're expected for missing files
-    if (error.code === 'storage/object-not-found' || error.code === 'storage/unauthorized') {
-      // Silently return null for missing files
+    // Log 403 errors for debugging (unauthorized access)
+    if (error.code === 'storage/unauthorized') {
+      console.warn(`Storage access denied (403) for path: ${imagePath}. Check storage rules and file path.`)
       return null
     }
-    // Only log unexpected errors (not 404s)
-    if (error.code !== 'storage/object-not-found') {
-      console.error('Error getting file URL:', error)
+    // Silently handle missing files (404) - they may not be uploaded yet
+    if (error.code === 'storage/object-not-found') {
+      return null
     }
+    // Log other unexpected errors
+    console.error('Error getting file URL:', error)
     return null
   }
 }
