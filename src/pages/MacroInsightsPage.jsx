@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './MacroInsightsPage.css'
 import './HomePage.css'
 
 const MacroInsightsPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,6 +14,10 @@ const MacroInsightsPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [structureImageUrl, setStructureImageUrl] = useState(null)
+  const [automatedImageUrl, setAutomatedImageUrl] = useState(null)
+  const [reportingImageUrl, setReportingImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +107,24 @@ const MacroInsightsPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load images
+  useEffect(() => {
+    const loadImages = async () => {
+      const bannerUrl = await getImageUrl('Macro-Insights/peace.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+      
+      const structureUrl = await getImageUrl('Macro-Insights/oilplant.jpeg')
+      if (structureUrl) setStructureImageUrl(structureUrl)
+      
+      const automatedUrl = await getImageUrl('Macro-Insights/opec1.png')
+      if (automatedUrl) setAutomatedImageUrl(automatedUrl)
+      
+      const reportingUrl = await getImageUrl('Macro-Insights/boat.jpeg')
+      if (reportingUrl) setReportingImageUrl(reportingUrl)
+    }
+    loadImages()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -424,13 +448,118 @@ const MacroInsightsPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
-          </div>
+          <div
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          />
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Macro Insights</h1>
               <p className="page-banner-subtitle">Global market drivers</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Understand Market Drivers Behind Crude Oil</h2>
+              <p className="white-hero-subtitle">
+                Geopolitical events, supply policy, and macroeconomic shifts directly shape crude oil price behavior. Our learning framework breaks down how wars, OPEC decisions, inventory cycles, and global demand translate into real market moves, enabling investors to understand not just what happens, but why it happens.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  navigate('/learning')
+                  handleLinkClick()
+                }}
+              >
+                Begin Learning →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Macro & Geopolitical Intelligence Section */}
+        <section className="white-section positioning-section">
+          <div className="container">
+            <div className="positioning-content">
+              <div className="positioning-text">
+                <h2 className="positioning-title">Macro & Geopolitical Intelligence</h2>
+                <div className="positioning-body">
+                  <p>Our market framework continuously monitors geopolitical developments with direct impact on crude oil pricing, including armed conflicts, sanctions, shipping disruptions, and regional instability. Events affecting key production zones, transit routes, and strategic reserves are assessed in real time to anticipate volatility, risk shifts, and directional pressure in energy markets.</p>
+                </div>
+              </div>
+              <div className="positioning-image">
+                <div 
+                  className="positioning-image-widget"
+                  style={{
+                    backgroundImage: structureImageUrl ? `url(${structureImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Supply, OPEC & Policy Dynamics Section */}
+        <section className="white-section sentiment-section">
+          <div className="container">
+            <div className="sentiment-content">
+              <div className="sentiment-image">
+                <div 
+                  className="sentiment-image-widget"
+                  style={{
+                    backgroundImage: automatedImageUrl ? `url(${automatedImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
+                </div>
+              </div>
+              <div className="sentiment-text">
+                <h2 className="sentiment-title">Supply, OPEC & Policy Dynamics</h2>
+                <div className="sentiment-body">
+                  <p>Production decisions, OPEC and OPEC+ policy actions, quota adjustments, and compliance levels are systematically tracked. These supply-side variables are evaluated alongside inventory data, export flows, and reserve releases to identify structural imbalances that influence medium- and long-term oil pricing behavior.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Event-Driven Market Impact Assessment Section */}
+        <section className="white-section geopolitical-section">
+          <div className="container">
+            <div className="geopolitical-content">
+              <div className="geopolitical-text">
+                <h2 className="geopolitical-title">Event-Driven Market Impact Assessment</h2>
+                <div className="geopolitical-body">
+                  <p>Macroeconomic releases, central bank decisions, and energy-specific policy announcements are integrated into our analysis to evaluate secondary effects on crude demand and capital flows. Each event is contextualized against prevailing market structure to distinguish short-term noise from actionable shifts in trend and risk exposure.</p>
+                </div>
+              </div>
+              <div className="geopolitical-image">
+                <div 
+                  className="geopolitical-image-widget"
+                  style={{
+                    backgroundImage: reportingImageUrl ? `url(${reportingImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
+                </div>
+              </div>
             </div>
           </div>
         </section>

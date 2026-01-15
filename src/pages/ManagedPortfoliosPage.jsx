@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './ManagedPortfoliosPage.css'
 import './HomePage.css'
 
@@ -17,6 +18,7 @@ const ManagedPortfoliosPage = () => {
   const [investorsValue, setInvestorsValue] = useState(0)
   const [returnValue, setReturnValue] = useState(0)
   const bigWidgetRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -148,6 +150,15 @@ const ManagedPortfoliosPage = () => {
       }
     }
   }, [openNavSection])
+
+  // Load banner image
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const url = await getImageUrl('Managed-Portfolios/charts.jpeg')
+      if (url) setBannerImageUrl(url)
+    }
+    loadBannerImage()
+  }, [])
 
   // Animate big widget numbers
   useEffect(() => {
@@ -518,9 +529,15 @@ const ManagedPortfoliosPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
-          </div>
+          <div
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          />
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Managed Portfolios</h1>
