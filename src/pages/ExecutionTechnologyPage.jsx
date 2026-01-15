@@ -112,16 +112,16 @@ const ExecutionTechnologyPage = () => {
   // Load images
   useEffect(() => {
     const loadImages = async () => {
-      const bannerUrl = await getImageUrl('Execution-Technology/banner.jpg')
+      const bannerUrl = await getImageUrl('Execution-&-Technology/trfloor.jpeg')
       if (bannerUrl) setBannerImageUrl(bannerUrl)
       
-      const positioningUrl = await getImageUrl('Execution-Technology/positioning.jpg')
+      const positioningUrl = await getImageUrl('Execution-&-Technology/layout.png')
       if (positioningUrl) setPositioningImageUrl(positioningUrl)
       
-      const sentimentUrl = await getImageUrl('Execution-Technology/sentiment.jpg')
+      const sentimentUrl = await getImageUrl('Execution-&-Technology/laptop.jpeg')
       if (sentimentUrl) setSentimentImageUrl(sentimentUrl)
       
-      const geopoliticalUrl = await getImageUrl('Execution-Technology/geopolitical.jpg')
+      const geopoliticalUrl = await getImageUrl('Execution-&-Technology/212.jpg')
       if (geopoliticalUrl) setGeopoliticalImageUrl(geopoliticalUrl)
     }
     loadImages()
@@ -625,6 +625,18 @@ const ExecutionTechnologyPage = () => {
                 onClick={() => {
                   navigate('/our-team')
                   handleLinkClick()
+                  // Scroll to Our Offices section on Our Team page after navigation with offset
+                  setTimeout(() => {
+                    const officesSection = document.querySelector('.offices-section')
+                    if (officesSection) {
+                      const elementPosition = officesSection.getBoundingClientRect().top
+                      const offsetPosition = elementPosition + window.pageYOffset - 150 // 150px offset from top
+                      window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                      })
+                    }
+                  }, 300)
                 }}
               >
                 View Locations →
