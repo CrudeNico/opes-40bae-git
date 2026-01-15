@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './OnboardingPage.css'
 import './HomePage.css'
 
 const OnboardingPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,6 +14,7 @@ const OnboardingPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +104,15 @@ const OnboardingPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load banner image
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const url = await getImageUrl('Onboarding/consult.png')
+      if (url) setBannerImageUrl(url)
+    }
+    loadBannerImage()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -424,13 +436,126 @@ const OnboardingPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
-          </div>
+          <div
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          />
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Onboarding</h1>
               <p className="page-banner-subtitle">Simple account setup</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Onboarding Process Timeline Section */}
+        <section className="white-section process-timeline-section">
+          <div className="container">
+            <div className="process-timeline-content">
+              <h2 className="process-timeline-title">Investor Onboarding Timeline</h2>
+              <p className="process-timeline-subtitle">A clearly defined progression that guides investors from initial access to full account activation with transparency at every stage.</p>
+              
+              <div className="process-timeline">
+                <div className="timeline-line"></div>
+                
+                {/* Step 1 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">1</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Account Creation & Initial Access</h3>
+                    <p className="timeline-widget-text">Investors begin by creating a secure account, providing basic information required to initiate the onboarding process and enable preliminary access to the platform.</p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">2</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Consultation & Capital Assessment</h3>
+                    <p className="timeline-widget-text">A consultation is conducted to understand objectives, capital size, and risk expectations, allowing us to evaluate suitability and define an appropriate operational framework.</p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">3</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Review, Alignment & Documentation</h3>
+                    <p className="timeline-widget-text">All details are reviewed internally to ensure alignment with our strategies and risk controls. Required agreements and disclosures are then issued for review and execution.</p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="timeline-step">
+                  <div className="timeline-number">4</div>
+                  <div className="timeline-widget">
+                    <h3 className="timeline-widget-title">Account Activation & Capital Deployment</h3>
+                    <p className="timeline-widget-text">Once documentation is completed and capital transfer is confirmed, the account is integrated into operations, with full access to reporting tracking.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Structured Investor Onboarding</h2>
+              <p className="white-hero-subtitle">
+                Our onboarding process is designed to be secure, efficient, and fully compliant. Investors are guided through identity verification, capital allocation parameters, and account setup before any operations begin. Once onboarding is completed, access is granted to the private investor dashboard, reporting tools, and ongoing communications. This ensures that every account is configured correctly from the start, aligned with risk controls, and ready for transparent performance tracking.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Widget Section */}
+        <section className="white-section onboarding-cta-section">
+          <div className="container">
+            <div className="onboarding-cta-widget">
+              <div className="onboarding-cta-left">
+                <h3 className="onboarding-cta-title">Create an Account</h3>
+                <p className="onboarding-cta-text">Start your investment journey with a secure account setup</p>
+                <button 
+                  className="btn btn-cta-primary"
+                  onClick={() => {
+                    navigate('/signup')
+                    handleLinkClick()
+                  }}
+                >
+                  Create Account →
+                </button>
+              </div>
+              <div className="onboarding-cta-right">
+                <h3 className="onboarding-cta-title">Schedule a Consultation</h3>
+                <p className="onboarding-cta-text">Book a consultation to discuss your investment needs</p>
+                <button 
+                  className="btn btn-cta-secondary"
+                  onClick={() => {
+                    navigate('/')
+                    handleLinkClick()
+                    setTimeout(() => {
+                      const calendarSection = document.querySelector('.third-widget-section')
+                      if (calendarSection) {
+                        const elementPosition = calendarSection.getBoundingClientRect().top
+                        const offsetPosition = elementPosition + window.pageYOffset - 200
+                        window.scrollTo({
+                          top: offsetPosition,
+                          behavior: 'smooth'
+                        })
+                      }
+                    }, 300)
+                  }}
+                >
+                  Schedule Consultation →
+                </button>
+              </div>
             </div>
           </div>
         </section>

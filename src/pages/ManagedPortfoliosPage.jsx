@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import './ManagedPortfoliosPage.css'
 import './HomePage.css'
 
 const ManagedPortfoliosPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,6 +13,10 @@ const ManagedPortfoliosPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [capitalValue, setCapitalValue] = useState(0)
+  const [investorsValue, setInvestorsValue] = useState(0)
+  const [returnValue, setReturnValue] = useState(0)
+  const bigWidgetRef = useRef(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -144,6 +149,95 @@ const ManagedPortfoliosPage = () => {
     }
   }, [openNavSection])
 
+  // Animate big widget numbers
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Animate capital (1.4 million)
+            const animateCapital = () => {
+              const duration = 2000 // 2 seconds
+              const start = 0
+              const end = 1.4
+              const startTime = performance.now()
+
+              const animate = (currentTime) => {
+                const elapsed = currentTime - startTime
+                const progress = Math.min(elapsed / duration, 1)
+                const current = start + (end - start) * progress
+                setCapitalValue(current)
+
+                if (progress < 1) {
+                  requestAnimationFrame(animate)
+                }
+              }
+              requestAnimationFrame(animate)
+            }
+
+            // Animate investors (53)
+            const animateInvestors = () => {
+              const duration = 2000
+              const start = 0
+              const end = 53
+              const startTime = performance.now()
+
+              const animate = (currentTime) => {
+                const elapsed = currentTime - startTime
+                const progress = Math.min(elapsed / duration, 1)
+                const current = Math.floor(start + (end - start) * progress)
+                setInvestorsValue(current)
+
+                if (progress < 1) {
+                  requestAnimationFrame(animate)
+                }
+              }
+              requestAnimationFrame(animate)
+            }
+
+            // Animate return (70.2%)
+            const animateReturn = () => {
+              const duration = 2000
+              const start = 0
+              const end = 70.2
+              const startTime = performance.now()
+
+              const animate = (currentTime) => {
+                const elapsed = currentTime - startTime
+                const progress = Math.min(elapsed / duration, 1)
+                const current = start + (end - start) * progress
+                setReturnValue(current)
+
+                if (progress < 1) {
+                  requestAnimationFrame(animate)
+                }
+              }
+              requestAnimationFrame(animate)
+            }
+
+            // Start animations
+            animateCapital()
+            animateInvestors()
+            animateReturn()
+
+            // Unobserve after animation starts
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.3 }
+    )
+
+    if (bigWidgetRef.current) {
+      observer.observe(bigWidgetRef.current)
+    }
+
+    return () => {
+      if (bigWidgetRef.current) {
+        observer.unobserve(bigWidgetRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="managed-portfolios-page">
@@ -431,6 +525,124 @@ const ManagedPortfoliosPage = () => {
             <div className="page-banner-content">
               <h1 className="page-banner-title">Managed Portfolios</h1>
               <p className="page-banner-subtitle">Professionally managed capital</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Segmented Portfolio Management</h2>
+              <p className="white-hero-subtitle">
+                Investors are grouped into dedicated portfolios based on allocated capital size and strategy profile, allowing operations to be managed independently. This structure improves execution control, risk isolation, and operational efficiency across different investment groups.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  navigate('/portfolio-models')
+                  handleLinkClick()
+                }}
+              >
+                Portfolio Models →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Big Widget Section */}
+        <section className="white-section big-widget-section">
+          <div className="container">
+            <div className="big-widget" ref={bigWidgetRef}>
+              <div className="big-widget-content">
+                <div className="big-widget-stat">
+                  <div className="big-widget-value">${capitalValue.toFixed(1)}M</div>
+                  <div className="big-widget-label">Total Capital Under Management</div>
+                </div>
+                <div className="big-widget-stat">
+                  <div className="big-widget-value">{investorsValue}+</div>
+                  <div className="big-widget-label">Active Investors</div>
+                </div>
+                <div className="big-widget-stat">
+                  <div className="big-widget-value">{returnValue.toFixed(1)}%</div>
+                  <div className="big-widget-label">Annual Return Record</div>
+                </div>
+              </div>
+              <div className="big-widget-text">
+                <p>
+                  Capital allocation is structured according to the amount invested. Investor funds are grouped internally to build managed trading accounts typically ranging between €100,000 and €200,000 per account. Once allocated, a dedicated advisor from our team is assigned to oversee all trading operations, execution, and portfolio adjustments for that group.
+                </p>
+                <p>
+                  While all investors follow the same core strategy and market positioning, variations may occur in lot sizing, exposure, and risk distribution based on account size and timing. Position direction and overall portfolio logic remain aligned across accounts.
+                </p>
+                <p>
+                  This account segmentation is intentional. Operating within defined balance limits enhances broker-level risk management and allows investors to benefit from capital protection frameworks provided by our partners, typically covering up to €100,000 per account. This structure prioritizes capital safety, operational control, and execution consistency while maintaining transparent oversight for each investor.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Capital Allocation Section */}
+        <section className="white-section investor-choice-section">
+          <div className="container">
+            <div className="investor-choice-content">
+              <div className="investor-choice-text">
+                <h2 className="investor-choice-title">Capital is allocated</h2>
+                <p className="investor-choice-description">
+                  More than half of capital invested is actively deployed, while the remaining portion is reserved as a margin and risk buffer. This allocation prioritizes capital protection, operational flexibility, and controlled exposure under varying market conditions.
+                </p>
+                <div className="investor-choice-stats">
+                  <div className="stat-item">
+                    <div className="stat-value">75%</div>
+                    <div className="stat-label">Active Capital</div>
+                  </div>
+                  <div className="stat-item">
+                    <div className="stat-value">25%</div>
+                    <div className="stat-label">Non-Operational Capital</div>
+                  </div>
+                </div>
+              </div>
+              <div className="investor-choice-chart">
+                <svg viewBox="0 0 200 200" className="pie-chart">
+                  {/* Active Capital - 75% */}
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="80"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="40"
+                    strokeDasharray={`${75 * 5.0265} ${100 * 5.0265}`}
+                    strokeDashoffset="0"
+                    transform="rotate(-90 100 100)"
+                    className="pie-segment active-capital"
+                  />
+                  {/* Non-Operational Capital - 25% */}
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="80"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="40"
+                    strokeDasharray={`${25 * 5.0265} ${100 * 5.0265}`}
+                    strokeDashoffset={`-${75 * 5.0265}`}
+                    transform="rotate(-90 100 100)"
+                    className="pie-segment non-operational"
+                  />
+                </svg>
+                <div className="pie-chart-legend">
+                  <div className="legend-item">
+                    <div className="legend-color" style={{ backgroundColor: '#10b981' }}></div>
+                    <span className="legend-label">Active Capital (75%)</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="legend-color" style={{ backgroundColor: '#f59e0b' }}></div>
+                    <span className="legend-label">Non-Operational Capital (25%)</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

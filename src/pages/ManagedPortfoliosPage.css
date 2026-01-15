@@ -11,3 +11,217 @@
   position: relative;
   max-width: 100vw;
 }
+
+/* Big Widget Section */
+.big-widget-section {
+  padding-top: 1rem;
+  padding-bottom: 4rem;
+}
+
+.big-widget {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #f9fafb;
+  border-radius: 0.75rem;
+  padding: 3rem;
+}
+
+.big-widget-content {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.big-widget-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.big-widget-value {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.big-widget-label {
+  font-size: 1.125rem;
+  color: #4b5563;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.big-widget-text {
+  max-width: 100%;
+  margin-top: 2rem;
+}
+
+.big-widget-text p {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.7;
+  margin: 0 0 1.5rem 0;
+}
+
+.big-widget-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Investor Choice Section */
+.investor-choice-section {
+  padding: 4rem 2rem;
+  background: #f9fafb;
+}
+
+.investor-choice-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.investor-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.investor-choice-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.investor-choice-description {
+  font-size: 1.125rem;
+  color: #4b5563;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.investor-choice-stats {
+  display: flex;
+  gap: 3rem;
+  margin-top: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #3b82f6;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.investor-choice-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.pie-chart {
+  width: 300px;
+  height: 300px;
+  max-width: 100%;
+}
+
+.pie-segment {
+  transition: opacity 0.3s ease;
+}
+
+.pie-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.legend-color {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  font-size: 0.875rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .big-widget {
+    padding: 2rem 1.5rem;
+    min-height: 250px;
+  }
+
+  .big-widget-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .big-widget-value {
+    font-size: 2.5rem;
+  }
+
+  .big-widget-label {
+    font-size: 1rem;
+  }
+
+  .investor-choice-content {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .investor-choice-title {
+    font-size: 2rem;
+  }
+
+  .investor-choice-description {
+    font-size: 1rem;
+  }
+
+  .investor-choice-stats {
+    gap: 2rem;
+  }
+
+  .stat-value {
+    font-size: 2.5rem;
+  }
+
+  .pie-chart {
+    width: 250px;
+    height: 250px;
+  }
+}
