@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './PerformanceTrackingPage.css'
 import './HomePage.css'
 
 const PerformanceTrackingPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -12,6 +14,8 @@ const PerformanceTrackingPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [widgetImages, setWidgetImages] = useState({})
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -102,6 +106,62 @@ const PerformanceTrackingPage = () => {
       }
     }
   }, [])
+
+  // Load banner image
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const url = await getImageUrl('Performance-Tracking/stockexchnage2.jpeg')
+      if (url) setBannerImageUrl(url)
+    }
+    loadBannerImage()
+  }, [])
+
+  // Load widget images
+  useEffect(() => {
+    const loadWidgetImages = async () => {
+      const images = await Promise.all([
+        getImageUrl('Performance-Tracking/screen.png'),
+        getImageUrl('Performance-Tracking/trades.png'),
+        getImageUrl('Performance-Tracking/oper.png'),
+        getImageUrl('Performance-Tracking/proof.png'),
+      ])
+      setWidgetImages({
+        widget1: images[0],
+        widget2: images[1],
+        widget3: images[2],
+        widget4: images[3],
+      })
+    }
+    loadWidgetImages()
+  }, [])
+
+  // Performance widgets data
+  const performanceWidgets = [
+    { 
+      id: 1, 
+      title: 'Investor Performance Dashboard', 
+      description: 'Each investor receives a dedicated panel with real-time and historical performance data. Monthly returns, equity curves, drawdowns, and account balances are displayed clearly, with no aggregated or obscured figures.', 
+      imageKey: 'widget1' 
+    },
+    { 
+      id: 2, 
+      title: 'Monthly Performance Reports', 
+      description: 'Detailed monthly reports are issued covering returns, open and closed positions, risk exposure, and capital movements. Reports are standardized, time-stamped, and aligned with the actual trading accounts.', 
+      imageKey: 'widget2' 
+    },
+    { 
+      id: 3, 
+      title: 'Trade & Operations Transparency', 
+      description: 'All trading activity is documented and reported. Position sizing, execution periods, and portfolio adjustments are disclosed so investors can verify how results were generated, not just the outcome.', 
+      imageKey: 'widget3' 
+    },
+    { 
+      id: 4, 
+      title: 'Audit-Ready Record Keeping', 
+      description: 'All performance data and reports are archived and accessible for review. This structure allows investors to independently track consistency over time and supports external verification if required.', 
+      imageKey: 'widget4' 
+    },
+  ]
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
   useEffect(() => {
@@ -424,13 +484,94 @@ const PerformanceTrackingPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
-          </div>
+          <div
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          />
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Performance Tracking</h1>
               <p className="page-banner-subtitle">Transparent reporting</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="white-section">
+          <div className="container">
+            <div className="white-hero">
+              <h2 className="white-hero-title">Access Your Investor Dashboard</h2>
+              <p className="white-hero-subtitle">
+                Secure onboarding grants access to your private investor panel, where performance tracking, monthly reporting, and full operational transparency are available from day one.
+              </p>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => {
+                  navigate('/onboarding')
+                  handleLinkClick()
+                }}
+              >
+                Begin Investor Onboarding →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Performance Widgets Section */}
+        <section className="white-section performance-widgets-section">
+          <div className="container">
+            <div className="performance-widgets-content">
+              <div className="performance-widgets-header">
+                <h2 className="performance-widgets-title">Performance Reports</h2>
+                <p className="performance-widgets-subtitle">Download quarterly and annual performance reports</p>
+              </div>
+              
+              <div className="performance-widgets-grid">
+                {performanceWidgets.map((widget) => (
+                  <div 
+                    key={widget.id} 
+                    className="performance-widget-card"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.classList.add('hovered')
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.classList.remove('hovered')
+                    }}
+                  >
+                    <div className="performance-widget-text">
+                      <h3 className="performance-widget-title">{widget.title}</h3>
+                      <p className="performance-widget-description">{widget.description}</p>
+                    </div>
+                    {widgetImages[widget.imageKey] && (
+                      <div 
+                        className="performance-widget-image"
+                        style={{
+                          backgroundImage: `url(${widgetImages[widget.imageKey]})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat'
+                        }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Additional Text Section */}
+        <section className="white-section performance-text-section">
+          <div className="container">
+            <div className="performance-text-content">
+              <p className="performance-text">
+                Access to performance data, reports, and operational details is restricted to active investors only. All information is provided with full transparency, including strategy execution and risk parameters, without public distribution.
+              </p>
             </div>
           </div>
         </section>
