@@ -2358,11 +2358,34 @@
   .third-widget {
     padding: 1.5rem;
     min-height: 600px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+
+  .calendar-container {
+    width: 100%;
+    height: auto;
+    min-height: auto;
+  }
+
+  .consultation-form {
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    align-items: flex-start;
+  }
+
+  .form-header {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    padding-top: 0;
   }
 
   .calendar-layout {
     grid-template-columns: 1fr;
     gap: 2rem;
+    height: auto;
   }
 
   .advisor-section {
@@ -2597,10 +2620,35 @@
   .third-widget {
     padding: 1rem;
     min-height: 700px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+
+  .calendar-container {
+    width: 100%;
+    height: auto;
+    min-height: auto;
+  }
+
+  .consultation-form {
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    align-items: flex-start;
+  }
+
+  .form-header {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    padding-top: 0;
+    position: relative;
+    top: 0;
   }
 
   .calendar-layout {
     gap: 1.5rem;
+    height: auto;
   }
 
   .advisor-avatar {
