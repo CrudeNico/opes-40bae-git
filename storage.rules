@@ -183,6 +183,12 @@ service firebase.storage {
       allow write: if isAuthenticated(); // Only authenticated users can upload
     }
 
+    // Risk Guidance images - public read access for website images
+    match /Risk-Guidance/{fileName} {
+      allow read: if true; // Public read access - no authentication required
+      allow write: if isAuthenticated(); // Only authenticated users can upload
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

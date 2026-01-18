@@ -131,7 +131,7 @@ const CompliancePage = () => {
   // Load banner image
   useEffect(() => {
     const loadBannerImage = async () => {
-      const url = await getImageUrl('Compliance/banner.jpg')
+      const url = await getImageUrl('Compliance/opec3.png')
       if (url) setBannerImageUrl(url)
     }
     loadBannerImage()

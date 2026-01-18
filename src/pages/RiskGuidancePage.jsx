@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './RiskGuidancePage.css'
 import './HomePage.css'
 
@@ -12,6 +13,30 @@ const RiskGuidancePage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  
+  // Refs for scroll navigation
+  const sectionRefs = {
+    introduction: useRef(null),
+    probabilistic: useRef(null),
+    structural: useRef(null),
+    scope: useRef(null),
+    treatment: useRef(null),
+    fully: useRef(null),
+    acknowledgment: useRef(null)
+  }
+
+  const scrollToSection = (sectionKey) => {
+    const section = sectionRefs[sectionKey]?.current
+    if (section) {
+      const offset = 100
+      const elementPosition = section.getBoundingClientRect().top + window.scrollY
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: 'smooth'
+      })
+    }
+  }
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -101,6 +126,15 @@ const RiskGuidancePage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load banner image
+  useEffect(() => {
+    const loadBannerImage = async () => {
+      const url = await getImageUrl('Risk-Guidance/OilMarketfundamentals.png')
+      if (url) setBannerImageUrl(url)
+    }
+    loadBannerImage()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -423,14 +457,139 @@ const RiskGuidancePage = () => {
       </header>
 
       <main className="main-content">
+        {/* Page Banner */}
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
               <h1 className="page-banner-title">Risk Guidance</h1>
               <p className="page-banner-subtitle">Probabilities and expectations</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Navigation Section */}
+        <section className="white-section risk-guidance-nav-section">
+          <div className="container">
+            <div className="risk-guidance-nav-grid">
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('introduction')}>
+                Introduction
+              </button>
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('probabilistic')}>
+                Probabilistic Nature
+              </button>
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('structural')}>
+                Low-Risk Portfolio Structure
+              </button>
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('scope')}>
+                Principal Protection Scope
+              </button>
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('treatment')}>
+                Treatment of Capital
+              </button>
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('fully')}>
+                Fully At-Risk Structure
+              </button>
+              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('acknowledgment')}>
+                Investor Acknowledgment
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Content Sections */}
+        <section className="white-section risk-guidance-content-section">
+          <div className="container">
+            {/* Introduction Section */}
+            <div className="risk-guidance-section" ref={sectionRefs.introduction}>
+              <h2 className="risk-guidance-section-title">Risk Guidance</h2>
+              <div className="risk-guidance-section-content">
+                <p>This Risk Guidance section is intended to provide a structured and comprehensive explanation of how risk is defined, allocated, and interpreted within the portfolio frameworks offered. It is designed to support informed decision-making by clearly distinguishing between capital classifications, loss sequencing mechanisms, and probabilistic expectations, while reinforcing that all investment activity involves exposure to uncertainty and potential loss.</p>
+                <p>Risk classifications described herein reflect internal structural design and capital treatment methodologies. They do not represent guarantees, assurances of outcome, or commitments regarding future performance. Market behavior, external events, and systemic conditions may materially affect results in ways that cannot be fully anticipated or mitigated.</p>
+              </div>
+            </div>
+
+            {/* Probabilistic Nature of Investment Outcomes */}
+            <div className="risk-guidance-section" ref={sectionRefs.probabilistic}>
+              <h2 className="risk-guidance-section-title">Probabilistic Nature of Investment Outcomes</h2>
+              <div className="risk-guidance-section-content">
+                <p>All investment strategies operate within a probabilistic framework. Outcomes are influenced by a range of known and unknown variables, including market volatility, liquidity conditions, macroeconomic developments, and exogenous events. As such, investment results should be evaluated in terms of likelihoods and distributions rather than fixed or deterministic expectations.</p>
+                <p>Any reference to expectations, projections, or modeled outcomes is intended to convey strategic intent and structural design rather than certainty of realization. Actual results may differ materially from anticipated scenarios, and unfavorable outcomes may occur even in environments that historically exhibited stability.</p>
+                <p>Probability-based assessments do not eliminate risk and should not be interpreted as predictive statements. They serve solely as analytical tools to contextualize potential outcomes within a defined risk framework.</p>
+              </div>
+            </div>
+
+            {/* Structural Definition of the Low-Risk Portfolio */}
+            <div className="risk-guidance-section" ref={sectionRefs.structural}>
+              <h2 className="risk-guidance-section-title">Structural Definition of the Low-Risk Portfolio</h2>
+              <div className="risk-guidance-section-content">
+                <p>The low-risk portfolio structure incorporates a predefined capital prioritization mechanism under which only the original invested principal is designated for downside protection under normal operating conditions. This designation is limited in scope and applies exclusively to the initial capital contribution at the point of allocation.</p>
+                <p>This structural feature is designed to establish a clear and transparent hierarchy of capital treatment in adverse scenarios. It does not imply that the portfolio is immune to losses, nor does it suggest that total account value is protected from fluctuation or decline.</p>
+                <p>The low-risk classification reflects relative risk exposure and capital sequencing, not the absence of market risk.</p>
+              </div>
+            </div>
+
+            {/* Scope and Limitations of Principal Protection */}
+            <div className="risk-guidance-section" ref={sectionRefs.scope}>
+              <h2 className="risk-guidance-section-title">Scope and Limitations of Principal Protection</h2>
+              <div className="risk-guidance-section-content">
+                <p>The protection applied to initial invested capital is subject to defined operational parameters and assumes normal market functioning. It does not extend to conditions involving extreme volatility, systemic disruptions, or extraordinary market events where standard controls may be insufficient or temporarily suspended.</p>
+                <p>Principal protection does not apply to:</p>
+                <ul style={{ marginLeft: '1.5rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                  <li style={{ marginBottom: '0.5rem', color: '#4b5563' }}>Performance-derived gains</li>
+                  <li style={{ marginBottom: '0.5rem', color: '#4b5563' }}>Reinvested profits</li>
+                  <li style={{ marginBottom: '0.5rem', color: '#4b5563' }}>Additional capital contributions during contract duration.</li>
+                </ul>
+                <p>Once gains are realized, they are explicitly excluded from protected capital designation and are treated as fully exposed to market risk.</p>
+              </div>
+            </div>
+
+            {/* Treatment of Capital */}
+            <div className="risk-guidance-section" ref={sectionRefs.treatment}>
+              <h2 className="risk-guidance-section-title">Treatment of Capital</h2>
+              <div className="risk-guidance-section-content">
+                <p>All gains generated within the low-risk portfolio are classified as non-protected capital. These gains are fully exposed to market risk and may be partially or fully lost during periods of adverse performance.</p>
+                <p>This distinction ensures that protective mechanisms do not expand automatically as account value increases. The preservation framework is intentionally limited to the original capital contribution to prevent compounding risk exposure under the appearance of protection.</p>
+                <p>Accordingly, while total account equity may increase over time, the scope of protected capital remains fixed unless otherwise explicitly redefined.</p>
+                <p>Historical performance data may demonstrate periods in which the low-risk portfolio did not experience losses to initial invested capital. Such observations are retrospective in nature and do not alter the underlying probabilistic characteristics of future outcomes.</p>
+                <p>The absence of historical losses within a given timeframe should not be interpreted as evidence of guaranteed capital preservation or reduced future risk. Risk guidance is based on structural design and capital treatment rules rather than historical results.</p>
+                <p>Performance outcomes may vary materially across time periods, market regimes, and external conditions.</p>
+              </div>
+            </div>
+
+            {/* Fully At-Risk Portfolio Structure */}
+            <div className="risk-guidance-section" ref={sectionRefs.fully}>
+              <h2 className="risk-guidance-section-title">Fully At-Risk Portfolio Structure</h2>
+              <div className="risk-guidance-section-content">
+                <p>The fully at-risk portfolio is structured without capital prioritization or protective sequencing. All invested capital is exposed to market risk from inception, and losses are applied directly to total account value.</p>
+                <p>In this structure:</p>
+                <ul style={{ marginLeft: '1.5rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                  <li style={{ marginBottom: '0.5rem', color: '#4b5563' }}>There is no distinction between principal and gains.</li>
+                  <li style={{ marginBottom: '0.5rem', color: '#4b5563' }}>All capital bears equal risk.</li>
+                  <li style={{ marginBottom: '0.5rem', color: '#4b5563' }}>Losses, if incurred, are realized proportionally against invested amounts.</li>
+                </ul>
+                <p>This portfolio configuration is intended for participants who are willing to accept full exposure to both potential returns and potential losses in pursuit of higher variability in outcomes.</p>
+              </div>
+            </div>
+
+            {/* Investor Acknowledgment */}
+            <div className="risk-guidance-section" ref={sectionRefs.acknowledgment}>
+              <h2 className="risk-guidance-section-title">Investor Acknowledgment</h2>
+              <div className="risk-guidance-section-content">
+                <p>No portfolio, strategy, or allocation is classified as risk-free. All investment activity is subject to market risk, operational risk, liquidity risk, and external systemic influences.</p>
+                <p>References to "low risk" are relative descriptors intended to differentiate capital treatment and exposure levels. They should not be interpreted as assurances of loss avoidance or as substitutes for independent risk assessment.</p>
+                <p>Participation in any portfolio structure requires acknowledgment of the inherent uncertainty of financial markets and acceptance of potential losses, including the loss of invested capital.</p>
+                <p>Investors are responsible for ensuring that any allocation aligns with their individual financial circumstances, investment objectives, and tolerance for risk. Capital should only be committed where adverse outcomes can be sustained without compromising financial stability.</p>
+              </div>
             </div>
           </div>
         </section>
