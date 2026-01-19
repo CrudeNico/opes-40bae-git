@@ -41,6 +41,12 @@ const CareersPage = () => {
   const [talentNetworkJoined, setTalentNetworkJoined] = useState(false)
   const [bannerImageUrl, setBannerImageUrl] = useState(null)
   const [videoWidgetImageUrl, setVideoWidgetImageUrl] = useState(null)
+  const [sectionImages, setSectionImages] = useState({
+    section1: null,
+    section2: null,
+    section3: null,
+    section4: null
+  })
   
   // Job listings data
   const [jobs] = useState([
@@ -371,6 +377,20 @@ const CareersPage = () => {
       // Load video widget image
       const videoWidgetUrl = await getImageUrl('careers/2122.jpeg')
       if (videoWidgetUrl) setVideoWidgetImageUrl(videoWidgetUrl)
+
+      // Load section dropdown images
+      const sectionUrls = await Promise.all([
+        getImageUrl('Section/man1.jpeg'),
+        getImageUrl('Section/oilplant.jpeg'),
+        getImageUrl('Section/RiskManagement.png'),
+        getImageUrl('Section/Macro&GeopoliticalInsights.png')
+      ])
+      setSectionImages({
+        section1: sectionUrls[0],
+        section2: sectionUrls[1],
+        section3: sectionUrls[2],
+        section4: sectionUrls[3]
+      })
     }
 
     loadImages()
@@ -539,7 +559,9 @@ const CareersPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section1 && (
+                            <img src={sectionImages.section1} alt="Company" />
+                          )}
                         </div>
                       </>
                     )}
@@ -566,7 +588,9 @@ const CareersPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section2 && (
+                            <img src={sectionImages.section2} alt="Solutions" />
+                          )}
                         </div>
                       </>
                     )}
@@ -593,7 +617,9 @@ const CareersPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section3 && (
+                            <img src={sectionImages.section3} alt="Investments" />
+                          )}
                         </div>
                       </>
                     )}
@@ -620,7 +646,9 @@ const CareersPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section4 && (
+                            <img src={sectionImages.section4} alt="Resources" />
+                          )}
                         </div>
                       </>
                     )}

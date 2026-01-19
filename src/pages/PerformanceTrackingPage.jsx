@@ -16,6 +16,12 @@ const PerformanceTrackingPage = () => {
   const closeTimeoutRef = useRef(null)
   const [bannerImageUrl, setBannerImageUrl] = useState(null)
   const [widgetImages, setWidgetImages] = useState({})
+  const [sectionImages, setSectionImages] = useState({
+    section1: null,
+    section2: null,
+    section3: null,
+    section4: null
+  })
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -130,6 +136,20 @@ const PerformanceTrackingPage = () => {
         widget2: images[1],
         widget3: images[2],
         widget4: images[3],
+      })
+
+      // Load section dropdown images
+      const sectionUrls = await Promise.all([
+        getImageUrl('Section/man1.jpeg'),
+        getImageUrl('Section/oilplant.jpeg'),
+        getImageUrl('Section/RiskManagement.png'),
+        getImageUrl('Section/Macro&GeopoliticalInsights.png')
+      ])
+      setSectionImages({
+        section1: sectionUrls[0],
+        section2: sectionUrls[1],
+        section3: sectionUrls[2],
+        section4: sectionUrls[3]
       })
     }
     loadWidgetImages()
@@ -299,7 +319,9 @@ const PerformanceTrackingPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section1 && (
+                            <img src={sectionImages.section1} alt="Company" />
+                          )}
                         </div>
                       </>
                     )}
@@ -326,7 +348,9 @@ const PerformanceTrackingPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section2 && (
+                            <img src={sectionImages.section2} alt="Solutions" />
+                          )}
                         </div>
                       </>
                     )}
@@ -353,7 +377,9 @@ const PerformanceTrackingPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section3 && (
+                            <img src={sectionImages.section3} alt="Investments" />
+                          )}
                         </div>
                       </>
                     )}
@@ -380,7 +406,9 @@ const PerformanceTrackingPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section4 && (
+                            <img src={sectionImages.section4} alt="Resources" />
+                          )}
                         </div>
                       </>
                     )}

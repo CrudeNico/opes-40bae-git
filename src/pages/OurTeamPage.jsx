@@ -16,6 +16,12 @@ const OurTeamPage = () => {
   const [bannerImageUrl, setBannerImageUrl] = useState(null)
   const [leaderImages, setLeaderImages] = useState({})
   const [officeImages, setOfficeImages] = useState({})
+  const [sectionImages, setSectionImages] = useState({
+    section1: null,
+    section2: null,
+    section3: null,
+    section4: null
+  })
   
   // Executive board members data
   const leaders = [
@@ -158,6 +164,20 @@ const OurTeamPage = () => {
         london: officeUrls[2],
         amsterdam: officeUrls[3]
       })
+
+      // Load section dropdown images
+      const sectionUrls = await Promise.all([
+        getImageUrl('Section/man1.jpeg'),
+        getImageUrl('Section/oilplant.jpeg'),
+        getImageUrl('Section/RiskManagement.png'),
+        getImageUrl('Section/Macro&GeopoliticalInsights.png')
+      ])
+      setSectionImages({
+        section1: sectionUrls[0],
+        section2: sectionUrls[1],
+        section3: sectionUrls[2],
+        section4: sectionUrls[3]
+      })
     }
     loadImages()
   }, [])
@@ -298,7 +318,9 @@ const OurTeamPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section1 && (
+                            <img src={sectionImages.section1} alt="Company" />
+                          )}
                         </div>
                       </>
                     )}
@@ -325,7 +347,9 @@ const OurTeamPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section2 && (
+                            <img src={sectionImages.section2} alt="Solutions" />
+                          )}
                         </div>
                       </>
                     )}
@@ -352,7 +376,9 @@ const OurTeamPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section3 && (
+                            <img src={sectionImages.section3} alt="Investments" />
+                          )}
                         </div>
                       </>
                     )}
@@ -379,7 +405,9 @@ const OurTeamPage = () => {
                           </ul>
                         </div>
                         <div className="nav-dropdown-widget-image">
-                          {/* Image area */}
+                          {sectionImages.section4 && (
+                            <img src={sectionImages.section4} alt="Resources" />
+                          )}
                         </div>
                       </>
                     )}
