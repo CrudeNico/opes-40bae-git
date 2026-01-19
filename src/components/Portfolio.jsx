@@ -192,10 +192,26 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     const totalDeposits = investmentDataState.totalDeposits || initialInvestment
     const totalWithdrawals = investmentDataState.totalWithdrawals || 0
     
+    // Helper function to sort monthly history by year and month
+    const sortMonthlyHistory = (history) => {
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December']
+      return [...history].sort((a, b) => {
+        // First sort by year
+        if (a.year !== b.year) {
+          return a.year - b.year
+        }
+        // Then sort by month
+        const monthA = monthNames.indexOf(a.month)
+        const monthB = monthNames.indexOf(b.month)
+        return monthA - monthB
+      })
+    }
+
     // Calculate graph data from monthly history + projection
     const calculateGraphData = () => {
       const data = []
-      const monthlyHistory = investmentDataState.monthlyHistory || []
+      const monthlyHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
       
       // If we have monthly history, use it for historical data
       if (monthlyHistory.length > 0) {
@@ -246,7 +262,8 @@ const Portfolio = ({ user, onStatusUpdate }) => {
         })
       }
       
-      return data
+      // Ensure data is sorted chronologically by month
+      return data.sort((a, b) => a.month - b.month)
     }
 
     const projectionData = calculateGraphData()
@@ -255,7 +272,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     const range = maxBalance - minBalance || 1
 
     // Calculate metrics
-    const monthlyHistory = investmentDataState.monthlyHistory || []
+    const monthlyHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
     
     // Total Gain = sum of all growth amounts from monthly history
     const totalGain = monthlyHistory.reduce((sum, record) => {
@@ -552,7 +569,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     <div>Withdrawal</div>
                     <div>Ending Balance</div>
                   </div>
-                  {investmentDataState.monthlyHistory.map((record, index) => (
+                  {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => (
                     <div key={index} className="history-row">
                       <div>{record.month} {record.year}</div>
                       <div>{record.percentageGrowth}%</div>

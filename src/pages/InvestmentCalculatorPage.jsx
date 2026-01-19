@@ -194,6 +194,10 @@ const InvestmentCalculatorPage = () => {
       })
     }
 
+    // Ensure data is sorted chronologically by month (should already be sorted, but guarantee it)
+    data.sort((a, b) => a.month - b.month)
+    simpleData.sort((a, b) => a.month - b.month)
+
     setProjectionData({ compound: data, simple: simpleData })
     const finalValue = currentValue
     const totalInvested = initialCapital + (monthlyContribution * months)
