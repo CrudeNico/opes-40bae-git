@@ -3,6 +3,9 @@
   min-height: 100vh;
   display: flex;
   background: #ffffff;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .dashboard-loading {
@@ -233,6 +236,12 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .dashboard-page {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
   .sidebar-backdrop {
     display: block;
     position: fixed;
@@ -264,10 +273,16 @@
 
   .dashboard-content {
     margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .content-wrapper {
     padding: 4rem 1.5rem 2rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .content-title {

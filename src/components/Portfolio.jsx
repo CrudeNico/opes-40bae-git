@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
+import React, { useState, useEffect, useRef } from 'react'
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore'
 import './Portfolio.css'
 
 const Portfolio = ({ user, onStatusUpdate }) => {
@@ -19,10 +19,31 @@ const Portfolio = ({ user, onStatusUpdate }) => {
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [riskDropdownOpen, setRiskDropdownOpen] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     checkInvestorStatus()
   }, [user])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setRiskDropdownOpen(false)
+      }
+    }
+
+    if (riskDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [riskDropdownOpen])
 
   const checkInvestorStatus = async () => {
     try {
@@ -735,18 +756,70 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                   <label htmlFor="riskTolerance" className="form-label">
                     Risk Tolerance <span className="required">*</span>
                   </label>
-                  <select
-                    id="riskTolerance"
-                    name="riskTolerance"
-                    className="form-input"
-                    value={formData.riskTolerance}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select risk tolerance</option>
-                    <option value="conservative">Conservative (2% per month)</option>
-                    <option value="moderate">Moderate (4% per month)</option>
-                  </select>
+                  <div className="custom-select-wrapper" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      className={`custom-select-button ${riskDropdownOpen ? 'open' : ''} ${!formData.riskTolerance ? 'placeholder' : ''}`}
+                      onClick={() => setRiskDropdownOpen(!riskDropdownOpen)}
+                      aria-expanded={riskDropdownOpen}
+                      aria-haspopup="listbox"
+                    >
+                      <span>
+                        {formData.riskTolerance === 'conservative' 
+                          ? 'Conservative (2% per month)' 
+                          : formData.riskTolerance === 'moderate' 
+                          ? 'Moderate (4% per month)' 
+                          : 'Select risk tolerance'}
+                      </span>
+                      <svg 
+                        className="select-arrow" 
+                        width="12" 
+                        height="12" 
+                        viewBox="0 0 12 12" 
+                        fill="none" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M6 9L1 4h10z" fill="#374151"/>
+                      </svg>
+                    </button>
+                    {riskDropdownOpen && (
+                      <>
+                        <div 
+                          className="dropdown-backdrop" 
+                          onClick={() => setRiskDropdownOpen(false)}
+                        />
+                        <div className="custom-select-dropdown">
+                          <button
+                            type="button"
+                            className={`dropdown-option ${formData.riskTolerance === 'conservative' ? 'selected' : ''}`}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, riskTolerance: 'conservative' }))
+                              setRiskDropdownOpen(false)
+                            }}
+                          >
+                            Conservative (2% per month)
+                          </button>
+                          <button
+                            type="button"
+                            className={`dropdown-option ${formData.riskTolerance === 'moderate' ? 'selected' : ''}`}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, riskTolerance: 'moderate' }))
+                              setRiskDropdownOpen(false)
+                            }}
+                          >
+                            Moderate (4% per month)
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    {/* Hidden input for form validation */}
+                    <input
+                      type="hidden"
+                      name="riskTolerance"
+                      value={formData.riskTolerance}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
