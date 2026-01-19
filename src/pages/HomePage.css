@@ -653,7 +653,7 @@
 .btn {
   padding: 1rem 2rem;
   border: none;
-  border-radius: 2rem;
+  border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -894,12 +894,15 @@
   color: #ffffff;
   padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 2rem;
+  border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
+  text-decoration: none;
+  align-items: center;
+  gap: 0.5rem;
   align-items: center;
   gap: 0.5rem;
 }
@@ -1209,11 +1212,27 @@
   color: #ffffff;
   padding: 1rem 2rem;
   border: none;
-  border-radius: 2rem;
+  border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+a.btn-primary-white {
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn-primary-white:hover {
@@ -1386,7 +1405,7 @@
 .tab-button {
   padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 2rem;
+  border-radius: 0.5rem;
   background: #f3f4f6;
   color: #6b7280;
   font-size: 0.9rem;
@@ -1502,7 +1521,7 @@
   color: #1f2937;
   padding: 1rem 2rem;
   border: none;
-  border-radius: 2rem;
+  border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;

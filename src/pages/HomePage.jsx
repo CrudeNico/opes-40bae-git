@@ -728,8 +728,25 @@ const HomePage = () => {
               Opessocius operates the world's largest integrated platform for the energy transition – trusted by financial institutions, corporations, governments and power producers worldwide.
             </p>
             <div className="hero-buttons">
-              <button className="btn btn-primary">Talk to an Expert →</button>
-              <button className="btn btn-secondary">Explore Platform</button>
+              <button 
+                className="btn btn-primary"
+                onClick={() => {
+                  const calendarSection = document.querySelector('.third-widget-section')
+                  if (calendarSection) {
+                    calendarSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }}
+              >
+                Talk to an Expert →
+              </button>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => {
+                  window.scrollBy({ top: 400, behavior: 'smooth' })
+                }}
+              >
+                Explore Platform
+              </button>
             </div>
           </div>
           
@@ -754,11 +771,11 @@ const HomePage = () => {
           <div className="container">
             {/* Hero Section */}
             <div className="white-hero">
-              <h2 className="white-hero-title">The Global Platform for Energy and Environmental Commodities</h2>
+              <h2 className="white-hero-title">Structured Capital Allocation</h2>
               <p className="white-hero-subtitle">
-                From trading and brokerage to registries, wholesale power and beyond – Xpansiv gives you the proven platform to capture opportunities and drive environmental impact.
+                Access professionally designed crude oil portfolio structures built around disciplined exposure, capital prioritization, and systematic execution frameworks.
               </p>
-              <button className="btn btn-primary-white">Explore Platform →</button>
+              <Link to="/investment-calculator" className="btn btn-primary-white">Calculate investment →</Link>
             </div>
 
             {/* Video Widget */}
@@ -856,11 +873,11 @@ const HomePage = () => {
 
             {/* Second Hero Section */}
             <div className="white-hero second-hero">
-              <h2 className="white-hero-title">The Global Platform for Energy and Environmental Commodities</h2>
+              <h2 className="white-hero-title">Portfolio Models Aligned With Risk Preference</h2>
               <p className="white-hero-subtitle">
-                From trading and brokerage to registries, wholesale power and beyond – Xpansiv gives you the proven platform to capture opportunities and drive environmental impact.
+                Explore a range of portfolio models designed to accommodate different risk profiles, capital objectives, and exposure preferences within a unified strategy framework.
               </p>
-              <button className="btn btn-primary-white">Explore Platform →</button>
+              <Link to="/portfolio-models" className="btn btn-primary-white">View portfolio models →</Link>
             </div>
 
             {/* Tabbed Widget Section */}
@@ -1015,11 +1032,11 @@ const HomePage = () => {
 
             {/* Third Hero Section */}
             <div className="white-hero third-hero">
-              <h2 className="white-hero-title">The Global Platform for Energy and Environmental Commodities</h2>
+              <h2 className="white-hero-title">Risk Management Built Into Every Allocation</h2>
               <p className="white-hero-subtitle">
-                From trading and brokerage to registries, wholesale power and beyond – Xpansiv gives you the proven platform to capture opportunities and drive environmental impact.
+                Understand the risk management principles, capital hierarchy, and protective mechanisms that govern exposure, drawdowns, and portfolio behavior across market conditions.
               </p>
-              <button className="btn btn-primary-white">Explore Platform →</button>
+              <Link to="/risk-management" className="btn btn-primary-white">View risk management →</Link>
             </div>
 
             {/* Third Widget - Calendar */}
@@ -1227,7 +1244,7 @@ const HomePage = () => {
               <div className="light-blue-text">
                 <h2 className="light-blue-title">Transact efficiently across commodities</h2>
                 <p className="light-blue-subtitle">One platform for the full range of energy and environmental commodities.</p>
-                <a href="#" className="light-blue-learn-more">Learn more <span className="learn-more-arrow">›</span></a>
+                <Link to="/crude-oil-strategies" className="light-blue-learn-more">Learn more <span className="learn-more-arrow">›</span></Link>
               </div>
             </div>
           </div>
@@ -1238,7 +1255,7 @@ const HomePage = () => {
           <div className="container">
             <div className="featured-section-header">
               <h2 className="featured-section-title">Featured Learning & Insights</h2>
-              <button className="btn-view-all">View All <span className="view-all-arrow">→</span></button>
+              <Link to="/learning" className="btn-view-all">View All <span className="view-all-arrow">→</span></Link>
             </div>
             <div className="featured-cards-grid">
               <div className="featured-card">
@@ -1253,8 +1270,8 @@ const HomePage = () => {
                 >
                 </div>
                 <div className="featured-card-content">
-                  <div className="featured-card-tags">CBL, FEATURED NEWS, MARKET</div>
-                  <h3 className="featured-card-title">Xpansiv Launches Consolidated Renewable Energy...</h3>
+                  <div className="featured-card-tags">COMMODITIES, LEARNING MODULE</div>
+                  <h3 className="featured-card-title">Commodity Markets & Energy Structure...</h3>
                 </div>
               </div>
               <div className="featured-card">
@@ -1269,8 +1286,8 @@ const HomePage = () => {
                 >
                 </div>
                 <div className="featured-card-content">
-                  <div className="featured-card-tags">EMA, FEATURED NEWS, PRODUCT</div>
-                  <h3 className="featured-card-title">New York State Selects Xpansiv to Power Its Greenhous...</h3>
+                  <div className="featured-card-tags">SUPPLY, LEARNING MODULE</div>
+                  <h3 className="featured-card-title">Global Supply & Production Dynamics...</h3>
                 </div>
               </div>
               <div className="featured-card">
@@ -1285,8 +1302,8 @@ const HomePage = () => {
                 >
                 </div>
                 <div className="featured-card-content">
-                  <div className="featured-card-tags">ACE, CBL, FEATURED NEWS, MARKET</div>
-                  <h3 className="featured-card-title">Xpansiv and KRX to Collaborate on Korean Carbon Cred...</h3>
+                  <div className="featured-card-tags">GEOPOLITICS, LEARNING MODULE</div>
+                  <h3 className="featured-card-title">Geopolitical Risk & Market Impact...</h3>
                 </div>
               </div>
               <div className="featured-card">
@@ -1301,8 +1318,8 @@ const HomePage = () => {
                 >
                 </div>
                 <div className="featured-card-content">
-                  <div className="featured-card-tags">FEATURED NEWS</div>
-                  <h3 className="featured-card-title">Xpansiv Recognized as One of the Best Companies to Work...</h3>
+                  <div className="featured-card-tags">FUNDAMENTALS, LEARNING MODULE</div>
+                  <h3 className="featured-card-title">Fundamental Drivers & Market Balance...</h3>
                 </div>
               </div>
             </div>
@@ -1324,8 +1341,18 @@ const HomePage = () => {
               >
               </div>
               <div className="cta-widget-content">
-                <h2 className="cta-title">Ready to transact with confidence?</h2>
-                <button className="btn btn-primary-white cta-button">Talk to an Expert →</button>
+                <h2 className="cta-title" style={{ color: '#ffffff' }}>Ready to transact with confidence?</h2>
+                <button 
+                  className="btn btn-primary-white cta-button"
+                  onClick={() => {
+                    const calendarSection = document.querySelector('.third-widget-section')
+                    if (calendarSection) {
+                      calendarSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }
+                  }}
+                >
+                  Talk to an Expert →
+                </button>
               </div>
             </div>
             <p className="disclaimer-text">
