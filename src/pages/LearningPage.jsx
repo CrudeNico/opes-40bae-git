@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { getImageUrl } from '../utils/imageStorage'
 import './LearningPage.css'
 import './HomePage.css'
 
@@ -13,6 +14,10 @@ const LearningPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [technicalImageUrl, setTechnicalImageUrl] = useState(null)
+  const [laptopImageUrl, setLaptopImageUrl] = useState(null)
+  const [chartsImageUrl, setChartsImageUrl] = useState(null)
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -102,6 +107,24 @@ const LearningPage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Load images
+  useEffect(() => {
+    const loadImages = async () => {
+      const bannerUrl = await getImageUrl('Learning/strategy1.jpeg')
+      if (bannerUrl) setBannerImageUrl(bannerUrl)
+
+      const technicalUrl = await getImageUrl('Learning/technical.png')
+      if (technicalUrl) setTechnicalImageUrl(technicalUrl)
+
+      const laptopUrl = await getImageUrl('Learning/laptop.jpeg')
+      if (laptopUrl) setLaptopImageUrl(laptopUrl)
+
+      const chartsUrl = await getImageUrl('Learning/charts.jpeg')
+      if (chartsUrl) setChartsImageUrl(chartsUrl)
+    }
+    loadImages()
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -425,8 +448,15 @@ const LearningPage = () => {
 
       <main className="main-content">
         <section className="page-banner">
-          <div className="page-banner-image">
-            {/* Image will be placed here */}
+          <div 
+            className="page-banner-image"
+            style={{
+              backgroundImage: bannerImageUrl ? `url(${bannerImageUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
           </div>
           <div className="page-banner-overlay">
             <div className="page-banner-content">
@@ -440,106 +470,115 @@ const LearningPage = () => {
         <section className="white-section">
           <div className="container">
             <div className="white-hero">
-              <h2 className="white-hero-title">Structured Portfolio Solutions for Capital Growth</h2>
+              <h2 className="white-hero-title">Structured Learning Pathways</h2>
               <p className="white-hero-subtitle">
-                Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
+                Users may progress through a comprehensive educational framework designed to support learning from beginner to advanced levels. Content is organized into modules, allowing participants to build foundational knowledge before advancing to more complex concepts.
               </p>
               <button
                 className="btn btn-primary-white"
                 onClick={() => {
-                  navigate('/investment-calculator')
+                  navigate('/login')
                   handleLinkClick()
                 }}
               >
-                Calculate your investment →
+                Explore the learning platform →
               </button>
             </div>
           </div>
         </section>
 
-        {/* Positioning & Exposure Control Section */}
+        {/* Indicator Education & Technical Foundations Section */}
         <section className="white-section positioning-section">
           <div className="container">
             <div className="positioning-content">
               <div className="positioning-text">
-                <h2 className="positioning-title">Positioning & Exposure Control</h2>
+                <h2 className="positioning-title">Indicator & Technical Foundations</h2>
                 <div className="positioning-body">
-                  <p>Our crude oil strategy is based on disciplined position sizing and controlled leverage usage. While leverage is applied to enhance market participation, we consistently maintain an operational buffer equivalent to six unused positions, preserving sufficient margin at all times. This structure allows the portfolio to absorb adverse price movements, avoid forced liquidations, and retain execution flexibility. Entries, scaling, and exits are managed within predefined risk thresholds, ensuring that leverage increases potential without compromising capital stability or overall market safety.</p>
+                  <p>The curriculum includes in-depth instruction on technical indicators, charting tools, and analytical frameworks commonly used in market analysis. Modules cover indicator logic, configuration, interpretation, and practical application across different market conditions. Learners are guided through both standalone indicator usage and multi-indicator frameworks, with emphasis on clarity, consistency, and proper contextual understanding rather than isolated signals.</p>
                 </div>
               </div>
               <div className="positioning-image">
-                <div className="positioning-image-widget">
-                  {/* Image placeholder */}
+                <div 
+                  className="positioning-image-widget"
+                  style={{
+                    backgroundImage: technicalImageUrl ? `url(${technicalImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Market Sentiment & Technical Analysis Section */}
+        {/* Platform Setup & Workflow Optimization Section */}
         <section className="white-section sentiment-section">
           <div className="container">
             <div className="sentiment-content">
               <div className="sentiment-image">
-                <div className="sentiment-image-widget">
-                  {/* Image placeholder */}
+                <div 
+                  className="sentiment-image-widget"
+                  style={{
+                    backgroundImage: laptopImageUrl ? `url(${laptopImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
               </div>
               <div className="sentiment-text">
-                <h2 className="sentiment-title">Market Sentiment & Technical Analysis</h2>
+                <h2 className="sentiment-title">Platform Setup & Workflow</h2>
                 <div className="sentiment-body">
-                  <p>Our strategy integrates market sentiment analysis with technical indicators to assess price behavior directly from the chart. Tools such as RSI, momentum oscillators, volatility measures, and trend structure are evaluated alongside greed and fear dynamics to identify overstretched conditions and confirm trade quality. This combined framework helps filter emotional market noise, reduce false signals, and ensure entries, scaling, and exits are driven by data rather than speculation.</p>
+                  <p>Educational content extends beyond theory to include step-by-step guidance on platform setup, chart configuration, workspace organization, and workflow efficiency. Users are shown how to structure their tools, layouts, and analytical processes to support consistent execution and repeatable analysis. This ensures that learning translates into practical capability through structured environments and disciplined routines.</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Geopolitical Events & Macro Awareness Section */}
+        {/* Community Resources, Alerts & Research Material Section */}
         <section className="white-section geopolitical-section">
           <div className="container">
             <div className="geopolitical-content">
               <div className="geopolitical-text">
-                <h2 className="geopolitical-title">Geopolitical Events & Macro Awareness</h2>
+                <h2 className="geopolitical-title">Community, Alerts & Analysis</h2>
                 <div className="geopolitical-body">
-                  <p>Crude oil markets are highly sensitive to geopolitical developments and macroeconomic events. We actively monitor key drivers such as OPEC decisions, FOMC announcements, supply disruptions, and global conflicts that may impact volatility and liquidity. Dedicated systems and internal coordination ensure timely information flow across the team, allowing risk exposure to be adjusted proactively when market conditions shift due to external events.</p>
+                  <p>In addition to core educational modules, users gain access to a collaborative community environment, structured trade alerts, and regularly published PDF research reports. These resources are designed to complement the learning material by providing contextual examples, market observations, and analytical breakdowns. All supplemental content is educational in nature and intended to support continued learning and discussion.</p>
                 </div>
               </div>
               <div className="geopolitical-image">
-                <div className="geopolitical-image-widget">
-                  {/* Image placeholder */}
+                <div 
+                  className="geopolitical-image-widget"
+                  style={{
+                    backgroundImage: chartsImageUrl ? `url(${chartsImageUrl})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                >
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Where We Operate Section */}
+        {/* Learning Access & Resource Availability Section */}
         <section className="white-section schedule-section">
           <div className="container">
             <div className="schedule-content">
-              <h2 className="schedule-title">Where We Operate</h2>
-              <p className="schedule-subtitle">Global presence across key financial hubs, including Spain, Dubai, Amsterdam, and London.</p>
+              <h2 className="schedule-title">Learning Access & Resource Availability</h2>
+              <p className="schedule-subtitle">Educational modules, community features, alerts, and research materials are available through a centralized platform. Users can view the full module structure and schedule consultations directly, with content delivered in multiple formats and updated regularly.</p>
               <button 
                 className="btn btn-primary-white schedule-button"
                 onClick={() => {
-                  navigate('/our-team')
+                  navigate('/login')
                   handleLinkClick()
-                  // Scroll to Our Offices section on Our Team page after navigation with offset
-                  setTimeout(() => {
-                    const officesSection = document.querySelector('.offices-section')
-                    if (officesSection) {
-                      const elementPosition = officesSection.getBoundingClientRect().top
-                      const offsetPosition = elementPosition + window.pageYOffset - 150 // 150px offset from top
-                      window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
-                      })
-                    }
-                  }, 300)
                 }}
               >
-                View Locations →
+                Access modules & schedule consultation →
               </button>
             </div>
           </div>
