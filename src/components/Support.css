@@ -97,6 +97,7 @@
 
 .support-container .consultation-form {
   width: 100%;
+  max-width: 100%;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
@@ -104,6 +105,8 @@
   min-height: 600px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .support-container .calendar-header {
@@ -243,6 +246,10 @@
   flex-direction: column;
   gap: 1.5rem;
   flex: 1;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .support-container .time-selection {
@@ -582,18 +589,35 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .support-container {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
   .support-content {
     padding: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .support-title {
     font-size: 1.25rem;
     margin-bottom: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .support-layout {
     grid-template-columns: 1fr;
     gap: 1.25rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .section-title {
@@ -608,14 +632,22 @@
 
   .consultation-section {
     order: 2;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .support-container .calendar-widget,
   .support-container .consultation-form {
-    padding: 0.75rem;
+    padding: 1rem;
     min-height: auto;
     border: 1px solid #e5e7eb;
     border-radius: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .support-container .calendar-header {
@@ -634,42 +666,76 @@
 
   .support-container .form-header {
     margin-bottom: 1.25rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .support-container .form-title {
     font-size: 1.25rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .support-container .selected-date {
+    font-size: 0.85rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .support-container .form-content-vertical {
     gap: 1rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .support-container .time-selection {
     gap: 0.5rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .support-container .time-slots {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.375rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .support-container .time-slot {
     padding: 0.625rem 0.75rem;
     font-size: 0.85rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .support-container .form-field {
     gap: 0.375rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .support-container .form-label {
     font-size: 0.85rem;
+    width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .support-container .form-input,
   .support-container .form-textarea {
     padding: 0.625rem 0.75rem;
     font-size: 0.9rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .support-container .form-textarea {
@@ -680,6 +746,20 @@
   .support-container .submit-button {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .support-container .back-button {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .chat-container {
