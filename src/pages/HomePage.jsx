@@ -615,7 +615,7 @@ const HomePage = () => {
               )}
             </div>
             <div className="header-actions">
-              <a href="#contact" className="contact-link">Contact Us</a>
+              <Link to="/contact" className="contact-link">Contact Us</Link>
               <Link to="/login" className="btn-login">Login</Link>
             </div>
             <button 
@@ -713,7 +713,7 @@ const HomePage = () => {
                   </ul>
                 )}
               </li>
-              <li><a href="#contact" onClick={toggleMenu}>Contact Us</a></li>
+              <li><Link to="/contact" onClick={toggleMenu}>Contact Us</Link></li>
               <li><Link to="/login" className="btn-login-mobile" onClick={toggleMenu}>Login</Link></li>
             </ul>
           </div>
