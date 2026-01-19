@@ -346,6 +346,10 @@
   border-bottom: 2px solid #e5e7eb;
 }
 
+.history-table.with-actions .history-header {
+  grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 1fr;
+}
+
 .history-row {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr;
@@ -354,6 +358,71 @@
   border-bottom: 1px solid #e5e7eb;
   font-size: 0.9rem;
   color: #6b7280;
+  align-items: center;
+}
+
+.history-table.with-actions .history-row {
+  grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 1fr;
+}
+
+.history-row.editing {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.btn-edit-record {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-record:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-edit-record:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-performance-section {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.btn-cancel {
+  padding: 0.75rem 1.5rem;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .history-row:last-child {

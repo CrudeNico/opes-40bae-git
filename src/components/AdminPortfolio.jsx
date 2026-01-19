@@ -22,6 +22,17 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     withdrawalDate: ''
   })
   const [loadingMonthlyUpdate, setLoadingMonthlyUpdate] = useState(false)
+  const [editingRecordIndex, setEditingRecordIndex] = useState(null)
+  const [editFormData, setEditFormData] = useState({
+    month: '',
+    year: '',
+    percentageGrowth: '',
+    depositAmount: '',
+    depositDate: '',
+    withdrawalAmount: '',
+    withdrawalDate: ''
+  })
+  const [loadingEdit, setLoadingEdit] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -29,6 +40,26 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isAdmin2])
+
+  // Helper function to sort monthly history chronologically
+  const sortMonthlyHistory = (history) => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December']
+    
+    return [...history].sort((a, b) => {
+      // First sort by year
+      const yearA = parseInt(a.year) || 0
+      const yearB = parseInt(b.year) || 0
+      if (yearA !== yearB) {
+        return yearA - yearB
+      }
+      
+      // Then sort by month
+      const monthA = monthNames.indexOf(a.month || '')
+      const monthB = monthNames.indexOf(b.month || '')
+      return monthA - monthB
+    })
+  }
 
   const loadPortfolioData = async () => {
     try {
@@ -61,7 +92,12 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         })
         
         if (adminUser && adminUser.investmentData) {
-          setPortfolioData(adminUser.investmentData)
+          // Sort monthly history before setting
+          const sortedData = {
+            ...adminUser.investmentData,
+            monthlyHistory: sortMonthlyHistory(adminUser.investmentData.monthlyHistory || [])
+          }
+          setPortfolioData(sortedData)
         } else {
           // Admin doesn't have portfolio yet
           setPortfolioData(null)
@@ -73,7 +109,12 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         if (userDoc.exists()) {
           const userData = userDoc.data()
           if (userData.investmentData) {
-            setPortfolioData(userData.investmentData)
+            // Sort monthly history before setting
+            const sortedData = {
+              ...userData.investmentData,
+              monthlyHistory: sortMonthlyHistory(userData.investmentData.monthlyHistory || [])
+            }
+            setPortfolioData(sortedData)
           } else {
             // Admin doesn't have portfolio yet - they can initialize it
             setPortfolioData(null)
@@ -94,6 +135,249 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       ...prev,
       [name]: value
     }))
+  }
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleEditRecord = (index) => {
+    if (!canAddPerformance) {
+      setError('You do not have permission to edit monthly performance.')
+      return
+    }
+    
+    const record = monthlyHistory[index]
+    setEditFormData({
+      month: record.month || '',
+      year: record.year || '',
+      percentageGrowth: record.percentageGrowth || '',
+      depositAmount: record.depositAmount || '',
+      depositDate: record.depositDate || '',
+      withdrawalAmount: record.withdrawalAmount || '',
+      withdrawalDate: record.withdrawalDate || ''
+    })
+    setEditingRecordIndex(index)
+    setShowAddPerformance(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingRecordIndex(null)
+    setEditFormData({
+      month: '',
+      year: '',
+      percentageGrowth: '',
+      depositAmount: '',
+      depositDate: '',
+      withdrawalAmount: '',
+      withdrawalDate: ''
+    })
+    setError('')
+    setSuccess('')
+  }
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault()
+    
+    if (!canAddPerformance) {
+      setError('You do not have permission to edit monthly performance.')
+      return
+    }
+    
+    if (!portfolioData || editingRecordIndex === null) {
+      setError('Invalid edit operation.')
+      return
+    }
+
+    setLoadingEdit(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        setError('User document not found')
+        return
+      }
+
+      const userData = userDoc.data()
+      const currentInvestmentData = userData.investmentData || {}
+      // Sort the existing history first to ensure we're working with chronological order
+      const existingHistory = sortMonthlyHistory(currentInvestmentData.monthlyHistory || [])
+      
+      // Helper functions (same as in handleAddPerformance)
+      const getDaysInMonth = (month, year) => {
+        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+        return new Date(year, monthIndex + 1, 0).getDate()
+      }
+
+      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const depositDate = new Date(date)
+        const dayOfMonth = depositDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        let daysRemaining = daysInMonth - dayOfMonth + 1
+        if (dayOfMonth === daysInMonth) {
+          daysRemaining = 0
+        }
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const withdrawalDate = new Date(date)
+        const dayOfMonth = withdrawalDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        const daysRemaining = daysInMonth - dayOfMonth
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      // Get the starting balance for the record being edited
+      // It's the ending balance of the previous record, or initial investment if it's the first record
+      let startingBalance = currentInvestmentData.initialInvestment || 0
+      if (editingRecordIndex > 0) {
+        startingBalance = existingHistory[editingRecordIndex - 1].endingBalance || startingBalance
+      }
+
+      // Calculate new values for the edited record
+      const percentageGrowth = parseFloat(editFormData.percentageGrowth) || 0
+      const growthAmount = startingBalance * (percentageGrowth / 100)
+      const depositAmount = parseFloat(editFormData.depositAmount) || 0
+      const withdrawalAmount = parseFloat(editFormData.withdrawalAmount) || 0
+      
+      const depositGrowth = calculateProratedGrowth(
+        depositAmount, 
+        percentageGrowth, 
+        editFormData.depositDate, 
+        editFormData.month, 
+        editFormData.year
+      )
+      
+      const withdrawalGrowth = calculateWithdrawalGrowthLoss(
+        withdrawalAmount, 
+        percentageGrowth, 
+        editFormData.withdrawalDate, 
+        editFormData.month, 
+        editFormData.year
+      )
+
+      const endingBalance = startingBalance + growthAmount + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+
+      // Update the record at the editing index
+      const updatedRecord = {
+        month: editFormData.month,
+        year: editFormData.year,
+        percentageGrowth: percentageGrowth,
+        growthAmount: growthAmount,
+        depositGrowth: depositGrowth,
+        withdrawalGrowth: withdrawalGrowth,
+        startingBalance: startingBalance,
+        endingBalance: endingBalance,
+        depositAmount: depositAmount,
+        depositDate: editFormData.depositDate || null,
+        withdrawalAmount: withdrawalAmount,
+        withdrawalDate: editFormData.withdrawalDate || null,
+        updatedAt: new Date().toISOString()
+      }
+
+      // Update the record at the editing index
+      existingHistory[editingRecordIndex] = updatedRecord
+
+      // Sort the history chronologically (in case month/year was changed)
+      const sortedHistory = sortMonthlyHistory(existingHistory)
+
+      // Recalculate ALL records in chronological order from the beginning
+      // This ensures proper calculation even if the order changed
+      let runningBalance = currentInvestmentData.initialInvestment || 0
+      const recalculatedHistory = sortedHistory.map((record, index) => {
+        const recordPercentageGrowth = record.percentageGrowth || 0
+        const recordGrowthAmount = runningBalance * (recordPercentageGrowth / 100)
+        const recordDepositAmount = record.depositAmount || 0
+        const recordWithdrawalAmount = record.withdrawalAmount || 0
+        
+        const recordDepositGrowth = calculateProratedGrowth(
+          recordDepositAmount,
+          recordPercentageGrowth,
+          record.depositDate,
+          record.month,
+          record.year
+        )
+        
+        const recordWithdrawalGrowth = calculateWithdrawalGrowthLoss(
+          recordWithdrawalAmount,
+          recordPercentageGrowth,
+          record.withdrawalDate,
+          record.month,
+          record.year
+        )
+
+        const recordStartingBalance = runningBalance
+        runningBalance = runningBalance + recordGrowthAmount + recordDepositAmount + recordDepositGrowth - recordWithdrawalAmount - recordWithdrawalGrowth
+
+        return {
+          ...record,
+          startingBalance: recordStartingBalance,
+          growthAmount: recordGrowthAmount,
+          endingBalance: runningBalance,
+          depositGrowth: recordDepositGrowth,
+          withdrawalGrowth: recordWithdrawalGrowth,
+          updatedAt: record.updatedAt || new Date().toISOString()
+        }
+      })
+
+      // Recalculate totals
+      let newTotalDeposits = currentInvestmentData.initialInvestment || 0
+      let newTotalWithdrawals = 0
+      recalculatedHistory.forEach(record => {
+        newTotalDeposits += (record.depositAmount || 0)
+        newTotalWithdrawals += (record.withdrawalAmount || 0)
+      })
+
+      // Update investment data
+      const updatedInvestmentData = {
+        ...currentInvestmentData,
+        currentBalance: runningBalance,
+        totalDeposits: newTotalDeposits,
+        totalWithdrawals: newTotalWithdrawals,
+        monthlyHistory: recalculatedHistory,
+        lastUpdated: new Date().toISOString()
+      }
+
+      await updateDoc(userDocRef, {
+        investmentData: updatedInvestmentData,
+        updatedAt: new Date().toISOString()
+      })
+
+      setSuccess(`Monthly record for ${editFormData.month} ${editFormData.year} updated successfully!`)
+      setEditingRecordIndex(null)
+      setEditFormData({
+        month: '',
+        year: '',
+        percentageGrowth: '',
+        depositAmount: '',
+        depositDate: '',
+        withdrawalAmount: '',
+        withdrawalDate: ''
+      })
+      
+      // Reload portfolio data
+      await loadPortfolioData()
+    } catch (error) {
+      console.error('Error updating monthly record:', error)
+      setError(`Failed to update monthly record: ${error.message}`)
+    } finally {
+      setLoadingEdit(false)
+    }
   }
 
   const handleAddPerformance = async (e) => {
@@ -219,6 +503,9 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       // Get existing monthly history
       const existingHistory = currentInvestmentData.monthlyHistory || []
       const updatedHistory = [...existingHistory, monthlyRecord]
+      
+      // Sort the history chronologically
+      const sortedHistory = sortMonthlyHistory(updatedHistory)
 
       // Update investment data
       const updatedInvestmentData = {
@@ -226,7 +513,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         currentBalance: newBalance,
         totalDeposits: newTotalDeposits,
         totalWithdrawals: newTotalWithdrawals,
-        monthlyHistory: updatedHistory,
+        monthlyHistory: sortedHistory,
         lastUpdated: new Date().toISOString()
       }
 
@@ -284,7 +571,8 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const currentBalance = portfolioData.currentBalance || initialInvestment
   const totalDeposits = portfolioData.totalDeposits || initialInvestment
   const totalWithdrawals = portfolioData.totalWithdrawals || 0
-  const monthlyHistory = portfolioData.monthlyHistory || []
+  // Ensure monthly history is sorted chronologically for display
+  const monthlyHistory = sortMonthlyHistory(portfolioData.monthlyHistory || [])
 
   // Calculate metrics
   const totalGain = monthlyHistory.reduce((sum, record) => {
@@ -374,7 +662,16 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           {canAddPerformance && (
             <button 
               className="btn-add-performance"
-              onClick={() => setShowAddPerformance(!showAddPerformance)}
+              onClick={() => {
+                if (editingRecordIndex === null) {
+                  setShowAddPerformance(!showAddPerformance)
+                  if (showAddPerformance) {
+                    setError('')
+                    setSuccess('')
+                  }
+                }
+              }}
+              disabled={editingRecordIndex !== null}
             >
               {showAddPerformance ? 'Cancel' : '+ Add Monthly Performance'}
             </button>
@@ -384,8 +681,140 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
+        {/* Edit Performance Form - Only show if user has permission and a record is being edited */}
+        {editingRecordIndex !== null && canAddPerformance && (
+          <div className="add-performance-section edit-performance-section">
+            <h3 className="section-title">Edit Monthly Performance - {monthlyHistory[editingRecordIndex]?.month} {monthlyHistory[editingRecordIndex]?.year}</h3>
+            <form onSubmit={handleSaveEdit} className="performance-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-month">Month *</label>
+                  <select
+                    id="edit-month"
+                    name="month"
+                    value={editFormData.month}
+                    onChange={handleEditInputChange}
+                    required
+                  >
+                    <option value="">Select Month</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-year">Year *</label>
+                  <input
+                    type="number"
+                    id="edit-year"
+                    name="year"
+                    value={editFormData.year}
+                    onChange={handleEditInputChange}
+                    min="2020"
+                    max={new Date().getFullYear() + 1}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-percentageGrowth">Growth Percentage (%) *</label>
+                  <input
+                    type="number"
+                    id="edit-percentageGrowth"
+                    name="percentageGrowth"
+                    value={editFormData.percentageGrowth}
+                    onChange={handleEditInputChange}
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-depositAmount">Deposit Amount (Optional)</label>
+                  <input
+                    type="number"
+                    id="edit-depositAmount"
+                    name="depositAmount"
+                    value={editFormData.depositAmount}
+                    onChange={handleEditInputChange}
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-depositDate">Deposit Date (Optional)</label>
+                  <input
+                    type="date"
+                    id="edit-depositDate"
+                    name="depositDate"
+                    value={editFormData.depositDate}
+                    onChange={handleEditInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-withdrawalAmount">Withdrawal Amount (Optional)</label>
+                  <input
+                    type="number"
+                    id="edit-withdrawalAmount"
+                    name="withdrawalAmount"
+                    value={editFormData.withdrawalAmount}
+                    onChange={handleEditInputChange}
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-withdrawalDate">Withdrawal Date (Optional)</label>
+                  <input
+                    type="date"
+                    id="edit-withdrawalDate"
+                    name="withdrawalDate"
+                    value={editFormData.withdrawalDate}
+                    onChange={handleEditInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={handleCancelEdit}
+                  disabled={loadingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-submit"
+                  disabled={loadingEdit}
+                >
+                  {loadingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Add Performance Form - Only show if user has permission */}
-        {showAddPerformance && canAddPerformance && (
+        {showAddPerformance && canAddPerformance && editingRecordIndex === null && (
           <div className="add-performance-section">
             <h3 className="section-title">Add Monthly Performance</h3>
             <form onSubmit={handleAddPerformance} className="performance-form">
@@ -754,7 +1183,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           <div className="portfolio-history-section">
             <h3 className="section-subtitle">Monthly Performance History</h3>
             <div className="history-container">
-              <div className="history-table">
+              <div className={`history-table ${canAddPerformance ? 'with-actions' : ''}`}>
                 <div className="history-header">
                   <div>Month/Year</div>
                   <div>Growth %</div>
@@ -762,15 +1191,27 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                   <div>Deposit</div>
                   <div>Withdrawal</div>
                   <div>Ending Balance</div>
+                  {canAddPerformance && <div>Actions</div>}
                 </div>
                 {monthlyHistory.map((record, index) => (
-                  <div key={index} className="history-row">
+                  <div key={index} className={`history-row ${editingRecordIndex === index ? 'editing' : ''}`}>
                     <div>{record.month} {record.year}</div>
                     <div>{record.percentageGrowth}%</div>
                     <div>€{record.growthAmount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</div>
                     <div>{record.depositAmount > 0 ? `€${record.depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                     <div>{record.withdrawalAmount > 0 ? `€${record.withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                     <div>€{record.endingBalance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</div>
+                    {canAddPerformance && (
+                      <div>
+                        <button
+                          className="btn-edit-record"
+                          onClick={() => handleEditRecord(index)}
+                          disabled={editingRecordIndex !== null && editingRecordIndex !== index}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

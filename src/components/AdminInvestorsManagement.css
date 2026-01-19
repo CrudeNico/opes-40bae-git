@@ -388,6 +388,11 @@
   align-items: center;
   padding: 0.5rem 0;
   border-bottom: 1px solid #bae6fd;
+  color: #1f2937;
+}
+
+.preview-item span {
+  color: #1f2937;
 }
 
 .preview-item:last-child {
@@ -569,6 +574,10 @@
 
   .action-buttons {
     flex-direction: column;
+  }
+
+  .btn-view {
+    display: none;
   }
 
   .history-header,
