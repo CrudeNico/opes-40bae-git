@@ -568,16 +568,11 @@ const InvestmentCalculatorPage = () => {
                 className="btn btn-primary-white"
                 onClick={() => {
                   navigate('/')
-                  // Scroll to calendar section on homepage after navigation with offset
+                  // Scroll to "Risk Management Built Into Every Allocation" section (third white-hero)
                   setTimeout(() => {
-                    const calendarSection = document.querySelector('.third-widget-section')
-                    if (calendarSection) {
-                      const elementPosition = calendarSection.getBoundingClientRect().top
-                      const offsetPosition = elementPosition + window.pageYOffset - 200 // 200px offset from top
-                      window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
-                      })
+                    const whiteHeroSections = document.querySelectorAll('.white-hero')
+                    if (whiteHeroSections.length >= 3) {
+                      whiteHeroSections[2].scrollIntoView({ behavior: 'smooth', block: 'start' })
                     }
                   }, 300)
                 }}

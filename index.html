@@ -13,6 +13,20 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <!-- Global scroll-to-top on navigation -->
+    <script>
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+
+      window.addEventListener('beforeunload', () => {
+        window.scrollTo(0, 0);
+      });
+
+      window.addEventListener('popstate', () => {
+        window.scrollTo(0, 0);
+      });
+    </script>
   </body>
 </html>
 

@@ -14,9 +14,14 @@ const HomePage = () => {
   // Handler to navigate and scroll to top
   const handleNavigateToTop = (path) => {
     navigate(path)
+    // Scroll immediately and also after a delay to ensure it works
+    window.scrollTo({ top: 0, behavior: 'instant' })
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }, 100)
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 500)
   }
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedTime, setSelectedTime] = useState('')
@@ -740,11 +745,10 @@ const HomePage = () => {
               <button 
                 className="btn btn-primary"
                 onClick={() => {
-                  const calendarSection = document.querySelector('.third-widget-section')
-                  if (calendarSection) {
-                    const elementPosition = calendarSection.getBoundingClientRect().top + window.pageYOffset
-                    const offsetPosition = elementPosition - 150 // Scroll 150px higher
-                    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+                  // Find the "Risk Management Built Into Every Allocation" section (third white-hero)
+                  const whiteHeroSections = document.querySelectorAll('.white-hero')
+                  if (whiteHeroSections.length >= 3) {
+                    whiteHeroSections[2].scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }
                 }}
               >
@@ -753,10 +757,10 @@ const HomePage = () => {
               <button 
                 className="btn btn-secondary"
                 onClick={() => {
-                  const capitalSection = document.querySelector('.white-hero')
-                  if (capitalSection) {
-                    const elementPosition = capitalSection.getBoundingClientRect().top + window.pageYOffset
-                    window.scrollTo({ top: elementPosition, behavior: 'smooth' })
+                  // Find the first white-hero section (Structured Capital Allocation)
+                  const whiteHeroSections = document.querySelectorAll('.white-hero')
+                  if (whiteHeroSections.length > 0) {
+                    whiteHeroSections[0].scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }
                 }}
               >
