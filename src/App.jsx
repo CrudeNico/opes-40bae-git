@@ -23,6 +23,7 @@ import LearningPage from './pages/LearningPage'
 import MacroInsightsPage from './pages/MacroInsightsPage'
 import RiskGuidancePage from './pages/RiskGuidancePage'
 import CompliancePage from './pages/CompliancePage'
+import PolicyPage from './pages/PolicyPage'
 import './App.css'
 
 // Component to handle scroll-to-top on route changes
@@ -65,6 +66,7 @@ function App() {
           <Route path="/macro-insights" element={<MacroInsightsPage />} />
           <Route path="/risk-guidance" element={<RiskGuidancePage />} />
           <Route path="/compliance" element={<CompliancePage />} />
+          <Route path="/policy" element={<PolicyPage />} />
         </Routes>
       </div>
     </Router>
