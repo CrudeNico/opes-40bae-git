@@ -742,7 +742,9 @@ const HomePage = () => {
                 onClick={() => {
                   const calendarSection = document.querySelector('.third-widget-section')
                   if (calendarSection) {
-                    calendarSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    const elementPosition = calendarSection.getBoundingClientRect().top + window.pageYOffset
+                    const offsetPosition = elementPosition - 150 // Scroll 150px higher
+                    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
                   }
                 }}
               >
@@ -751,7 +753,11 @@ const HomePage = () => {
               <button 
                 className="btn btn-secondary"
                 onClick={() => {
-                  window.scrollBy({ top: 400, behavior: 'smooth' })
+                  const capitalSection = document.querySelector('.white-hero')
+                  if (capitalSection) {
+                    const elementPosition = capitalSection.getBoundingClientRect().top + window.pageYOffset
+                    window.scrollTo({ top: elementPosition, behavior: 'smooth' })
+                  }
                 }}
               >
                 Explore Platform
@@ -784,7 +790,12 @@ const HomePage = () => {
               <p className="white-hero-subtitle">
                 Access professionally designed crude oil portfolio structures built around disciplined exposure, capital prioritization, and systematic execution frameworks.
               </p>
-              <Link to="/investment-calculator" className="btn btn-primary-white">Calculate investment →</Link>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => handleNavigateToTop('/investment-calculator')}
+              >
+                Calculate investment →
+              </button>
             </div>
 
             {/* Video Widget */}
@@ -886,7 +897,12 @@ const HomePage = () => {
               <p className="white-hero-subtitle">
                 Explore a range of portfolio models designed to accommodate different risk profiles, capital objectives, and exposure preferences within a unified strategy framework.
               </p>
-              <Link to="/portfolio-models" className="btn btn-primary-white">View portfolio models →</Link>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => handleNavigateToTop('/portfolio-models')}
+              >
+                View portfolio models →
+              </button>
             </div>
 
             {/* Tabbed Widget Section */}
@@ -1115,7 +1131,12 @@ const HomePage = () => {
               <p className="white-hero-subtitle">
                 Understand the risk management principles, capital hierarchy, and protective mechanisms that govern exposure, drawdowns, and portfolio behavior across market conditions.
               </p>
-              <Link to="/risk-management" className="btn btn-primary-white">View risk management →</Link>
+              <button 
+                className="btn btn-primary-white"
+                onClick={() => handleNavigateToTop('/risk-management')}
+              >
+                View risk management →
+              </button>
             </div>
 
             {/* Third Widget - Calendar */}
@@ -1323,7 +1344,13 @@ const HomePage = () => {
               <div className="light-blue-text">
                 <h2 className="light-blue-title">Transact efficiently across commodities</h2>
                 <p className="light-blue-subtitle">One platform for the full range of energy and environmental commodities.</p>
-                <Link to="/crude-oil-strategies" className="light-blue-learn-more">Learn more <span className="learn-more-arrow">›</span></Link>
+                <button 
+                  className="light-blue-learn-more"
+                  onClick={() => handleNavigateToTop('/crude-oil-strategies')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
+                >
+                  Learn more <span className="learn-more-arrow">›</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1334,7 +1361,12 @@ const HomePage = () => {
           <div className="container">
             <div className="featured-section-header">
               <h2 className="featured-section-title">Featured Learning & Insights</h2>
-              <Link to="/learning" className="btn-view-all">View All <span className="view-all-arrow">→</span></Link>
+              <button 
+                className="btn-view-all"
+                onClick={() => handleNavigateToTop('/learning')}
+              >
+                View All <span className="view-all-arrow">→</span>
+              </button>
             </div>
             <div className="featured-cards-grid">
               <div className="featured-card">
@@ -1426,7 +1458,9 @@ const HomePage = () => {
                   onClick={() => {
                     const calendarSection = document.querySelector('.third-widget-section')
                     if (calendarSection) {
-                      calendarSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      const elementPosition = calendarSection.getBoundingClientRect().top + window.pageYOffset
+                      const offsetPosition = elementPosition - 150 // Scroll 150px higher
+                      window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
                     }
                   }}
                 >
