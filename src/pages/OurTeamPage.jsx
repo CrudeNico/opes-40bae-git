@@ -25,10 +25,10 @@ const OurTeamPage = () => {
   
   // Executive board members data
   const leaders = [
-    { id: 1, name: 'John Smith', title: 'Chief Executive Officer' },
-    { id: 2, name: 'Sarah Johnson', title: 'Chief Technology Officer' },
-    { id: 3, name: 'Michael Chen', title: 'Chief Risk Officer' },
-    { id: 4, name: 'Emma Williams', title: 'Chief Operations Officer' }
+    { id: 1, name: 'Marcos De Rodrigo', title: 'Chief Executive Officer' },
+    { id: 2, name: 'Jaime Fernandez', title: 'Chief Technology Officer' },
+    { id: 3, name: 'Christian Luigi', title: 'Chief Risk Officer' },
+    { id: 4, name: 'Nicolas Rodrigo', title: 'Chief Operations Officer' }
   ]
   
   // Offices data
@@ -136,20 +136,19 @@ const OurTeamPage = () => {
       const bannerUrl = await getImageUrl('our-team/BookaCall.png')
       if (bannerUrl) setBannerImageUrl(bannerUrl)
 
-      // Load leader images (commented out until images are provided)
-      // Will be uncommented and updated when leader images are ready
-      // const leaderUrls = await Promise.all([
-      //   getImageUrl('our-team/leader1.jpg'),
-      //   getImageUrl('our-team/leader2.jpg'),
-      //   getImageUrl('our-team/leader3.jpg'),
-      //   getImageUrl('our-team/leader4.jpg')
-      // ])
-      // setLeaderImages({
-      //   leader1: leaderUrls[0],
-      //   leader2: leaderUrls[1],
-      //   leader3: leaderUrls[2],
-      //   leader4: leaderUrls[3]
-      // })
+      // Load leader images
+      const leaderUrls = await Promise.all([
+        getImageUrl('our-team/48016C47-7A25-415F-8F2D-31244BD1625F.PNG'),
+        getImageUrl('our-team/610ECB22-C07A-48D1-B646-A90D688F7367.PNG'),
+        getImageUrl('our-team/1C118822-DFE2-4682-A8A8-771B723B06A1.PNG'),
+        getImageUrl('our-team/D0398078-0325-4A5B-B1EE-D4033A6FCDEA.PNG')
+      ])
+      setLeaderImages({
+        leader1: leaderUrls[0],
+        leader2: leaderUrls[1],
+        leader3: leaderUrls[2],
+        leader4: leaderUrls[3]
+      })
 
       // Load office images with specific filenames
       const officeUrls = await Promise.all([
