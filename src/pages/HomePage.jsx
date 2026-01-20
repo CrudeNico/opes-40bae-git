@@ -44,6 +44,7 @@ const HomePage = () => {
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
   const [videoUrl, setVideoUrl] = useState(null)
+  const [videoCoverImageUrl, setVideoCoverImageUrl] = useState(null)
   const [profileImageUrl, setProfileImageUrl] = useState(null)
   const [transactImageUrl, setTransactImageUrl] = useState(null)
   const [featuredImages, setFeaturedImages] = useState({})
@@ -147,6 +148,10 @@ const HomePage = () => {
       // Load video
       const videoUrl = await getImageUrl('homepage/Documentary.mp4')
       if (videoUrl) setVideoUrl(videoUrl)
+
+      // Load video cover image
+      const coverImageUrl = await getImageUrl('homepage/plant11.jpeg')
+      if (coverImageUrl) setVideoCoverImageUrl(coverImageUrl)
 
       // Load profile image
       const profileUrl = await getImageUrl('homepage/diegorequena.JPG')
@@ -816,6 +821,23 @@ const HomePage = () => {
               >
                 {videoUrl ? (
                   <>
+                    {/* Cover image - shown when video is not playing */}
+                    {!isVideoPlaying && videoCoverImageUrl && (
+                      <img
+                        src={videoCoverImageUrl}
+                        alt="Video cover"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '1rem',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          zIndex: 1
+                        }}
+                      />
+                    )}
                     <video
                       ref={videoRef}
                       src={videoUrl}
@@ -828,7 +850,7 @@ const HomePage = () => {
                         height: '100%',
                         objectFit: 'cover',
                         borderRadius: '1rem',
-                        display: 'block',
+                        display: isVideoPlaying ? 'block' : 'none',
                         position: 'absolute',
                         top: 0,
                         left: 0,
@@ -847,7 +869,7 @@ const HomePage = () => {
                       <div 
                         className="video-play-overlay" 
                         onClick={handleVideoClick}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', zIndex: 3 }}
                       >
                         <div className="video-play-button">▶</div>
                       </div>
