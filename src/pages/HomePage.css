@@ -1526,6 +1526,22 @@ a.btn-primary-white {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+a.btn-secondary-white {
+  background: #f3f4f6;
+  color: #1f2937;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn-secondary-white:hover {

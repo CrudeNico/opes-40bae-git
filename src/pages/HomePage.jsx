@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getFirestore, collection, addDoc, Timestamp } from 'firebase/firestore'
 import { auth } from '../firebase/config'
 import { sendConsultationConfirmationEmail } from '../firebase/email'
@@ -7,8 +7,17 @@ import { getImageUrl } from '../utils/imageStorage'
 import './HomePage.css'
 
 const HomePage = () => {
+  const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
+  
+  // Handler to navigate and scroll to top
+  const handleNavigateToTop = (path) => {
+    navigate(path)
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 100)
+  }
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedTime, setSelectedTime] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -851,23 +860,23 @@ const HomePage = () => {
             <div className="stats-section">
               <div className="stat-card">
                 <div className="stat-icon">◉</div>
-                <h3 className="stat-title">Global Transaction Expertise</h3>
-                <p className="stat-description">Transact in renewable energy, carbon and more across 5 continents</p>
+                <h3 className="stat-title">Crude Oil Trading Expertise</h3>
+                <p className="stat-description">Focused exclusively on physical and paper crude oil markets</p>
               </div>
               <div className="stat-card">
                 <div className="stat-icon">▦</div>
-                <h3 className="stat-title">300 GW</h3>
-                <p className="stat-description">Capacity of Xpansiv's unmatched global REC registry network</p>
+                <h3 className="stat-title">Capital-Backed Trading</h3>
+                <p className="stat-description">Deploying investor capital to execute disciplined, proprietary crude oil trades</p>
               </div>
               <div className="stat-card">
                 <div className="stat-icon">▣</div>
-                <h3 className="stat-title">&gt;20%</h3>
-                <p className="stat-description">ERCOT and CAISO battery storage capacity served by Xpansiv (formerly APX)</p>
+                <h3 className="stat-title">Market-Driven Strategy</h3>
+                <p className="stat-description">Specialists in price discovery, risk management, and trading strategies within crude oil markets</p>
               </div>
               <div className="stat-card">
                 <div className="stat-icon">✓</div>
-                <h3 className="stat-title">Trusted by the Market</h3>
-                <p className="stat-description">Over 100,000 customers - from Fortune 500 companies and government agencies to project developers and homeowners</p>
+                <h3 className="stat-title">Trusted Trading Partner</h3>
+                <p className="stat-description">Working with producers, refiners, traders, and institutional counterparties worldwide</p>
               </div>
             </div>
 
@@ -887,7 +896,7 @@ const HomePage = () => {
                   className={`tab-button ${activeTab === 0 ? 'active' : ''}`}
                   onClick={() => setActiveTab(0)}
                 >
-                  Commodity Buyers
+                  Commodity Market
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 1 ? 'active' : ''}`}
@@ -905,25 +914,25 @@ const HomePage = () => {
                   className={`tab-button ${activeTab === 3 ? 'active' : ''}`}
                   onClick={() => setActiveTab(3)}
                 >
-                  Power Producers
+                  Capital Partners
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 4 ? 'active' : ''}`}
                   onClick={() => setActiveTab(4)}
                 >
-                  Solar Installers
+                  Research & Development
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 5 ? 'active' : ''}`}
                   onClick={() => setActiveTab(5)}
                 >
-                  Homeowners
+                  Execution
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 6 ? 'active' : ''}`}
                   onClick={() => setActiveTab(6)}
                 >
-                  EV & Fleet
+                  Capital Protection
                 </button>
               </div>
 
@@ -936,14 +945,24 @@ const HomePage = () => {
                   <div className="tabbed-widget-content">
                     {activeTab === 0 && (
                       <div className="widget-content">
-                        <p className="widget-subtitle">ENVIRONMENTAL COMMODITY BUYERS</p>
-                        <h3 className="widget-title">Buy with precision, report with confidence.</h3>
+                        <p className="widget-subtitle">COMMODITY MARKET</p>
+                        <h3 className="widget-title">Trade with precision. Execute with confidence.</h3>
                         <p className="widget-description">
-                          Xpansiv connects sustainability leaders at corporations, utilities and beyond to clean power, renewable energy certificates, verified carbon credits and clean fuel credits – streamlining procurement, reporting and impact tracking across global markets.
+                          We work with producers, refiners, traders, and institutional participants active in crude oil markets, providing direct market access, disciplined execution, and informed trading strategies. Our focus is on efficient price discovery, risk management, and reliable counterparties across physical and paper crude oil transactions.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/crude-oil-strategies')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
@@ -952,11 +971,21 @@ const HomePage = () => {
                         <p className="widget-subtitle">TRADERS & BROKERS</p>
                         <h3 className="widget-title">Trade with confidence and efficiency.</h3>
                         <p className="widget-description">
-                          Access comprehensive trading platforms and market data to execute trades across renewable energy, carbon, and environmental commodities with precision and speed.
+                          Access direct market news, indicators, and market intelligence tailored specifically to crude oil trading. We enable traders to learn how to operate with speed, discipline, and clarity across physical and paper crude oil markets.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
@@ -965,63 +994,113 @@ const HomePage = () => {
                         <p className="widget-subtitle">ASSET OWNERS</p>
                         <h3 className="widget-title">Maximize the value of your assets.</h3>
                         <p className="widget-description">
-                          Leverage Xpansiv's platform to optimize your renewable energy assets, track performance, and monetize environmental attributes effectively.
+                          Partner with us to optimize the performance of crude oil assets through informed market access, strategic trading, and disciplined risk management. We help asset owners navigate market cycles and unlock value.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/managed-portfolios')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
                     {activeTab === 3 && (
                       <div className="widget-content">
-                        <p className="widget-subtitle">POWER PRODUCERS</p>
-                        <h3 className="widget-title">Streamline production and distribution.</h3>
+                        <p className="widget-subtitle">CAPITAL PARTNERS</p>
+                        <h3 className="widget-title">Seamless capital access and movement.</h3>
                         <p className="widget-description">
-                          Connect your power generation assets to global markets, track renewable energy certificates, and manage your environmental commodity portfolio seamlessly.
+                          We accept capital contributions and process withdrawals efficiently, providing investors and partners with clear structures, disciplined controls, and transparent capital management aligned with crude oil trading operations.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
                     {activeTab === 4 && (
                       <div className="widget-content">
-                        <p className="widget-subtitle">SOLAR INSTALLERS</p>
-                        <h3 className="widget-title">Expand your business opportunities.</h3>
+                        <p className="widget-subtitle">RESEARCH & DEVELOPMENT</p>
+                        <h3 className="widget-title">Driving insight through analysis and innovation.</h3>
                         <p className="widget-description">
-                          Integrate solar installations with Xpansiv's platform to help your customers track and monetize their renewable energy generation.
+                          We invest in continuous market research, quantitative analysis, and strategy development to refine our crude oil trading approach. Our focus is on data-driven decision-making, market structure analysis, and adapting to evolving global crude oil dynamics.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/macro-insights')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
                     {activeTab === 5 && (
                       <div className="widget-content">
-                        <p className="widget-subtitle">HOMEOWNERS</p>
-                        <h3 className="widget-title">Track your clean energy impact.</h3>
+                        <p className="widget-subtitle">EXECUTION</p>
+                        <h3 className="widget-title">Facilitating fast and reliable execution.</h3>
                         <p className="widget-description">
-                          Monitor your solar generation, track renewable energy certificates, and see the environmental impact of your clean energy investment.
+                          We work with strategic partners to enable efficient trade execution, dependable settlement, and operational reliability. Our partnerships support speed, liquidity access, and disciplined execution across crude oil markets.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/performance-tracking')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
                     {activeTab === 6 && (
                       <div className="widget-content">
-                        <p className="widget-subtitle">EV & FLEET</p>
-                        <h3 className="widget-title">Electrify with confidence.</h3>
+                        <p className="widget-subtitle">CAPITAL PROTECTION</p>
+                        <h3 className="widget-title">Invest with confidence and safeguards in place.</h3>
                         <p className="widget-description">
-                          Manage your electric vehicle fleet, track clean fuel credits, and optimize your transition to sustainable transportation.
+                          Investor capital is protected up to 100,000, with structured risk controls and disciplined capital management designed to prioritize preservation alongside performance in crude oil trading operations.
                         </p>
                         <div className="widget-buttons">
-                          <button className="btn btn-primary-white">Learn More →</button>
-                          <button className="btn btn-secondary-white">Trading Platforms</button>
+                          <button 
+                            className="btn btn-primary-white"
+                            onClick={() => handleNavigateToTop('/risk-management')}
+                          >
+                            Learn More →
+                          </button>
+                          <button 
+                            className="btn btn-secondary-white"
+                            onClick={() => handleNavigateToTop('/partners')}
+                          >
+                            Trading Platforms
+                          </button>
                         </div>
                       </div>
                     )}
