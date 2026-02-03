@@ -234,6 +234,21 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       const data = []
       const monthlyHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
       
+      // Helper function to convert month name to number
+      const getMonthNumber = (monthName) => {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December']
+        return monthNames.indexOf(monthName) + 1
+      }
+      
+      // Helper function to format label as MM/YY
+      const formatLabel = (month, year) => {
+        const monthNum = typeof month === 'string' ? getMonthNumber(month) : month
+        const yearStr = year.toString()
+        const yearShort = yearStr.length >= 2 ? yearStr.slice(-2) : yearStr
+        return `${monthNum}/${yearShort}`
+      }
+      
       // If we have monthly history, use it for historical data
       if (monthlyHistory.length > 0) {
         // Add initial investment as starting point
@@ -249,7 +264,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
           data.push({
             month: index - monthlyHistory.length + 1,
             balance: record.endingBalance,
-            label: `${record.month.substring(0, 3)} ${record.year}`,
+            label: formatLabel(record.month, record.year),
             isHistorical: true
           })
         })
@@ -267,18 +282,44 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       // If we have monthly history, use the last month's ending balance
       // Otherwise, use current balance
       let projectionStartingBalance = currentBalance
+      let lastMonthRecord = null
       if (monthlyHistory.length > 0) {
-        const lastMonth = monthlyHistory[monthlyHistory.length - 1]
-        projectionStartingBalance = lastMonth.endingBalance || currentBalance
+        lastMonthRecord = monthlyHistory[monthlyHistory.length - 1]
+        projectionStartingBalance = lastMonthRecord.endingBalance || currentBalance
       }
       
       let projectedBalance = projectionStartingBalance
       for (let month = 1; month <= 5; month++) {
         projectedBalance = projectedBalance * (1 + monthlyReturnRate) + monthlyAdditions
+        
+        // Calculate the actual month/year for projection
+        let projectionMonth = 0
+        let projectionYear = 0
+        if (lastMonthRecord) {
+          const lastMonthNum = getMonthNumber(lastMonthRecord.month)
+          const lastYear = parseInt(lastMonthRecord.year)
+          projectionMonth = lastMonthNum + month
+          projectionYear = lastYear
+          // Handle year rollover
+          while (projectionMonth > 12) {
+            projectionMonth -= 12
+            projectionYear += 1
+          }
+        } else {
+          // If no history, use current date + projection months
+          const now = new Date()
+          projectionMonth = now.getMonth() + 1 + month
+          projectionYear = now.getFullYear()
+          while (projectionMonth > 12) {
+            projectionMonth -= 12
+            projectionYear += 1
+          }
+        }
+        
         data.push({
           month: monthlyHistory.length + month,
           balance: projectedBalance,
-          label: `+${month}M`,
+          label: formatLabel(projectionMonth, projectionYear),
           isHistorical: false
         })
       }
