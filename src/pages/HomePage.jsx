@@ -897,22 +897,66 @@ const HomePage = () => {
             {/* Stats Section */}
             <div className="stats-section">
               <div className="stat-card">
-                <div className="stat-icon">◉</div>
+                <div className="stat-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-drop-circle">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M10.07 15.34c1.115 .88 2.74 .88 3.855 0c1.115 -.88 1.398 -2.388 .671 -3.575l-2.596 -3.765l-2.602 3.765c-.726 1.187 -.443 2.694 .672 3.575" />
+                    <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                  </svg>
+                </div>
                 <h3 className="stat-title">Crude Oil Trading Expertise</h3>
                 <p className="stat-description">Focused exclusively on physical and paper crude oil markets</p>
               </div>
               <div className="stat-card">
-                <div className="stat-icon">▦</div>
+                <div className="stat-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-building-bank">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M3 21l18 0" />
+                    <path d="M3 10l18 0" />
+                    <path d="M5 6l7 -3l7 3" />
+                    <path d="M4 10l0 11" />
+                    <path d="M20 10l0 11" />
+                    <path d="M8 14l0 3" />
+                    <path d="M12 14l0 3" />
+                    <path d="M16 14l0 3" />
+                  </svg>
+                </div>
                 <h3 className="stat-title">Capital-Backed Trading</h3>
                 <p className="stat-description">Deploying investor capital to execute disciplined, proprietary crude oil trades</p>
               </div>
               <div className="stat-card">
-                <div className="stat-icon">▣</div>
+                <div className="stat-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-chart-candle">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M4 7a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3" />
+                    <path d="M6 4l0 2" />
+                    <path d="M6 11l0 9" />
+                    <path d="M10 15a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3" />
+                    <path d="M12 4l0 10" />
+                    <path d="M12 19l0 1" />
+                    <path d="M16 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -4" />
+                    <path d="M18 4l0 1" />
+                    <path d="M18 11l0 9" />
+                  </svg>
+                </div>
                 <h3 className="stat-title">Market-Driven Strategy</h3>
                 <p className="stat-description">Specialists in price discovery, risk management, and trading strategies within crude oil markets</p>
               </div>
               <div className="stat-card">
-                <div className="stat-icon">✓</div>
+                <div className="stat-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-circle-dashed-check">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M8.56 3.69a9 9 0 0 0 -2.92 1.95" />
+                    <path d="M3.69 8.56a9 9 0 0 0 -.69 3.44" />
+                    <path d="M3.69 15.44a9 9 0 0 0 1.95 2.92" />
+                    <path d="M8.56 20.31a9 9 0 0 0 3.44 .69" />
+                    <path d="M15.44 20.31a9 9 0 0 0 2.92 -1.95" />
+                    <path d="M20.31 15.44a9 9 0 0 0 .69 -3.44" />
+                    <path d="M20.31 8.56a9 9 0 0 0 -1.95 -2.92" />
+                    <path d="M15.44 3.69a9 9 0 0 0 -3.44 -.69" />
+                    <path d="M9 12l2 2l4 -4" />
+                  </svg>
+                </div>
                 <h3 className="stat-title">Trusted Trading Partner</h3>
                 <p className="stat-description">Working with producers, refiners, traders, and institutional counterparties worldwide</p>
               </div>

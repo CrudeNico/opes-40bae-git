@@ -1351,12 +1351,17 @@ a.btn-primary-white {
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
   margin-top: 4rem;
+  margin-left: -4rem;
 }
 
 .stat-card {
   padding: 2.5rem 2rem;
   position: relative;
   border-right: 1px solid #e5e7eb;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .stat-card:last-child {
@@ -1366,10 +1371,17 @@ a.btn-primary-white {
 .stat-icon {
   font-size: 2.5rem;
   margin-bottom: 1.25rem;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   color: #3b82f6;
   font-weight: 300;
+}
+
+.stat-icon svg {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .stat-title {
@@ -1378,12 +1390,14 @@ a.btn-primary-white {
   color: #1f2937;
   margin-bottom: 0.75rem;
   white-space: nowrap;
+  text-align: center;
 }
 
 .stat-description {
   font-size: 0.95rem;
   color: #6b7280;
   line-height: 1.6;
+  text-align: center;
 }
 
 /* Second Hero Section */
@@ -2213,6 +2227,11 @@ a.btn-secondary-white {
   .stat-icon {
     font-size: 2rem;
     margin-bottom: 0.75rem;
+  }
+
+  .stat-icon svg {
+    width: 2rem;
+    height: 2rem;
   }
 
   .stat-title {
