@@ -1226,7 +1226,7 @@ const HomePage = () => {
                           }}>
                             <div className="live-indicator"></div>
                           </div>
-                          <h4 className="advisor-name">John Smith</h4>
+                          <h4 className="advisor-name">Daniel</h4>
                           <p className="response-time-mobile">receive a response within 24 hours</p>
                         </div>
                         <div className="consultation-steps">

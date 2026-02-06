@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getImageUrl } from '../utils/imageStorage'
 import Footer from '../components/Footer'
 import './PortfolioModelsPage.css'
 import './HomePage.css'
 
 const PortfolioModelsPage = () => {
+  const navigate = useNavigate()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -576,7 +577,10 @@ const PortfolioModelsPage = () => {
                     </ul>
                   </div>
                   <div className="portfolio-model-cta">
-                    <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); /* Handle investment */ }}>
+                    <button className="btn btn-primary" onClick={(e) => { 
+                      e.stopPropagation(); 
+                      navigate('/signup');
+                    }}>
                       Invest Now
                     </button>
                   </div>
@@ -623,7 +627,10 @@ const PortfolioModelsPage = () => {
                     </ul>
                   </div>
                   <div className="portfolio-model-cta">
-                    <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); /* Handle investment */ }}>
+                    <button className="btn btn-primary" onClick={(e) => { 
+                      e.stopPropagation(); 
+                      navigate('/signup');
+                    }}>
                       Invest Now
                     </button>
                   </div>
