@@ -26,10 +26,12 @@ const OurTeamPage = () => {
   
   // Executive board members data
   const leaders = [
-    { id: 1, name: 'Marcos De Rodrigo', title: 'Chief Executive Officer' },
-    { id: 2, name: 'Jaime Fernandez', title: 'Chief Technology Officer' },
-    { id: 3, name: 'Christian Luigi', title: 'Chief Risk Officer' },
-    { id: 4, name: 'Nicolas Rodrigo', title: 'Chief Operations Officer' }
+    { id: 1, name: 'Marcos', title: 'Chief Executive Officer' },
+    { id: 2, name: 'Jaime', title: 'Chief Technology Officer' },
+    { id: 3, name: 'Christian', title: 'Chief Risk Officer' },
+    { id: 4, name: 'Nicolas', title: 'Chief Operations Officer' },
+    { id: 5, name: 'Angel', title: 'Algorithmic Trading Officer' },
+    { id: 6, name: 'Clara', title: 'Head of Investor Relations' }
   ]
   
   // Offices data
@@ -142,13 +144,17 @@ const OurTeamPage = () => {
         getImageUrl('our-team/48016C47-7A25-415F-8F2D-31244BD1625F.PNG'),
         getImageUrl('our-team/610ECB22-C07A-48D1-B646-A90D688F7367.PNG'),
         getImageUrl('our-team/1C118822-DFE2-4682-A8A8-771B723B06A1.PNG'),
-        getImageUrl('our-team/D0398078-0325-4A5B-B1EE-D4033A6FCDEA.PNG')
+        getImageUrl('our-team/D0398078-0325-4A5B-B1EE-D4033A6FCDEA.PNG'),
+        getImageUrl('our-team/angel3454.png'),
+        getImageUrl('our-team/clara456.png')
       ])
       setLeaderImages({
         leader1: leaderUrls[0],
         leader2: leaderUrls[1],
         leader3: leaderUrls[2],
-        leader4: leaderUrls[3]
+        leader4: leaderUrls[3],
+        leader5: leaderUrls[4],
+        leader6: leaderUrls[5]
       })
 
       // Load office images with specific filenames
