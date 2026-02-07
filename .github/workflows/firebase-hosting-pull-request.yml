@@ -15,7 +15,12 @@ jobs:
       
       - run: npm ci
       
-      - run: npm run build
+      - name: Build with environment variables
+        env:
+          VITE_BREVO_API_KEY: ${{ secrets.VITE_BREVO_API_KEY }}
+          VITE_BREVO_SENDER_EMAIL: ${{ secrets.VITE_BREVO_SENDER_EMAIL }}
+          VITE_BREVO_SENDER_NAME: ${{ secrets.VITE_BREVO_SENDER_NAME }}
+        run: npm run build
       
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
