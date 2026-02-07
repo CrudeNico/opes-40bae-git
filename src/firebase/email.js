@@ -16,6 +16,17 @@ export const sendConfirmationEmail = async (userEmail, userName) => {
     const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
     const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
 
+    // Debug logging (remove in production if needed)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Email config check:', {
+        hasApiKey: !!apiKey,
+        apiKeyLength: apiKey?.length || 0,
+        apiKeyPrefix: apiKey?.substring(0, 10) || 'none',
+        hasSenderEmail: !!senderEmail,
+        senderEmail: senderEmail
+      })
+    }
+
     if (!apiKey || !senderEmail) {
       console.error('Brevo API key or sender email not configured')
       return { success: false, error: 'Email service not configured' }
