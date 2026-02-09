@@ -31,7 +31,19 @@ function ScrollToTop() {
   const { pathname } = useLocation()
 
   useEffect(() => {
+    // Multiple methods to ensure scroll works
     window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    
+    // Also try after a delay in case content is still loading
+    const timeout = setTimeout(() => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }, 100)
+    
+    return () => clearTimeout(timeout)
   }, [pathname])
 
   return null

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { getImageUrl } from '../utils/imageStorage'
 import Footer from '../components/Footer'
 import './ContactPage.css'
@@ -7,6 +7,7 @@ import './HomePage.css'
 
 const ContactPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [openNavSection, setOpenNavSection] = useState(null)
   const [openMobileNavSection, setOpenMobileNavSection] = useState(null)
   const [expandedFooterSection, setExpandedFooterSection] = useState(null)
@@ -103,6 +104,35 @@ const ContactPage = () => {
       window.removeEventListener('scroll', handleScroll)
     }
   }, [openNavSection])
+
+  // Scroll to top when component mounts or route changes - multiple methods for reliability
+  useEffect(() => {
+    // Method 1: window.scrollTo
+    window.scrollTo(0, 0)
+    
+    // Method 2: Direct DOM manipulation
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    
+    // Method 3: Try again after delays to handle async content loading
+    const scrollToTop = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+    
+    const timeout1 = setTimeout(scrollToTop, 50)
+    const timeout2 = setTimeout(scrollToTop, 100)
+    const timeout3 = setTimeout(scrollToTop, 200)
+    const timeout4 = setTimeout(scrollToTop, 500)
+    
+    return () => {
+      clearTimeout(timeout1)
+      clearTimeout(timeout2)
+      clearTimeout(timeout3)
+      clearTimeout(timeout4)
+    }
+  }, [location.pathname])
 
   // Cleanup timeout on unmount
   useEffect(() => {

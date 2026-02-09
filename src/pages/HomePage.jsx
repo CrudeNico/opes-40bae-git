@@ -1526,14 +1526,7 @@ const HomePage = () => {
                 <h2 className="cta-title" style={{ color: '#ffffff' }}>Ready to transact with confidence?</h2>
                 <button 
                   className="btn btn-primary-white cta-button"
-                  onClick={() => {
-                    const calendarSection = document.querySelector('.third-widget-section')
-                    if (calendarSection) {
-                      const elementPosition = calendarSection.getBoundingClientRect().top + window.pageYOffset
-                      const offsetPosition = elementPosition - 150 // Scroll 150px higher
-                      window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
-                    }
-                  }}
+                  onClick={() => handleNavigateToTop('/contact')}
                 >
                   Talk to an Expert →
                 </button>
