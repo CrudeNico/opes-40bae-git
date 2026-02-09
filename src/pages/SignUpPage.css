@@ -544,3 +544,37 @@
   }
 }
 
+/* Override dark mode for signup form - keep white background */
+html.dark-mode .signup-form-container .form-input {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+html.dark-mode .signup-form-container .form-input::placeholder {
+  color: #9ca3af !important;
+}
+
+html.dark-mode .signup-form-container .form-label,
+html.dark-mode .signup-form-container label.form-label,
+html.dark-mode .signup-form-container .form-group .form-label,
+html.dark-mode .signup-form-container label[for="fullName"],
+html.dark-mode .signup-form-container label[for="email"],
+html.dark-mode .signup-form-container label[for="password"],
+html.dark-mode .signup-form-container label[for="confirmPassword"],
+html.dark-mode .signup-form-container .form-group label {
+  color: #1f2937 !important;
+}
+
+html.dark-mode .signup-form-container {
+  background: #ffffff !important;
+}
+
+html.dark-mode .signup-form-title {
+  color: #1f2937 !important;
+}
+
+html.dark-mode .signup-form-subtitle {
+  color: #6b7280 !important;
+}
+

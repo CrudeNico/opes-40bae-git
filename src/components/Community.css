@@ -257,4 +257,85 @@
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .community-widget {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .community-title,
+html.dark-mode .community-intro h2,
+html.dark-mode .pricing-info h3,
+html.dark-mode .pricing-option-header h3 {
+  color: #f9fafb;
+}
+
+html.dark-mode .community-description,
+html.dark-mode .pricing-info p,
+html.dark-mode .pricing-option-content {
+  color: #d1d5db;
+}
+
+html.dark-mode .pricing-section {
+  border-top-color: #374151;
+}
+
+html.dark-mode .pricing-option {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .pricing-option:hover {
+  border-color: #60a5fa;
+}
+
+html.dark-mode .pricing-option.selected {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .pricing-option-amount {
+  color: #60a5fa;
+}
+
+html.dark-mode .form-group label {
+  color: #d1d5db;
+}
+
+html.dark-mode .form-input {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-input:disabled {
+  background: #374151;
+  color: #6b7280;
+}
+
+html.dark-mode .btn-secondary {
+  background: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .btn-secondary:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  color: #86efac;
+  border-color: #166534;
+}
+
+html.dark-mode .loading-spinner {
+  color: #9ca3af;
+}
+
 

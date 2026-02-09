@@ -310,3 +310,75 @@
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .dashboard-page {
+  background: #1f2937;
+}
+
+html.dark-mode .dashboard-loading {
+  background: #1f2937;
+}
+
+html.dark-mode .loading-spinner {
+  color: #d1d5db;
+}
+
+html.dark-mode .dashboard-sidebar {
+  background: #111827;
+  border-right-color: #374151;
+}
+
+html.dark-mode .sidebar-profile {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .profile-name {
+  color: #f9fafb;
+}
+
+html.dark-mode .profile-email {
+  color: #d1d5db;
+}
+
+html.dark-mode .nav-item {
+  color: #d1d5db;
+}
+
+html.dark-mode .nav-item:hover {
+  background: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .nav-item.active {
+  background: #1f2937;
+  color: #3b82f6;
+  border-left-color: #3b82f6;
+}
+
+html.dark-mode .sidebar-footer {
+  border-top-color: #374151;
+}
+
+html.dark-mode .return-home {
+  background: #1f2937;
+  color: #f9fafb;
+  border-color: #374151;
+}
+
+html.dark-mode .return-home:hover {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+html.dark-mode .dashboard-content {
+  background: #1f2937;
+}
+
+html.dark-mode .content-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .content-body {
+  color: #d1d5db;
+}
+

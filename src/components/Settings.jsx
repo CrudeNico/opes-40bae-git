@@ -26,6 +26,8 @@ const Settings = ({ user }) => {
   const [success, setSuccess] = useState('')
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const [darkModeEnabled, setDarkModeEnabled] = useState(false)
+  const [loadingDarkMode, setLoadingDarkMode] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -35,6 +37,7 @@ const Settings = ({ user }) => {
       // Only use photoURL from Auth, don't try to load from Firestore on mount
       setProfileImageUrl(user.photoURL || '')
       loadNotificationSettings()
+      loadDarkModeSettings()
     }
   }, [user])
 
@@ -75,6 +78,29 @@ const Settings = ({ user }) => {
     }
   }
 
+  const loadDarkModeSettings = async () => {
+    try {
+      const db = getFirestore()
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const darkMode = userData.darkMode !== undefined ? userData.darkMode : false
+        setDarkModeEnabled(darkMode)
+        applyDarkMode(darkMode)
+      }
+    } catch (error) {
+      console.error('Error loading dark mode settings:', error)
+    }
+  }
+
+  const applyDarkMode = (enabled) => {
+    if (enabled) {
+      document.documentElement.classList.add('dark-mode')
+    } else {
+      document.documentElement.classList.remove('dark-mode')
+    }
+  }
+
   const handleNotificationToggle = async () => {
     setLoadingNotifications(true)
     try {
@@ -99,6 +125,32 @@ const Settings = ({ user }) => {
       setNotificationsEnabled(!notificationsEnabled)
     } finally {
       setLoadingNotifications(false)
+    }
+  }
+
+  const handleDarkModeToggle = async () => {
+    setLoadingDarkMode(true)
+    try {
+      const db = getFirestore()
+      const newValue = !darkModeEnabled
+      setDarkModeEnabled(newValue)
+      applyDarkMode(newValue)
+      
+      // Save preference to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        darkMode: newValue
+      }, { merge: true })
+      
+      setSuccess(`Dark mode ${newValue ? 'enabled' : 'disabled'}`)
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (error) {
+      console.error('Error updating dark mode settings:', error)
+      setError('Failed to update dark mode settings')
+      // Revert on error
+      setDarkModeEnabled(!darkModeEnabled)
+      applyDarkMode(!darkModeEnabled)
+    } finally {
+      setLoadingDarkMode(false)
     }
   }
 
@@ -616,6 +668,33 @@ service firebase.storage {
                   checked={notificationsEnabled}
                   onChange={handleNotificationToggle}
                   disabled={loadingNotifications}
+                />
+                <span className="ios-toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Dark Mode Section */}
+        <div className="settings-section">
+          <h2 className="settings-section-title">Dark Mode</h2>
+          <div className="settings-section-content">
+            <div className="notification-item">
+              <div className="notification-info">
+                <h3 className="notification-title">Dark Mode</h3>
+                <p className="notification-description">
+                  {darkModeEnabled 
+                    ? "Dark mode is currently enabled. The interface uses a dark color scheme for reduced eye strain."
+                    : "Enable dark mode to switch to a dark color scheme for reduced eye strain, especially in low-light conditions."
+                  }
+                </p>
+              </div>
+              <label className="ios-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={darkModeEnabled}
+                  onChange={handleDarkModeToggle}
+                  disabled={loadingDarkMode}
                 />
                 <span className="ios-toggle-slider"></span>
               </label>

@@ -719,10 +719,56 @@
   transition: all 0.2s ease;
 }
 
-.reset-cancel-button:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-  color: #1f2937;
+  .reset-cancel-button:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #1f2937;
+  }
+
+/* Override dark mode for login form - keep white background */
+html.dark-mode .login-form-container .form-input {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+html.dark-mode .login-form-container .form-input::placeholder {
+  color: #9ca3af !important;
+}
+
+html.dark-mode .login-form-container .form-label,
+html.dark-mode .login-form-container .form-label-row .form-label,
+html.dark-mode .login-form-container label.form-label,
+html.dark-mode .login-form-container label[for="email"],
+html.dark-mode .login-form-container label[for="password"],
+html.dark-mode .login-form-container .form-group label {
+  color: #1f2937 !important;
+}
+
+html.dark-mode .login-form-container .forgot-password {
+  color: #6b7280 !important;
+}
+
+html.dark-mode .login-form-container {
+  background: #ffffff !important;
+}
+
+html.dark-mode .login-form-title {
+  color: #1f2937 !important;
+}
+
+html.dark-mode .login-form-subtitle {
+  color: #6b7280 !important;
+}
+
+html.dark-mode .forgot-password-modal .form-input {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+html.dark-mode .forgot-password-modal .form-label {
+  color: #1f2937 !important;
 }
 
 @media (max-width: 768px) {

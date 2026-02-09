@@ -19,6 +19,30 @@ const DashboardPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
+  // Function to load and apply dark mode preference
+  const loadDarkModeSettings = async (userId) => {
+    try {
+      const db = getFirestore()
+      const userDoc = await getDoc(doc(db, 'users', userId))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const darkMode = userData.darkMode !== undefined ? userData.darkMode : false
+        applyDarkMode(darkMode)
+      }
+    } catch (error) {
+      console.error('Error loading dark mode settings:', error)
+    }
+  }
+
+  // Function to apply dark mode to the document
+  const applyDarkMode = (enabled) => {
+    if (enabled) {
+      document.documentElement.classList.add('dark-mode')
+    } else {
+      document.documentElement.classList.remove('dark-mode')
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -50,6 +74,9 @@ const DashboardPage = () => {
               setLoading(false)
               return // Don't set user state, will redirect
             }
+
+            // Load and apply dark mode preference immediately after login
+            loadDarkModeSettings(currentUser.uid)
           }
         } catch (error) {
           console.error('Error checking user status:', error)
@@ -60,6 +87,8 @@ const DashboardPage = () => {
         setUser(currentUser)
       } else {
         // User is not logged in, redirect to login
+        // Remove dark mode when logging out
+        applyDarkMode(false)
         navigate('/login')
       }
       setLoading(false)

@@ -780,3 +780,188 @@
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .learning-content,
+html.dark-mode .learning-widget,
+html.dark-mode .progress-section,
+html.dark-mode .modules-section,
+html.dark-mode .content-widget {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .learning-title,
+html.dark-mode .learning-intro h2,
+html.dark-mode .learning-features h3,
+html.dark-mode .progress-header h2,
+html.dark-mode .modules-title,
+html.dark-mode .content-widget h2,
+html.dark-mode .payment-info h3,
+html.dark-mode .under-construction-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .learning-description,
+html.dark-mode .features-list li,
+html.dark-mode .payment-info p,
+html.dark-mode .content-widget p,
+html.dark-mode .content-text,
+html.dark-mode .under-construction-message {
+  color: #d1d5db;
+}
+
+html.dark-mode .learning-features {
+  background: #374151;
+}
+
+html.dark-mode .pricing-option {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .pricing-option:hover {
+  border-color: #60a5fa;
+}
+
+html.dark-mode .pricing-option.selected {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .pricing-option-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .pricing-option-amount {
+  color: #60a5fa;
+}
+
+html.dark-mode .pricing-option-period {
+  color: #93c5fd;
+}
+
+html.dark-mode .form-group label {
+  color: #d1d5db;
+}
+
+html.dark-mode .form-input {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-input:disabled {
+  background: #374151;
+  color: #6b7280;
+}
+
+html.dark-mode .btn-secondary {
+  background: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .btn-secondary:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+html.dark-mode .progress-percentage {
+  color: #60a5fa;
+}
+
+html.dark-mode .progress-bar {
+  background: #374151;
+}
+
+html.dark-mode .progress-labels {
+  color: #9ca3af;
+}
+
+html.dark-mode .module-card {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+html.dark-mode .module-card:hover {
+  background: #4b5563;
+  border-color: #60a5fa;
+}
+
+html.dark-mode .module-card.completed {
+  background: #064e3b;
+  border-color: #10b981;
+}
+
+html.dark-mode .module-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .module-subtext {
+  color: #d1d5db;
+}
+
+html.dark-mode .module-arrow {
+  color: #9ca3af;
+}
+
+html.dark-mode .module-card:hover .module-arrow {
+  color: #60a5fa;
+}
+
+html.dark-mode .module-progress-bar {
+  background: #4b5563;
+}
+
+html.dark-mode .module-progress-text {
+  color: #9ca3af;
+}
+
+html.dark-mode .back-button-top svg {
+  color: #9ca3af;
+}
+
+html.dark-mode .back-button-top:hover svg {
+  color: #f9fafb;
+}
+
+html.dark-mode .pdf-viewer-container {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+html.dark-mode .under-construction-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+html.dark-mode .under-construction-modal {
+  background: #1f2937;
+}
+
+html.dark-mode .under-construction-close {
+  color: #9ca3af;
+}
+
+html.dark-mode .under-construction-close:hover {
+  color: #f9fafb;
+  background: #374151;
+}
+
+html.dark-mode .under-construction-icon {
+  color: #9ca3af;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  color: #86efac;
+  border-color: #166534;
+}
+
+html.dark-mode .loading-spinner {
+  color: #9ca3af;
+}
+

@@ -357,3 +357,88 @@
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .settings-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .settings-section-title {
+  color: #f9fafb;
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .notification-item {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .notification-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .notification-description {
+  color: #d1d5db;
+}
+
+html.dark-mode .settings-form {
+  background: transparent;
+}
+
+html.dark-mode .form-group {
+  background: transparent;
+}
+
+html.dark-mode .form-label {
+  color: #f9fafb;
+  background: transparent;
+}
+
+html.dark-mode .form-input,
+html.dark-mode .form-textarea {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-input:focus,
+html.dark-mode .form-textarea:focus {
+  border-color: #3b82f6;
+}
+
+html.dark-mode .form-help {
+  color: #d1d5db;
+  background: transparent;
+}
+
+html.dark-mode .profile-image-preview img {
+  border-color: #374151;
+}
+
+html.dark-mode .profile-placeholder-large {
+  border-color: #374151;
+}
+
+html.dark-mode .file-input-label {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .file-input-label:hover {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fecaca;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  border-color: #166534;
+  color: #bbf7d0;
+}
+

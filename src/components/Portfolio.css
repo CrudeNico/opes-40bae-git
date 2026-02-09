@@ -797,3 +797,130 @@ select.form-input option {
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .portfolio-content,
+html.dark-mode .investor-initiation-widget,
+html.dark-mode .investment-pending-widget,
+html.dark-mode .investment-form-container,
+html.dark-mode .metric-card,
+html.dark-mode .history-container {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .investment-pending-widget {
+  background: #451a03;
+  border-color: #f59e0b;
+}
+
+html.dark-mode .portfolio-title,
+html.dark-mode .section-subtitle,
+html.dark-mode .widget-title,
+html.dark-mode .form-header h2,
+html.dark-mode .metric-value,
+html.dark-mode .metric-label {
+  color: #f9fafb;
+}
+
+html.dark-mode .widget-description,
+html.dark-mode .form-header p,
+html.dark-mode .form-label,
+html.dark-mode .form-help,
+html.dark-mode .history-header {
+  color: #f9fafb;
+  background: #374151;
+  border-bottom-color: #4b5563;
+}
+
+html.dark-mode .history-row {
+  color: #d1d5db;
+}
+
+html.dark-mode .form-input,
+html.dark-mode .custom-select-button,
+html.dark-mode .custom-select-dropdown,
+html.dark-mode .dropdown-option {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-input::placeholder {
+  color: #9ca3af;
+}
+
+html.dark-mode .custom-select-button.placeholder {
+  color: #9ca3af;
+}
+
+html.dark-mode .dropdown-option:hover {
+  background: #4b5563;
+}
+
+html.dark-mode .dropdown-option.selected {
+  background: #1e3a8a;
+  color: #60a5fa;
+}
+
+html.dark-mode .graph-container {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+/* Make graph numbers white in dark mode */
+html.dark-mode .graph-container svg text {
+  fill: #f9fafb !important;
+}
+
+html.dark-mode .graph-legend {
+  border-bottom-color: #4b5563;
+}
+
+html.dark-mode .legend-item {
+  color: #d1d5db;
+}
+
+html.dark-mode .metric-icon {
+  background: #374151;
+  color: #60a5fa;
+}
+
+html.dark-mode .metric-value.positive {
+  color: #34d399;
+}
+
+html.dark-mode .metric-value.negative {
+  color: #f87171;
+}
+
+html.dark-mode .history-row:hover {
+  background: #374151;
+}
+
+html.dark-mode .btn-cancel {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+html.dark-mode .btn-cancel:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  color: #86efac;
+  border-color: #166534;
+}
+
+html.dark-mode .loading-spinner {
+  color: #9ca3af;
+}
+

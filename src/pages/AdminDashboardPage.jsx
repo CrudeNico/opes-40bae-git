@@ -21,6 +21,30 @@ const AdminDashboardPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
+  // Function to load and apply dark mode preference
+  const loadDarkModeSettings = async (userId) => {
+    try {
+      const db = getFirestore()
+      const userDoc = await getDoc(doc(db, 'users', userId))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const darkMode = userData.darkMode !== undefined ? userData.darkMode : false
+        applyDarkMode(darkMode)
+      }
+    } catch (error) {
+      console.error('Error loading dark mode settings:', error)
+    }
+  }
+
+  // Function to apply dark mode to the document
+  const applyDarkMode = (enabled) => {
+    if (enabled) {
+      document.documentElement.classList.add('dark-mode')
+    } else {
+      document.documentElement.classList.remove('dark-mode')
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -46,6 +70,9 @@ const AdminDashboardPage = () => {
             // Allow both Admin and Admin 2 (previously Relations) to access admin dashboard
             if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
               setUser({ ...currentUser, userStatuses: statuses }) // Store statuses in user object
+              
+              // Load and apply dark mode preference immediately after login
+              loadDarkModeSettings(currentUser.uid)
             } else {
               // User is not admin or admin 2, redirect to regular dashboard
               navigate('/dashboard')
@@ -63,6 +90,8 @@ const AdminDashboardPage = () => {
         }
       } else {
         // User is not logged in, redirect to login
+        // Remove dark mode when logging out
+        applyDarkMode(false)
         navigate('/login')
       }
       setLoading(false)
