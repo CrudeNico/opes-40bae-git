@@ -965,10 +965,115 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                 </div>
               </div>
 
+              {/* Update Preview */}
+              {monthlyUpdate.month && monthlyUpdate.year && monthlyUpdate.percentageGrowth && (() => {
+                // Helper functions for calculations
+                const getDaysInMonth = (month, year) => {
+                  const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                     'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+                  return new Date(year, monthIndex + 1, 0).getDate()
+                }
+
+                const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+                  if (!date || !month || !year || amount === 0) return 0
+                  const depositDate = new Date(date)
+                  const dayOfMonth = depositDate.getDate()
+                  const daysInMonth = getDaysInMonth(month, parseInt(year))
+                  let daysRemaining = daysInMonth - dayOfMonth + 1
+                  if (dayOfMonth === daysInMonth) {
+                    daysRemaining = 0
+                  }
+                  const proratedRatio = daysRemaining / daysInMonth
+                  return amount * (percentageGrowth / 100) * proratedRatio
+                }
+
+                const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+                  if (!date || !month || !year || amount === 0) return 0
+                  const withdrawalDate = new Date(date)
+                  const dayOfMonth = withdrawalDate.getDate()
+                  const daysInMonth = getDaysInMonth(month, parseInt(year))
+                  const daysRemaining = daysInMonth - dayOfMonth
+                  const proratedRatio = daysRemaining / daysInMonth
+                  return amount * (percentageGrowth / 100) * proratedRatio
+                }
+
+                const startingBalance = currentBalance
+                const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
+                const baseGrowth = startingBalance * (percentageGrowth / 100)
+                const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
+                const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
+                
+                const depositGrowth = calculateProratedGrowth(
+                  depositAmount, 
+                  percentageGrowth, 
+                  monthlyUpdate.depositDate, 
+                  monthlyUpdate.month, 
+                  monthlyUpdate.year
+                )
+                
+                const withdrawalGrowth = calculateWithdrawalGrowthLoss(
+                  withdrawalAmount, 
+                  percentageGrowth, 
+                  monthlyUpdate.withdrawalDate, 
+                  monthlyUpdate.month, 
+                  monthlyUpdate.year
+                )
+                
+                const finalBalance = startingBalance + baseGrowth + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+
+                return (
+                  <div className="update-preview">
+                    <h5>Update Preview:</h5>
+                    <div className="preview-grid">
+                      <div className="preview-item">
+                        <span>Starting Balance:</span>
+                        <span>€{startingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="preview-item">
+                        <span>Growth ({percentageGrowth}%):</span>
+                        <span>€{baseGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      {depositAmount > 0 && (
+                        <>
+                          <div className="preview-item">
+                            <span>Deposit:</span>
+                            <span>+€{depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          {depositGrowth > 0 && (
+                            <div className="preview-item">
+                              <span>Deposit Growth:</span>
+                              <span>+€{depositGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {withdrawalAmount > 0 && (
+                        <>
+                          <div className="preview-item">
+                            <span>Withdrawal:</span>
+                            <span>-€{withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          {withdrawalGrowth > 0 && (
+                            <div className="preview-item">
+                              <span>Withdrawal Growth Loss:</span>
+                              <span>-€{withdrawalGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <div className="preview-item preview-total">
+                        <span>Final Balance:</span>
+                        <span>€{finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
               <button
                 type="submit"
                 className="btn-submit"
-                disabled={loadingMonthlyUpdate}
+                disabled={loadingMonthlyUpdate || !monthlyUpdate.month || !monthlyUpdate.year || !monthlyUpdate.percentageGrowth}
               >
                 {loadingMonthlyUpdate ? 'Saving...' : 'Save Monthly Performance'}
               </button>
