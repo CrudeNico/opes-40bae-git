@@ -422,10 +422,10 @@ const Support = ({ user }) => {
                   </div>
                 ) : (
                   chatMessages.map((msg) => (
-                    <div key={msg.id} className="message-item">
+                    <div key={msg.id} className="message-thread">
                       {/* Only show user message if there's actual content (non-empty message, image, or file) */}
                       {((msg.message && msg.message.trim()) || msg.imageUrl || msg.fileUrl) && (
-                        <>
+                        <div className="message-item user-message">
                           <div className="message-header">
                             <span className="message-author">You</span>
                             <span className="message-date">
@@ -456,10 +456,10 @@ const Support = ({ user }) => {
                               </div>
                             )}
                           </div>
-                        </>
+                        </div>
                       )}
-                      {msg.adminResponse && (
-                        <div className="admin-response">
+                      {msg.adminResponse && (msg.adminResponse.message || msg.adminResponse.imageUrl || msg.adminResponse.fileUrl) && (
+                        <div className="message-item admin-message">
                           <div className="message-header">
                             <span className="message-author admin">Admin</span>
                             <span className="message-date">
