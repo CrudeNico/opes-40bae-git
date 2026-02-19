@@ -2782,42 +2782,89 @@ a.btn-secondary-white {
 
   .form-content-layout {
     gap: 1.25rem;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    width: 100%;
+  }
+
+  .form-left,
+  .form-right {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .form-title {
     font-size: 1.1rem;
+    text-align: center;
   }
 
   .selected-date {
     font-size: 0.85rem;
+    text-align: center;
   }
 
   .time-selection {
     margin-bottom: 1.5rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .time-slots {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
+    width: 100%;
+    max-width: 100%;
   }
 
   .time-slot {
     padding: 0.6rem 0.75rem;
     font-size: 0.85rem;
+    width: 100%;
+    text-align: center;
   }
 
   .form-fields {
     gap: 1rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .form-field {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .form-field-full {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .form-label {
     font-size: 0.9rem;
+    text-align: center;
+    width: 100%;
   }
 
   .form-input,
   .form-textarea {
     padding: 0.6rem 0.75rem;
     font-size: 0.9rem;
+    width: 100%;
+    max-width: 100%;
+    text-align: left;
   }
 
   .form-textarea {
@@ -2827,6 +2874,19 @@ a.btn-secondary-white {
   .submit-button {
     padding: 0.75rem 1.5rem;
     font-size: 0.9rem;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+    text-align: center;
+  }
+
+  .form-right .submit-button {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+    text-align: center;
   }
 
   .tab-button {
