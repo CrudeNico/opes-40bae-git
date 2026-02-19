@@ -159,10 +159,29 @@ This is an automated confirmation email. Please do not reply to this message.
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error:', errorData)
+      console.error('Brevo API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData: errorData
+      })
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to send email'
+      if (response.status === 401) {
+        if (errorData.message && errorData.message.includes('not enabled')) {
+          errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
+        } else {
+          errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_BREVO_API_KEY in GitHub Secrets matches your Brevo API key.'
+        }
+      } else if (errorData.message) {
+        errorMessage = errorData.message
+      } else {
+        errorMessage = `${response.status} ${response.statusText}`
+      }
+      
       return { 
         success: false, 
-        error: errorData.message || 'Failed to send email' 
+        error: errorMessage
       }
     }
 
@@ -340,10 +359,29 @@ This is an automated email. Please do not reply to this message.
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error:', errorData)
+      console.error('Brevo API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData: errorData
+      })
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to send email'
+      if (response.status === 401) {
+        if (errorData.message && errorData.message.includes('not enabled')) {
+          errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
+        } else {
+          errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_BREVO_API_KEY in GitHub Secrets matches your Brevo API key.'
+        }
+      } else if (errorData.message) {
+        errorMessage = errorData.message
+      } else {
+        errorMessage = `${response.status} ${response.statusText}`
+      }
+      
       return { 
         success: false, 
-        error: errorData.message || 'Failed to send email' 
+        error: errorMessage
       }
     }
 

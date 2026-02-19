@@ -740,3 +740,277 @@
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .admin-users-loading {
+  background: transparent;
+}
+
+html.dark-mode .loading-spinner {
+  color: #d1d5db;
+}
+
+html.dark-mode .users-list-panel {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .panel-title {
+  color: #f9fafb;
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .user-card {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .user-card:hover {
+  background: #374151;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .user-card.selected {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .user-card-image {
+  background: #374151;
+}
+
+html.dark-mode .user-card-name {
+  color: #f9fafb;
+}
+
+html.dark-mode .user-card-email {
+  color: #d1d5db;
+}
+
+html.dark-mode .no-users {
+  color: #9ca3af;
+}
+
+html.dark-mode .user-details-panel {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .no-selection {
+  color: #9ca3af;
+}
+
+html.dark-mode .section-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .user-info-display {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .info-row {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .info-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .info-value {
+  color: #f9fafb;
+}
+
+html.dark-mode .section-description {
+  color: #d1d5db;
+}
+
+html.dark-mode .status-checkbox-label {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .status-checkbox-label:hover {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .status-checkbox-label:has(input:checked) {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .status-checkbox-text {
+  color: #f9fafb;
+}
+
+html.dark-mode .status-checkbox-label.disabled {
+  background: #1f2937;
+}
+
+html.dark-mode .status-checkbox-label.disabled:hover {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .status-checkbox-label.disabled .status-checkbox-text {
+  color: #6b7280;
+}
+
+html.dark-mode .investment-section {
+  background: #1f2937;
+  border-color: #f59e0b;
+}
+
+html.dark-mode .info-item .info-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .info-item .info-value {
+  color: #f9fafb;
+}
+
+html.dark-mode .investment-actions-disabled {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .disabled-message {
+  color: #d1d5db;
+}
+
+html.dark-mode .btn-edit {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+html.dark-mode .btn-edit:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark-mode .investment-edit-actions {
+  border-top-color: #374151;
+}
+
+html.dark-mode .btn-cancel {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+html.dark-mode .btn-cancel:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark-mode .form-input {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+html.dark-mode .checkbox-label {
+  color: #f9fafb;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
+}
+
+html.dark-mode .portfolio-management-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .portfolio-summary {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .portfolio-summary h4 {
+  color: #f9fafb;
+}
+
+html.dark-mode .summary-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .summary-value {
+  color: #f9fafb;
+}
+
+html.dark-mode .monthly-update-form {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .monthly-update-form h4 {
+  color: #f9fafb;
+}
+
+html.dark-mode .form-help {
+  color: #9ca3af;
+}
+
+html.dark-mode .update-preview {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .update-preview h5 {
+  color: #f9fafb;
+}
+
+html.dark-mode .preview-item {
+  border-bottom-color: #3b82f6;
+  color: #f9fafb;
+}
+
+html.dark-mode .preview-total {
+  color: #f9fafb;
+  border-top-color: #3b82f6;
+}
+
+html.dark-mode .monthly-history {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .monthly-history h4 {
+  color: #f9fafb;
+}
+
+html.dark-mode .history-table {
+  border-color: #374151;
+}
+
+html.dark-mode .history-header {
+  background: #111827;
+  color: #f9fafb;
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .history-row {
+  background: #1f2937;
+  border-bottom-color: #374151;
+  color: #d1d5db;
+}
+
+html.dark-mode .history-row:hover {
+  background: #374151;
+}
+

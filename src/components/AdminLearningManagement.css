@@ -399,3 +399,133 @@
   }
 }
 
+/* Dark Mode Styles */
+html.dark-mode .admin-learning-loading {
+  color: #d1d5db;
+}
+
+html.dark-mode .admin-learning-header h2 {
+  color: #f9fafb;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
+}
+
+html.dark-mode .admin-learning-form-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .admin-learning-form-section h3 {
+  color: #f9fafb;
+}
+
+html.dark-mode .form-group label {
+  color: #d1d5db;
+}
+
+html.dark-mode .form-input,
+html.dark-mode .form-textarea {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-input:focus,
+html.dark-mode .form-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+html.dark-mode .image-preview img {
+  border-color: #374151;
+}
+
+html.dark-mode .image-preview p {
+  color: #9ca3af;
+}
+
+html.dark-mode .pdf-preview {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .pdf-preview p {
+  color: #d1d5db;
+}
+
+html.dark-mode .pdf-preview a {
+  color: #60a5fa;
+}
+
+html.dark-mode .pdf-viewer-container {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .btn-secondary {
+  background: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .btn-secondary:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+html.dark-mode .admin-learning-list {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .admin-learning-list h3 {
+  color: #f9fafb;
+}
+
+html.dark-mode .no-items {
+  color: #9ca3af;
+}
+
+html.dark-mode .module-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .module-card:hover {
+  border-color: #3b82f6;
+}
+
+html.dark-mode .module-header h4 {
+  color: #f9fafb;
+}
+
+html.dark-mode .module-info {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .module-info p {
+  color: #d1d5db;
+}
+
+html.dark-mode .module-actions {
+  border-top-color: #374151;
+}
+
+html.dark-mode .sub-module-card {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .sub-module-header h4 {
+  color: #f9fafb;
+}
+

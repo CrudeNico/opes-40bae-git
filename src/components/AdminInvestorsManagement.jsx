@@ -53,14 +53,15 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
         const userData = docSnapshot.data()
         const statuses = userData.statuses || []
         
-        // Only include users who are investors with approved investment accounts
-        if (statuses.includes('Investor') && userData.investmentData && userData.investmentData.status === 'approved') {
+        // Include users who are investors or traders with approved investment accounts
+        if ((statuses.includes('Investor') || statuses.includes('Trader')) && userData.investmentData && userData.investmentData.status === 'approved') {
           investorsList.push({
             id: docSnapshot.id,
             displayName: userData.displayName || '',
             email: userData.email || '',
             profileImageUrl: userData.profileImageUrl || '',
             investmentData: userData.investmentData || null,
+            statuses: statuses,
             ...userData
           })
         }
@@ -571,7 +572,7 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
                 >
                   View Performance
                 </button>
-                {canAddPerformance && (
+                {canAddPerformance && !(selectedInvestor.statuses && selectedInvestor.statuses.includes('Trader')) && (
                   <button
                     onClick={() => {
                       setShowAddPerformance(true)
@@ -581,6 +582,11 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
                   >
                     Add New Performance
                   </button>
+                )}
+                {selectedInvestor.statuses && selectedInvestor.statuses.includes('Trader') && (
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    This user is a Trader and manages their own portfolio performance.
+                  </p>
                 )}
               </div>
 
@@ -619,8 +625,8 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
                 </div>
               )}
 
-              {/* Add Performance Form - Only show for admins with full permissions */}
-              {showAddPerformance && canAddPerformance && (
+              {/* Add Performance Form - Only show for admins with full permissions, and not for Traders */}
+              {showAddPerformance && canAddPerformance && !(selectedInvestor.statuses && selectedInvestor.statuses.includes('Trader')) && (
                 <div className="add-performance-section">
                   <h3 className="section-title">Add Monthly Performance</h3>
                   <div className="monthly-update-form">

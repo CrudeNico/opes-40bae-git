@@ -543,3 +543,192 @@
   margin-top: 0.5rem;
 }
 
+/* Dark Mode Styles */
+html.dark-mode .admin-portfolio-loading {
+  background: transparent;
+}
+
+html.dark-mode .loading-spinner {
+  color: #d1d5db;
+}
+
+html.dark-mode .admin-portfolio-no-data {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .admin-portfolio-no-data h2 {
+  color: #f9fafb;
+}
+
+html.dark-mode .admin-portfolio-no-data p {
+  color: #d1d5db;
+}
+
+html.dark-mode .admin-portfolio-content {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .admin-portfolio-header {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .admin-portfolio-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .alert-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+}
+
+html.dark-mode .alert-success {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
+}
+
+html.dark-mode .add-performance-section {
+  background: #1f2937 !important;
+  border-color: #374151;
+}
+
+html.dark-mode .section-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .form-group label {
+  color: #d1d5db;
+}
+
+html.dark-mode .form-group input,
+html.dark-mode .form-group select {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .form-group input:focus,
+html.dark-mode .form-group select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+html.dark-mode .form-group select option {
+  background: #111827;
+  color: #f9fafb;
+}
+
+html.dark-mode .section-subtitle {
+  color: #f9fafb;
+}
+
+html.dark-mode .graph-container {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .graph-legend {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .legend-item {
+  color: #d1d5db;
+}
+
+html.dark-mode .metric-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .metric-card:hover {
+  border-color: #3b82f6;
+}
+
+html.dark-mode .metric-icon {
+  background: #111827;
+}
+
+html.dark-mode .metric-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .metric-value {
+  color: #f9fafb;
+}
+
+html.dark-mode .metric-value.positive {
+  color: #34d399;
+}
+
+html.dark-mode .metric-value.negative {
+  color: #f87171;
+}
+
+html.dark-mode .history-container {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .history-header {
+  background: #111827;
+  color: #f9fafb;
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .history-row {
+  background: #1f2937;
+  border-bottom-color: #374151;
+  color: #d1d5db;
+}
+
+html.dark-mode .history-row:hover {
+  background: #374151;
+}
+
+html.dark-mode .history-row.editing {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .edit-performance-section {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .btn-cancel {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+html.dark-mode .btn-cancel:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark-mode .update-preview {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
+html.dark-mode .update-preview h5 {
+  color: #f9fafb;
+}
+
+html.dark-mode .preview-item {
+  border-bottom-color: #3b82f6;
+  color: #f9fafb;
+}
+
+html.dark-mode .preview-item span {
+  color: #f9fafb;
+}
+
+html.dark-mode .preview-total {
+  color: #f9fafb;
+  border-top-color: #3b82f6;
+}
+

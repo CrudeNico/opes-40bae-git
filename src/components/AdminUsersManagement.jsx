@@ -16,6 +16,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
     Admin: false,
     'Admin 2': false,
     Investor: false,
+    Trader: false,
     Learner: false,
     Community: false
   })
@@ -27,7 +28,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   
-  const availableStatuses = ['Admin', 'Admin 2', 'Investor', 'Learner', 'Community']
+  const availableStatuses = ['Admin', 'Admin 2', 'Investor', 'Trader', 'Learner', 'Community']
 
   useEffect(() => {
     loadUsers()
@@ -52,6 +53,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
         Admin: currentStatuses.includes('Admin'),
         'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'), // Support old Relations status
         Investor: currentStatuses.includes('Investor'),
+        Trader: currentStatuses.includes('Trader'),
         Learner: currentStatuses.includes('Learner'),
         Community: currentStatuses.includes('Community')
       }
@@ -277,6 +279,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
         Admin: currentStatuses.includes('Admin'),
         'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'), // Support old Relations status
         Investor: currentStatuses.includes('Investor'),
+        Trader: currentStatuses.includes('Trader'),
         Learner: currentStatuses.includes('Learner'),
         Community: currentStatuses.includes('Community')
       }

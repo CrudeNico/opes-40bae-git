@@ -4,6 +4,7 @@ import './Portfolio.css'
 
 const Portfolio = ({ user, onStatusUpdate }) => {
   const [isInvestor, setIsInvestor] = useState(false)
+  const [isTrader, setIsTrader] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -21,6 +22,28 @@ const Portfolio = ({ user, onStatusUpdate }) => {
   const [success, setSuccess] = useState('')
   const [riskDropdownOpen, setRiskDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
+  const [showAddPerformance, setShowAddPerformance] = useState(false)
+  const [monthlyUpdate, setMonthlyUpdate] = useState({
+    month: '',
+    year: '',
+    percentageGrowth: '',
+    depositAmount: '',
+    depositDate: '',
+    withdrawalAmount: '',
+    withdrawalDate: ''
+  })
+  const [loadingMonthlyUpdate, setLoadingMonthlyUpdate] = useState(false)
+  const [editingRecordIndex, setEditingRecordIndex] = useState(null)
+  const [editedRecordData, setEditedRecordData] = useState({
+    month: '',
+    year: '',
+    percentageGrowth: '',
+    depositAmount: '',
+    depositDate: '',
+    withdrawalAmount: '',
+    withdrawalDate: ''
+  })
+  const [loadingEdit, setLoadingEdit] = useState(false)
 
   useEffect(() => {
     checkInvestorStatus()
@@ -62,11 +85,12 @@ const Portfolio = ({ user, onStatusUpdate }) => {
         }
         
         setIsInvestor(statuses.includes('Investor'))
+        setIsTrader(statuses.includes('Trader'))
         // Check if investment is pending
         setIsPending(userData.investmentData && userData.investmentData.status === 'pending')
         
-        // Load investment data if user is investor
-        if (statuses.includes('Investor') && userData.investmentData) {
+        // Load investment data if user is investor or trader
+        if ((statuses.includes('Investor') || statuses.includes('Trader')) && userData.investmentData) {
           setInvestmentDataState(userData.investmentData)
         }
       }
@@ -77,10 +101,10 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     }
   }
 
-  // Load investment data when user becomes investor
+  // Load investment data when user becomes investor or trader
   useEffect(() => {
     const loadInvestmentData = async () => {
-      if (isInvestor && user && !investmentDataState) {
+      if ((isInvestor || isTrader) && user && !investmentDataState) {
         try {
           const db = getFirestore()
           const userDoc = await getDoc(doc(db, 'users', user.uid))
@@ -96,7 +120,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       }
     }
     loadInvestmentData()
-  }, [isInvestor, user, investmentDataState])
+  }, [isInvestor, isTrader, user, investmentDataState])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -104,6 +128,447 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       ...prev,
       [name]: value
     }))
+  }
+
+  const handleMonthlyUpdateChange = (e) => {
+    const { name, value } = e.target
+    setMonthlyUpdate(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  // Helper function to sort monthly history
+  const sortMonthlyHistory = (history) => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December']
+    return [...history].sort((a, b) => {
+      if (a.year !== b.year) {
+        return a.year - b.year
+      }
+      const monthA = monthNames.indexOf(a.month)
+      const monthB = monthNames.indexOf(b.month)
+      return monthA - monthB
+    })
+  }
+
+  const handleAddMonthlyPerformance = async (e) => {
+    e.preventDefault()
+    
+    if (!isTrader || !investmentDataState) {
+      setError('You do not have permission to add monthly performance.')
+      return
+    }
+
+    setLoadingMonthlyUpdate(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        setError('User document not found')
+        return
+      }
+
+      const userData = userDoc.data()
+      const currentInvestmentData = userData.investmentData || {}
+      const currentBalance = currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
+      const totalDeposits = currentInvestmentData.totalDeposits || currentInvestmentData.initialInvestment || 0
+      const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
+
+      // Helper function to get days in a month
+      const getDaysInMonth = (month, year) => {
+        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+        return new Date(year, monthIndex + 1, 0).getDate()
+      }
+
+      // Helper function to calculate prorated growth
+      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        
+        const depositDate = new Date(date)
+        const dayOfMonth = depositDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        
+        let daysRemaining = daysInMonth - dayOfMonth + 1
+        if (dayOfMonth === daysInMonth) {
+          daysRemaining = 0
+        }
+        
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        
+        const withdrawalDate = new Date(date)
+        const dayOfMonth = withdrawalDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        
+        const daysRemaining = daysInMonth - dayOfMonth
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      // Calculate new balance based on percentage growth
+      const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
+      const growthAmount = currentBalance * (percentageGrowth / 100)
+      let newBalance = currentBalance + growthAmount
+
+      // Add deposit if provided
+      const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
+      const newTotalDeposits = totalDeposits + depositAmount
+      
+      const depositGrowth = calculateProratedGrowth(
+        depositAmount, 
+        percentageGrowth, 
+        monthlyUpdate.depositDate, 
+        monthlyUpdate.month, 
+        monthlyUpdate.year
+      )
+      
+      newBalance += depositAmount + depositGrowth
+
+      // Subtract withdrawal if provided
+      const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
+      const newTotalWithdrawals = totalWithdrawals + withdrawalAmount
+      
+      const withdrawalGrowth = calculateWithdrawalGrowthLoss(
+        withdrawalAmount, 
+        percentageGrowth, 
+        monthlyUpdate.withdrawalDate, 
+        monthlyUpdate.month, 
+        monthlyUpdate.year
+      )
+      
+      newBalance -= withdrawalAmount + withdrawalGrowth
+
+      // Create monthly record
+      const monthlyRecord = {
+        month: monthlyUpdate.month,
+        year: monthlyUpdate.year,
+        percentageGrowth: percentageGrowth,
+        growthAmount: growthAmount,
+        depositGrowth: depositGrowth,
+        withdrawalGrowth: withdrawalGrowth,
+        startingBalance: currentBalance,
+        endingBalance: newBalance,
+        depositAmount: depositAmount,
+        depositDate: monthlyUpdate.depositDate || null,
+        withdrawalAmount: withdrawalAmount,
+        withdrawalDate: monthlyUpdate.withdrawalDate || null,
+        updatedAt: new Date().toISOString()
+      }
+
+      // Get existing monthly history
+      const existingHistory = currentInvestmentData.monthlyHistory || []
+      const updatedHistory = [...existingHistory, monthlyRecord]
+      
+      // Sort the history chronologically
+      const sortedHistory = sortMonthlyHistory(updatedHistory)
+
+      // Recalculate all balances from the beginning
+      let runningBalance = currentInvestmentData.initialInvestment || 0
+      const recalculatedHistory = sortedHistory.map((record, index) => {
+        if (index === 0) {
+          runningBalance = record.startingBalance
+        } else {
+          runningBalance = sortedHistory[index - 1].endingBalance
+        }
+        
+        const recalculatedGrowth = runningBalance * (record.percentageGrowth / 100)
+        const recalculatedDepositGrowth = calculateProratedGrowth(
+          record.depositAmount || 0,
+          record.percentageGrowth,
+          record.depositDate,
+          record.month,
+          record.year
+        )
+        const recalculatedWithdrawalGrowth = calculateWithdrawalGrowthLoss(
+          record.withdrawalAmount || 0,
+          record.percentageGrowth,
+          record.withdrawalDate,
+          record.month,
+          record.year
+        )
+        
+        runningBalance = runningBalance + recalculatedGrowth + (record.depositAmount || 0) + recalculatedDepositGrowth - (record.withdrawalAmount || 0) - recalculatedWithdrawalGrowth
+        
+        return {
+          ...record,
+          startingBalance: runningBalance - recalculatedGrowth - (record.depositAmount || 0) - recalculatedDepositGrowth + (record.withdrawalAmount || 0) + recalculatedWithdrawalGrowth,
+          growthAmount: recalculatedGrowth,
+          depositGrowth: recalculatedDepositGrowth,
+          withdrawalGrowth: recalculatedWithdrawalGrowth,
+          endingBalance: runningBalance
+        }
+      })
+
+      // Update investment data
+      const updatedInvestmentData = {
+        ...currentInvestmentData,
+        monthlyHistory: recalculatedHistory,
+        currentBalance: recalculatedHistory.length > 0 ? recalculatedHistory[recalculatedHistory.length - 1].endingBalance : newBalance,
+        totalDeposits: newTotalDeposits,
+        totalWithdrawals: newTotalWithdrawals,
+        updatedAt: new Date().toISOString()
+      }
+
+      // Update user document
+      await updateDoc(userDocRef, {
+        investmentData: updatedInvestmentData
+      })
+
+      // Reload investment data
+      setInvestmentDataState(updatedInvestmentData)
+      setSuccess('Monthly performance added successfully!')
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess('')
+      }, 3000)
+      
+      // Reset form
+      setMonthlyUpdate({
+        month: '',
+        year: '',
+        percentageGrowth: '',
+        depositAmount: '',
+        depositDate: '',
+        withdrawalAmount: '',
+        withdrawalDate: ''
+      })
+      setShowAddPerformance(false)
+    } catch (error) {
+      console.error('Error adding monthly performance:', error)
+      setError('Failed to add monthly performance. Please try again.')
+    } finally {
+      setLoadingMonthlyUpdate(false)
+    }
+  }
+
+  const handleRecordClick = (record, index) => {
+    if (!isTrader) return
+    
+    // Find the original index in the sorted history
+    const sortedHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
+    const originalIndex = investmentDataState.monthlyHistory.findIndex(r => 
+      r.month === record.month && r.year === record.year
+    )
+    
+    setEditingRecordIndex(originalIndex >= 0 ? originalIndex : index)
+    setEditedRecordData({
+      month: record.month || '',
+      year: record.year ? record.year.toString() : '',
+      percentageGrowth: record.percentageGrowth ? record.percentageGrowth.toString() : '',
+      depositAmount: record.depositAmount ? record.depositAmount.toString() : '',
+      depositDate: record.depositDate || '',
+      withdrawalAmount: record.withdrawalAmount ? record.withdrawalAmount.toString() : '',
+      withdrawalDate: record.withdrawalDate || ''
+    })
+    setShowAddPerformance(false)
+    setError('')
+    setSuccess('')
+  }
+
+  const handleUpdateRecord = async (e) => {
+    e.preventDefault()
+    
+    if (!isTrader || editingRecordIndex === null || !investmentDataState) {
+      setError('You do not have permission to edit monthly performance.')
+      return
+    }
+
+    setLoadingEdit(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (!userDoc.exists()) {
+        setError('User document not found')
+        return
+      }
+
+      const userData = userDoc.data()
+      const currentInvestmentData = userData.investmentData || {}
+      const existingHistory = sortMonthlyHistory(currentInvestmentData.monthlyHistory || [])
+
+      // Helper functions
+      const getDaysInMonth = (month, year) => {
+        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+        return new Date(year, monthIndex + 1, 0).getDate()
+      }
+
+      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const depositDate = new Date(date)
+        const dayOfMonth = depositDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        let daysRemaining = daysInMonth - dayOfMonth + 1
+        if (dayOfMonth === daysInMonth) {
+          daysRemaining = 0
+        }
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const withdrawalDate = new Date(date)
+        const dayOfMonth = withdrawalDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        const daysRemaining = daysInMonth - dayOfMonth
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      // Get the starting balance for the record being edited
+      let startingBalance = currentInvestmentData.initialInvestment || 0
+      if (editingRecordIndex > 0) {
+        startingBalance = existingHistory[editingRecordIndex - 1].endingBalance || startingBalance
+      }
+
+      // Calculate new values for the edited record
+      const percentageGrowth = parseFloat(editedRecordData.percentageGrowth) || 0
+      const growthAmount = startingBalance * (percentageGrowth / 100)
+      const depositAmount = parseFloat(editedRecordData.depositAmount) || 0
+      const withdrawalAmount = parseFloat(editedRecordData.withdrawalAmount) || 0
+      
+      const depositGrowth = calculateProratedGrowth(
+        depositAmount, 
+        percentageGrowth, 
+        editedRecordData.depositDate, 
+        editedRecordData.month, 
+        editedRecordData.year
+      )
+      
+      const withdrawalGrowth = calculateWithdrawalGrowthLoss(
+        withdrawalAmount, 
+        percentageGrowth, 
+        editedRecordData.withdrawalDate, 
+        editedRecordData.month, 
+        editedRecordData.year
+      )
+
+      const endingBalance = startingBalance + growthAmount + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+
+      // Update the record at the editing index
+      const updatedRecord = {
+        month: editedRecordData.month,
+        year: editedRecordData.year,
+        percentageGrowth: percentageGrowth,
+        growthAmount: growthAmount,
+        depositGrowth: depositGrowth,
+        withdrawalGrowth: withdrawalGrowth,
+        startingBalance: startingBalance,
+        endingBalance: endingBalance,
+        depositAmount: depositAmount,
+        depositDate: editedRecordData.depositDate || null,
+        withdrawalAmount: withdrawalAmount,
+        withdrawalDate: editedRecordData.withdrawalDate || null,
+        updatedAt: new Date().toISOString()
+      }
+
+      // Update the record at the editing index
+      existingHistory[editingRecordIndex] = updatedRecord
+
+      // Sort the history chronologically (in case month/year was changed)
+      const sortedHistory = sortMonthlyHistory(existingHistory)
+
+      // Recalculate ALL records in chronological order from the beginning
+      let runningBalance = currentInvestmentData.initialInvestment || 0
+      const recalculatedHistory = sortedHistory.map((record, index) => {
+        if (index === 0) {
+          runningBalance = currentInvestmentData.initialInvestment || 0
+        } else {
+          runningBalance = sortedHistory[index - 1].endingBalance
+        }
+        
+        const recalculatedGrowth = runningBalance * (record.percentageGrowth / 100)
+        const recalculatedDepositGrowth = calculateProratedGrowth(
+          record.depositAmount || 0,
+          record.percentageGrowth,
+          record.depositDate,
+          record.month,
+          record.year
+        )
+        const recalculatedWithdrawalGrowth = calculateWithdrawalGrowthLoss(
+          record.withdrawalAmount || 0,
+          record.percentageGrowth,
+          record.withdrawalDate,
+          record.month,
+          record.year
+        )
+        
+        runningBalance = runningBalance + recalculatedGrowth + (record.depositAmount || 0) + recalculatedDepositGrowth - (record.withdrawalAmount || 0) - recalculatedWithdrawalGrowth
+        
+        return {
+          ...record,
+          startingBalance: runningBalance - recalculatedGrowth - (record.depositAmount || 0) - recalculatedDepositGrowth + (record.withdrawalAmount || 0) + recalculatedWithdrawalGrowth,
+          growthAmount: recalculatedGrowth,
+          depositGrowth: recalculatedDepositGrowth,
+          withdrawalGrowth: recalculatedWithdrawalGrowth,
+          endingBalance: runningBalance
+        }
+      })
+
+      // Recalculate total deposits and withdrawals
+      const totalDeposits = (currentInvestmentData.initialInvestment || 0) + 
+        recalculatedHistory.reduce((sum, r) => sum + (r.depositAmount || 0), 0)
+      const totalWithdrawals = recalculatedHistory.reduce((sum, r) => sum + (r.withdrawalAmount || 0), 0)
+
+      // Update investment data
+      const updatedInvestmentData = {
+        ...currentInvestmentData,
+        monthlyHistory: recalculatedHistory,
+        currentBalance: recalculatedHistory.length > 0 ? recalculatedHistory[recalculatedHistory.length - 1].endingBalance : runningBalance,
+        totalDeposits: totalDeposits,
+        totalWithdrawals: totalWithdrawals,
+        updatedAt: new Date().toISOString()
+      }
+
+      // Update user document
+      await updateDoc(userDocRef, {
+        investmentData: updatedInvestmentData
+      })
+
+      // Reload investment data
+      setInvestmentDataState(updatedInvestmentData)
+      setSuccess('Monthly record updated successfully!')
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess('')
+      }, 3000)
+      
+      // Reset edit state
+      setEditingRecordIndex(null)
+      setEditedRecordData({
+        month: '',
+        year: '',
+        percentageGrowth: '',
+        depositAmount: '',
+        depositDate: '',
+        withdrawalAmount: '',
+        withdrawalDate: ''
+      })
+    } catch (error) {
+      console.error('Error updating monthly record:', error)
+      setError('Failed to update monthly record. Please try again.')
+    } finally {
+      setLoadingEdit(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -190,8 +655,8 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     )
   }
 
-  // User is an investor - show portfolio
-  if (isInvestor && !investmentDataState) {
+  // User is an investor or trader - show portfolio
+  if ((isInvestor || isTrader) && !investmentDataState) {
     return (
       <div className="portfolio-container">
         <div className="portfolio-loading">
@@ -201,7 +666,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     )
   }
 
-  if (isInvestor && investmentDataState) {
+  if ((isInvestor || isTrader) && investmentDataState) {
     // Calculate portfolio data
     const initialInvestment = investmentDataState.initialInvestment || 0
     const monthlyReturnRate = investmentDataState.monthlyReturnRate || (investmentDataState.riskTolerance === 'conservative' ? 0.02 : 0.04)
@@ -370,7 +835,334 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     return (
       <div className="portfolio-container">
         <div className="portfolio-content">
-          <h2 className="portfolio-title">Your Portfolio</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <h2 className="portfolio-title">Your Portfolio</h2>
+            {isTrader && (
+              <button
+                onClick={() => setShowAddPerformance(!showAddPerformance)}
+                className="btn-add-performance"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#3b82f6',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.95rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease'
+                }}
+              >
+                {showAddPerformance ? 'Cancel' : '+ Add Monthly Performance'}
+              </button>
+            )}
+          </div>
+
+          {/* Error and Success Messages */}
+          {error && (
+            <div className="alert alert-error" style={{ padding: '1rem 1.5rem', borderRadius: '0.5rem', fontSize: '0.9rem', marginBottom: '1.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="alert alert-success" style={{ padding: '1rem 1.5rem', borderRadius: '0.5rem', fontSize: '0.9rem', marginBottom: '1.5rem', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' }}>
+              {success}
+            </div>
+          )}
+
+          {/* Add Performance Form for Traders */}
+          {showAddPerformance && isTrader && (
+            <div className="add-performance-section" style={{ marginBottom: '2rem', padding: '2rem', background: '#f9fafb', borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
+              <h3 className="section-title" style={{ fontSize: '1.5rem', fontWeight: '600', color: '#1f2937', margin: '0 0 1.5rem 0' }}>Add Monthly Performance</h3>
+              <form onSubmit={handleAddMonthlyPerformance} className="performance-form">
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group">
+                    <label htmlFor="month" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Month *</label>
+                    <select
+                      id="month"
+                      name="month"
+                      value={monthlyUpdate.month}
+                      onChange={handleMonthlyUpdateChange}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    >
+                      <option value="">Select Month</option>
+                      <option value="January">January</option>
+                      <option value="February">February</option>
+                      <option value="March">March</option>
+                      <option value="April">April</option>
+                      <option value="May">May</option>
+                      <option value="June">June</option>
+                      <option value="July">July</option>
+                      <option value="August">August</option>
+                      <option value="September">September</option>
+                      <option value="October">October</option>
+                      <option value="November">November</option>
+                      <option value="December">December</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="year" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Year *</label>
+                    <input
+                      type="number"
+                      id="year"
+                      name="year"
+                      value={monthlyUpdate.year}
+                      onChange={handleMonthlyUpdateChange}
+                      min="2020"
+                      max={new Date().getFullYear() + 1}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="percentageGrowth" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Growth Percentage (%) *</label>
+                    <input
+                      type="number"
+                      id="percentageGrowth"
+                      name="percentageGrowth"
+                      value={monthlyUpdate.percentageGrowth}
+                      onChange={handleMonthlyUpdateChange}
+                      step="0.01"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group">
+                    <label htmlFor="depositAmount" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Deposit Amount (Optional)</label>
+                    <input
+                      type="number"
+                      id="depositAmount"
+                      name="depositAmount"
+                      value={monthlyUpdate.depositAmount}
+                      onChange={handleMonthlyUpdateChange}
+                      step="0.01"
+                      min="0"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="depositDate" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Deposit Date (Optional)</label>
+                    <input
+                      type="date"
+                      id="depositDate"
+                      name="depositDate"
+                      value={monthlyUpdate.depositDate}
+                      onChange={handleMonthlyUpdateChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group">
+                    <label htmlFor="withdrawalAmount" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Withdrawal Amount (Optional)</label>
+                    <input
+                      type="number"
+                      id="withdrawalAmount"
+                      name="withdrawalAmount"
+                      value={monthlyUpdate.withdrawalAmount}
+                      onChange={handleMonthlyUpdateChange}
+                      step="0.01"
+                      min="0"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="withdrawalDate" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Withdrawal Date (Optional)</label>
+                    <input
+                      type="date"
+                      id="withdrawalDate"
+                      name="withdrawalDate"
+                      value={monthlyUpdate.withdrawalDate}
+                      onChange={handleMonthlyUpdateChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Update Preview */}
+                {monthlyUpdate.month && monthlyUpdate.year && monthlyUpdate.percentageGrowth && (() => {
+                  // Helper functions for calculations
+                  const getDaysInMonth = (month, year) => {
+                    const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                       'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+                    return new Date(year, monthIndex + 1, 0).getDate()
+                  }
+
+                  const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+                    if (!date || !month || !year || amount === 0) return 0
+                    const depositDate = new Date(date)
+                    const dayOfMonth = depositDate.getDate()
+                    const daysInMonth = getDaysInMonth(month, parseInt(year))
+                    let daysRemaining = daysInMonth - dayOfMonth + 1
+                    if (dayOfMonth === daysInMonth) {
+                      daysRemaining = 0
+                    }
+                    const proratedRatio = daysRemaining / daysInMonth
+                    return amount * (percentageGrowth / 100) * proratedRatio
+                  }
+
+                  const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+                    if (!date || !month || !year || amount === 0) return 0
+                    const withdrawalDate = new Date(date)
+                    const dayOfMonth = withdrawalDate.getDate()
+                    const daysInMonth = getDaysInMonth(month, parseInt(year))
+                    const daysRemaining = daysInMonth - dayOfMonth
+                    const proratedRatio = daysRemaining / daysInMonth
+                    return amount * (percentageGrowth / 100) * proratedRatio
+                  }
+
+                  const startingBalance = currentBalance
+                  const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
+                  const baseGrowth = startingBalance * (percentageGrowth / 100)
+                  const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
+                  const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
+                  
+                  const depositGrowth = calculateProratedGrowth(
+                    depositAmount, 
+                    percentageGrowth, 
+                    monthlyUpdate.depositDate, 
+                    monthlyUpdate.month, 
+                    monthlyUpdate.year
+                  )
+                  
+                  const withdrawalGrowth = calculateWithdrawalGrowthLoss(
+                    withdrawalAmount, 
+                    percentageGrowth, 
+                    monthlyUpdate.withdrawalDate, 
+                    monthlyUpdate.month, 
+                    monthlyUpdate.year
+                  )
+                  
+                  const finalBalance = startingBalance + baseGrowth + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+
+                  return (
+                    <div className="update-preview" style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '0.5rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                      <h5 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>Update Preview:</h5>
+                      <div className="preview-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="preview-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #bae6fd', color: '#1f2937' }}>
+                          <span>Starting Balance:</span>
+                          <span>€{startingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="preview-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #bae6fd', color: '#1f2937' }}>
+                          <span>Growth ({percentageGrowth}%):</span>
+                          <span>€{baseGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        {depositAmount > 0 && (
+                          <>
+                            <div className="preview-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #bae6fd', color: '#1f2937' }}>
+                              <span>Deposit:</span>
+                              <span>+€{depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            {depositGrowth > 0 && (
+                              <div className="preview-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #bae6fd', color: '#1f2937' }}>
+                                <span>Deposit Growth:</span>
+                                <span>+€{depositGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {withdrawalAmount > 0 && (
+                          <>
+                            <div className="preview-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #bae6fd', color: '#1f2937' }}>
+                              <span>Withdrawal:</span>
+                              <span>-€{withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            {withdrawalGrowth > 0 && (
+                              <div className="preview-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #bae6fd', color: '#1f2937' }}>
+                                <span>Withdrawal Growth Loss:</span>
+                                <span>-€{withdrawalGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        <div className="preview-item preview-total" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderTop: '2px solid #3b82f6', borderBottom: 'none', marginTop: '0.5rem', fontWeight: '600', fontSize: '1.1rem', color: '#1f2937' }}>
+                          <span>Final Balance:</span>
+                          <span>€{finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                <button
+                  type="submit"
+                  className="btn-submit"
+                  disabled={loadingMonthlyUpdate || !monthlyUpdate.month || !monthlyUpdate.year || !monthlyUpdate.percentageGrowth}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#3b82f6',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                    fontWeight: '500',
+                    cursor: loadingMonthlyUpdate ? 'not-allowed' : 'pointer',
+                    opacity: loadingMonthlyUpdate ? 0.6 : 1
+                  }}
+                >
+                  {loadingMonthlyUpdate ? 'Saving...' : 'Save Monthly Performance'}
+                </button>
+              </form>
+            </div>
+          )}
           
           {/* Investment Graph */}
           <div className="portfolio-graph-section">
@@ -621,6 +1413,11 @@ const Portfolio = ({ user, onStatusUpdate }) => {
           {investmentDataState.monthlyHistory && investmentDataState.monthlyHistory.length > 0 && (
             <div className="portfolio-history-section">
               <h3 className="section-subtitle">Monthly Performance History</h3>
+              {isTrader && (
+                <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '1rem' }}>
+                  Click on any row to edit the monthly performance record.
+                </p>
+              )}
               <div className="history-container">
                 <div className="history-table">
                   <div className="history-header">
@@ -631,18 +1428,278 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     <div>Withdrawal</div>
                     <div>Ending Balance</div>
                   </div>
-                  {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => (
-                    <div key={index} className="history-row">
-                      <div>{record.month} {record.year}</div>
-                      <div>{record.percentageGrowth}%</div>
-                      <div>€{record.growthAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <div>{record.depositAmount > 0 ? `€${record.depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
-                      <div>{record.withdrawalAmount > 0 ? `€${record.withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
-                      <div>€{record.endingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    </div>
-                  ))}
+                  {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => {
+                    // Find original index for editing
+                    const originalIndex = investmentDataState.monthlyHistory.findIndex(r => 
+                      r.month === record.month && r.year === record.year
+                    )
+                    const recordIndex = originalIndex >= 0 ? originalIndex : index
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`history-row ${isTrader ? 'clickable' : ''}`}
+                        onClick={isTrader ? () => handleRecordClick(record, recordIndex) : undefined}
+                        style={isTrader ? { cursor: 'pointer' } : {}}
+                      >
+                        <div>{record.month} {record.year}</div>
+                        <div>{record.percentageGrowth}%</div>
+                        <div>€{record.growthAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div>{record.depositAmount > 0 ? `€${record.depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
+                        <div>{record.withdrawalAmount > 0 ? `€${record.withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
+                        <div>€{record.endingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Edit Record Widget for Traders */}
+          {editingRecordIndex !== null && isTrader && investmentDataState && (
+            <div className="edit-record-section" style={{ marginTop: '2rem', padding: '2rem', background: '#f9fafb', borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 className="section-title" style={{ fontSize: '1.5rem', fontWeight: '600', color: '#1f2937', margin: 0 }}>Edit Monthly Record</h3>
+                <button
+                  onClick={() => {
+                    setEditingRecordIndex(null)
+                    setEditedRecordData({
+                      month: '',
+                      year: '',
+                      percentageGrowth: '',
+                      depositAmount: '',
+                      depositDate: '',
+                      withdrawalAmount: '',
+                      withdrawalDate: ''
+                    })
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    padding: '0.5rem',
+                    lineHeight: 1
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <form onSubmit={handleUpdateRecord} className="edit-record-form">
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group">
+                    <label htmlFor="edit-month" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Month *</label>
+                    <select
+                      id="edit-month"
+                      name="month"
+                      value={editedRecordData.month}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, month: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    >
+                      <option value="">Select Month</option>
+                      <option value="January">January</option>
+                      <option value="February">February</option>
+                      <option value="March">March</option>
+                      <option value="April">April</option>
+                      <option value="May">May</option>
+                      <option value="June">June</option>
+                      <option value="July">July</option>
+                      <option value="August">August</option>
+                      <option value="September">September</option>
+                      <option value="October">October</option>
+                      <option value="November">November</option>
+                      <option value="December">December</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-year" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Year *</label>
+                    <input
+                      type="number"
+                      id="edit-year"
+                      name="year"
+                      value={editedRecordData.year}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, year: e.target.value })}
+                      min="2020"
+                      max={new Date().getFullYear() + 1}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-percentageGrowth" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Growth Percentage (%) *</label>
+                    <input
+                      type="number"
+                      id="edit-percentageGrowth"
+                      name="percentageGrowth"
+                      value={editedRecordData.percentageGrowth}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, percentageGrowth: e.target.value })}
+                      step="0.01"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group">
+                    <label htmlFor="edit-depositAmount" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Deposit Amount (Optional)</label>
+                    <input
+                      type="number"
+                      id="edit-depositAmount"
+                      name="depositAmount"
+                      value={editedRecordData.depositAmount}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, depositAmount: e.target.value })}
+                      step="0.01"
+                      min="0"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-depositDate" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Deposit Date (Optional)</label>
+                    <input
+                      type="date"
+                      id="edit-depositDate"
+                      name="depositDate"
+                      value={editedRecordData.depositDate}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, depositDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group">
+                    <label htmlFor="edit-withdrawalAmount" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Withdrawal Amount (Optional)</label>
+                    <input
+                      type="number"
+                      id="edit-withdrawalAmount"
+                      name="withdrawalAmount"
+                      value={editedRecordData.withdrawalAmount}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalAmount: e.target.value })}
+                      step="0.01"
+                      min="0"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-withdrawalDate" style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151', marginBottom: '0.5rem', display: 'block' }}>Withdrawal Date (Optional)</label>
+                    <input
+                      type="date"
+                      id="edit-withdrawalDate"
+                      name="withdrawalDate"
+                      value={editedRecordData.withdrawalDate}
+                      onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        color: '#1f2937'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingRecordIndex(null)
+                      setEditedRecordData({
+                        month: '',
+                        year: '',
+                        percentageGrowth: '',
+                        depositAmount: '',
+                        depositDate: '',
+                        withdrawalAmount: '',
+                        withdrawalDate: ''
+                      })
+                    }}
+                    disabled={loadingEdit}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: '#ffffff',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: '500',
+                      cursor: loadingEdit ? 'not-allowed' : 'pointer',
+                      opacity: loadingEdit ? 0.6 : 1
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: '#3b82f6',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: '500',
+                      cursor: loadingEdit ? 'not-allowed' : 'pointer',
+                      opacity: (loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth) ? 0.6 : 1
+                    }}
+                  >
+                    {loadingEdit ? 'Updating...' : 'Update Record'}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 

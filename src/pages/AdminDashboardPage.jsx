@@ -12,6 +12,7 @@ import AdminSupport from '../components/AdminSupport'
 import AdminCommunityManagement from '../components/AdminCommunityManagement'
 import AdminPortfolio from '../components/AdminPortfolio'
 import AdminEmails from '../components/AdminEmails'
+import AdminSettings from '../components/AdminSettings'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
@@ -28,11 +29,17 @@ const AdminDashboardPage = () => {
       const userDoc = await getDoc(doc(db, 'users', userId))
       if (userDoc.exists()) {
         const userData = userDoc.data()
-        const darkMode = userData.darkMode !== undefined ? userData.darkMode : false
+        // Default to true (dark mode) for admin users
+        const darkMode = userData.darkMode !== undefined ? userData.darkMode : true
         applyDarkMode(darkMode)
+      } else {
+        // If user doc doesn't exist, default to dark mode for admin
+        applyDarkMode(true)
       }
     } catch (error) {
       console.error('Error loading dark mode settings:', error)
+      // Default to dark mode on error
+      applyDarkMode(true)
     }
   }
 
@@ -113,6 +120,15 @@ const AdminDashboardPage = () => {
     navigate('/')
   }
 
+  const handleProfileUpdate = () => {
+    // Force a reload of the user object to get updated photoURL/displayName
+    if (auth.currentUser) {
+      auth.currentUser.reload().then(() => {
+        setUser({ ...auth.currentUser }) // Create a new object to trigger re-render
+      })
+    }
+  }
+
   const sections = [
     { id: 'portfolio', title: 'Portfolio' },
     { id: 'users', title: 'Manage Users' },
@@ -121,7 +137,8 @@ const AdminDashboardPage = () => {
     { id: 'learning', title: 'Learning' },
     { id: 'community', title: 'Community' },
     { id: 'emails', title: 'Emails' },
-    { id: 'support', title: 'Support' }
+    { id: 'support', title: 'Support' },
+    { id: 'settings', title: 'Settings' }
   ]
 
   if (loading) {
@@ -229,6 +246,8 @@ const AdminDashboardPage = () => {
             <AdminEmails />
           ) : activeSection === 'support' ? (
             <AdminSupport />
+          ) : activeSection === 'settings' ? (
+            <AdminSettings user={user} onProfileUpdate={handleProfileUpdate} />
           ) : (
             <>
               <h1 className="content-title">

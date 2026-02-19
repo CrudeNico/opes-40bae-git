@@ -248,7 +248,27 @@ const AdminEmails = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to send email')
+        console.error('Brevo API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData
+        })
+        
+        // Provide more helpful error messages
+        let errorMessage = 'Failed to send email'
+        if (response.status === 401) {
+          if (errorData.message && errorData.message.includes('not enabled')) {
+            errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
+          } else {
+            errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_BREVO_API_KEY in GitHub Secrets matches your Brevo API key.'
+          }
+        } else if (errorData.message) {
+          errorMessage = `Failed to send email: ${errorData.message}`
+        } else {
+          errorMessage = `Failed to send email: ${response.status} ${response.statusText}`
+        }
+        
+        throw new Error(errorMessage)
       }
 
       setSuccess(`Email sent successfully to ${emailList.length} recipient(s)!`)
