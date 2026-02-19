@@ -2212,12 +2212,17 @@ a.btn-secondary-white {
 
   .stats-section {
     grid-template-columns: 1fr;
+    margin-left: 0;
+    justify-items: center;
+    max-width: 100%;
   }
 
   .stat-card {
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
     padding: 1.5rem 1rem;
+    width: 100%;
+    max-width: 100%;
   }
 
   .stat-card:last-child {
