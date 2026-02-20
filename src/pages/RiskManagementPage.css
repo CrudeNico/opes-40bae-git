@@ -53,6 +53,26 @@
   transform: translateY(-1px);
 }
 
+.risk-nav-item:active {
+  transform: translateY(0);
+  background: #f3f4f6;
+}
+
+/* Isolated scroll button styling */
+.risk-nav-scroll-btn {
+  position: relative;
+  z-index: 10;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.risk-nav-scroll-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 /* Content Section */
 .risk-content-section {
   padding: 4rem 2rem;
@@ -62,6 +82,7 @@
 .risk-section {
   max-width: 900px;
   margin: 0 auto 4rem;
+  scroll-margin-top: 150px; /* Helps with scroll positioning */
 }
 
 .risk-section:last-child {
@@ -95,7 +116,7 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .risk-nav-section {
-    padding: 1.5rem 1rem;
+    display: none;
   }
 
   .risk-nav-grid {

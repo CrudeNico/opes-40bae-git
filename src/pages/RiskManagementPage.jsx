@@ -22,29 +22,6 @@ const RiskManagementPage = () => {
     section4: null
   })
   
-  // Refs for scroll navigation
-  const sectionRefs = {
-    regulatory: useRef(null),
-    legal: useRef(null),
-    eligibility: useRef(null),
-    risk: useRef(null),
-    data: useRef(null),
-    conflict: useRef(null),
-    terms: useRef(null)
-  }
-
-  const scrollToSection = (sectionKey) => {
-    const section = sectionRefs[sectionKey]?.current
-    if (section) {
-      const offset = 100
-      const elementPosition = section.getBoundingClientRect().top + window.scrollY
-      window.scrollTo({
-        top: elementPosition - offset,
-        behavior: 'smooth'
-      })
-    }
-  }
-  
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
       setOpenMobileNavSection(openMobileNavSection === 'main' ? null : 'main')
@@ -506,40 +483,11 @@ const RiskManagementPage = () => {
           </div>
         </section>
 
-        {/* Navigation Section */}
-        <section className="white-section risk-nav-section">
-          <div className="container">
-            <div className="risk-nav-grid">
-              <button className="risk-nav-item" onClick={() => scrollToSection('regulatory')}>
-                Regulatory Compliance
-              </button>
-              <button className="risk-nav-item" onClick={() => scrollToSection('legal')}>
-                Legal Disclosures
-              </button>
-              <button className="risk-nav-item" onClick={() => scrollToSection('eligibility')}>
-                Investor Eligibility
-              </button>
-              <button className="risk-nav-item" onClick={() => scrollToSection('risk')}>
-                Risk Warnings
-              </button>
-              <button className="risk-nav-item" onClick={() => scrollToSection('data')}>
-                Data Protection & Privacy
-              </button>
-              <button className="risk-nav-item" onClick={() => scrollToSection('conflict')}>
-                Conflict-of-Interest Policy
-              </button>
-              <button className="risk-nav-item" onClick={() => scrollToSection('terms')}>
-                Terms of Use & Liability Limitations
-              </button>
-            </div>
-          </div>
-        </section>
-
         {/* Content Sections */}
         <section className="white-section risk-content-section">
           <div className="container">
             {/* Regulatory Compliance */}
-            <div className="risk-section" ref={sectionRefs.regulatory}>
+            <div id="risk-section-regulatory" className="risk-section">
               <h2 className="risk-section-title">Regulatory Compliance</h2>
               <div className="risk-section-content">
                 <p>Our investment philosophy centers on identifying and capitalizing on structural inefficiencies within crude oil markets through systematic, rules-based methodologies. We operate under the principle that energy markets exhibit recurring patterns driven by fundamental supply-demand dynamics, macroeconomic forces, and geopolitical considerations that create exploitable opportunities when approached with disciplined analytical frameworks.</p>
@@ -549,7 +497,7 @@ const RiskManagementPage = () => {
             </div>
 
             {/* Legal Disclosures */}
-            <div className="risk-section" ref={sectionRefs.legal}>
+            <div id="risk-section-legal" className="risk-section">
               <h2 className="risk-section-title">Legal Disclosures</h2>
               <div className="risk-section-content">
                 <p>Our strategy focuses exclusively on crude oil markets, specifically West Texas Intermediate (WTI) and Brent crude oil futures and their associated derivative instruments. This concentrated market focus enables deep specialization in understanding the structural drivers, seasonal patterns, inventory cycles, and geopolitical sensitivities that influence price discovery in global energy markets.</p>
@@ -560,7 +508,7 @@ const RiskManagementPage = () => {
             </div>
 
             {/* Investor Eligibility */}
-            <div className="risk-section" ref={sectionRefs.eligibility}>
+            <div id="risk-section-eligibility" className="risk-section">
               <h2 className="risk-section-title">Investor Eligibility</h2>
               <div className="risk-section-content">
                 <p>The core architecture of our strategy combines multiple systematic approaches designed to capture returns across different market regimes. We employ quantitative models that analyze price action, volume patterns, volatility metrics, and fundamental data to generate trade signals that align with our risk parameters and expected return profiles.</p>
@@ -572,7 +520,7 @@ const RiskManagementPage = () => {
             </div>
 
             {/* Risk Warnings */}
-            <div className="risk-section" ref={sectionRefs.risk}>
+            <div id="risk-section-risk" className="risk-section">
               <h2 className="risk-section-title">Risk Warnings</h2>
               <div className="risk-section-content">
                 <p>Risk management represents the cornerstone of our operational approach, with every trading decision filtered through comprehensive risk assessment protocols before execution. Our framework operates at multiple levels: individual position risk, portfolio-level exposure, correlation analysis, and overall capital preservation mechanisms that collectively protect investor capital while allowing for strategic risk-taking aligned with return objectives.</p>
@@ -584,7 +532,7 @@ const RiskManagementPage = () => {
             </div>
 
             {/* Data Protection & Privacy */}
-            <div className="risk-section" ref={sectionRefs.data}>
+            <div id="risk-section-data" className="risk-section">
               <h2 className="risk-section-title">Data Protection & Privacy</h2>
               <div className="risk-section-content">
                 <p>Capital protection mechanisms form the foundation of our risk management philosophy, with multiple layers of defense designed to preserve investor capital during adverse market conditions. These controls operate automatically, removing discretionary judgment from critical risk management decisions to ensure consistent application regardless of market volatility or psychological pressures.</p>
@@ -597,7 +545,7 @@ const RiskManagementPage = () => {
             </div>
 
             {/* Conflict-of-Interest Policy */}
-            <div className="risk-section" ref={sectionRefs.conflict}>
+            <div id="risk-section-conflict" className="risk-section">
               <h2 className="risk-section-title">Conflict-of-Interest Policy</h2>
               <div className="risk-section-content">
                 <p>Our operational infrastructure supports continuous market monitoring, real-time trade execution, and comprehensive risk management through integrated technology systems designed for reliability, speed, and precision. The technology stack encompasses data acquisition, signal processing, risk calculation, order management, and performance analytics components that operate seamlessly to execute our systematic trading approach.</p>
@@ -611,7 +559,7 @@ const RiskManagementPage = () => {
             </div>
 
             {/* Terms of Use & Liability Limitations */}
-            <div className="risk-section" ref={sectionRefs.terms}>
+            <div id="risk-section-terms" className="risk-section">
               <h2 className="risk-section-title">Terms of Use & Liability Limitations</h2>
               <div className="risk-section-content">
                 <p>Our performance reporting adheres to institutional standards for transparency, accuracy, and comprehensive disclosure of strategy results, risk metrics, and operational performance. We employ recognized methodologies for calculating returns, risk-adjusted performance measures, and comparative benchmarks that enable meaningful evaluation of strategy effectiveness across different market environments.</p>

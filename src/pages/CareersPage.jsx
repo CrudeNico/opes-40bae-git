@@ -779,30 +779,6 @@ const CareersPage = () => {
               <p className="white-hero-subtitle">
                 From trading and technology to operations and risk, we hire people who design, operate, and scale real market infrastructure. If you want responsibility, measurable impact, and exposure, explore our open roles.
               </p>
-              <button 
-                className="btn btn-primary-white"
-                onClick={() => {
-                  jobsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
-              >
-                Open Positions →
-              </button>
-            </div>
-
-            {/* Video Widget */}
-            <div className="video-widget">
-              <div 
-                className="video-container"
-                style={{
-                  backgroundImage: videoWidgetImageUrl ? `url(${videoWidgetImageUrl})` : 'none',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  minHeight: '400px',
-                  borderRadius: '8px'
-                }}
-              >
-              </div>
             </div>
           </div>
         </section>
