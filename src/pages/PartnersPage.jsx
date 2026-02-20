@@ -60,6 +60,18 @@ const PartnersPage = () => {
       name: 'Partner 6',
       description: 'Risk management and capital protection partner implementing mechanisms designed to reduce drawdowns and prevent forced liquidation.',
       image: 'partner6.jpg'
+    },
+    { 
+      id: 7, 
+      name: 'Partner 7',
+      description: 'Regulated brokerage partner offering direct market access, competitive spreads, and institutional-grade execution across global CFD markets.',
+      image: 'fusion.png'
+    },
+    { 
+      id: 8, 
+      name: 'Partner 8',
+      description: 'Statutory Australian compensation scheme providing an additional layer of protection for eligible client funds, supporting investor confidence.',
+      image: 'nab2.jpg'
     }
   ]
   
@@ -167,7 +179,9 @@ const PartnersPage = () => {
         getImageUrl('partners/partner3.jpg'),
         getImageUrl('partners/partner4.jpg'),
         getImageUrl('partners/partner5.jpg'),
-        getImageUrl('partners/partner6.jpg')
+        getImageUrl('partners/partner6.jpg'),
+        getImageUrl('partners/fusion.png'),
+        getImageUrl('partners/nab2.jpg')
       ])
       setPartnerImages({
         'partner1.png': partnerUrls[0],
@@ -175,7 +189,9 @@ const PartnersPage = () => {
         'partner3.jpg': partnerUrls[2],
         'partner4.jpg': partnerUrls[3],
         'partner5.jpg': partnerUrls[4],
-        'partner6.jpg': partnerUrls[5]
+        'partner6.jpg': partnerUrls[5],
+        'fusion.png': partnerUrls[6],
+        'nab2.jpg': partnerUrls[7]
       })
 
       // Load section dropdown images
