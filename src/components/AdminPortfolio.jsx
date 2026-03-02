@@ -33,10 +33,13 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     withdrawalDate: ''
   })
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
+  const [loadingInvestorAccounts, setLoadingInvestorAccounts] = useState(true)
 
   useEffect(() => {
     if (user) {
       loadPortfolioData()
+      loadTotalInvestorAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isAdmin2])
@@ -59,6 +62,65 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       const monthB = monthNames.indexOf(b.month || '')
       return monthA - monthB
     })
+  }
+
+  const loadTotalInvestorAccounts = async () => {
+    try {
+      const db = getFirestore()
+      const usersCollection = collection(db, 'users')
+      const usersSnapshot = await getDocs(usersCollection)
+      
+      let total = 0
+      usersSnapshot.forEach((docSnapshot) => {
+        const userData = docSnapshot.data()
+        const statuses = userData.statuses || []
+        const email = userData.email || ''
+        const displayName = userData.displayName || ''
+        
+        // Exclude specific users
+        if (
+          email === 'nicolas.fernandez@opessocius.support' || 
+          displayName === 'Nicolas De Rodrigo' ||
+          email === 'marcoscollab@gmail.com' ||
+          displayName === 'Marcos De Rodrigo' ||
+          email === 'ndrf1806@gmail.com' ||
+          displayName === 'Nicolas'
+        ) {
+          return
+        }
+        
+        // Only count investors or traders with approved investment accounts
+        if ((statuses.includes('Investor') || statuses.includes('Trader')) && userData.investmentData && userData.investmentData.status === 'approved') {
+          const investmentData = userData.investmentData
+          
+          // Get the most current ending capital
+          // First check if there's a currentBalance
+          if (investmentData.currentBalance) {
+            total += investmentData.currentBalance
+          } else if (investmentData.monthlyHistory && investmentData.monthlyHistory.length > 0) {
+            // If no currentBalance, get the last endingBalance from monthly history
+            const sortedHistory = sortMonthlyHistory(investmentData.monthlyHistory)
+            const lastRecord = sortedHistory[sortedHistory.length - 1]
+            if (lastRecord && lastRecord.endingBalance) {
+              total += lastRecord.endingBalance
+            } else if (investmentData.initialInvestment) {
+              // Fallback to initial investment if no history
+              total += investmentData.initialInvestment
+            }
+          } else if (investmentData.initialInvestment) {
+            // Fallback to initial investment
+            total += investmentData.initialInvestment
+          }
+        }
+      })
+      
+      setTotalInvestorAccounts(total)
+    } catch (error) {
+      console.error('Error loading total investor accounts:', error)
+      setTotalInvestorAccounts(0)
+    } finally {
+      setLoadingInvestorAccounts(false)
+    }
   }
 
   const loadPortfolioData = async () => {
@@ -370,8 +432,9 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         withdrawalDate: ''
       })
       
-      // Reload portfolio data
+      // Reload portfolio data and total investor accounts
       await loadPortfolioData()
+      await loadTotalInvestorAccounts()
     } catch (error) {
       console.error('Error updating monthly record:', error)
       setError(`Failed to update monthly record: ${error.message}`)
@@ -534,8 +597,9 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       })
       setShowAddPerformance(false)
       
-      // Reload portfolio data
+      // Reload portfolio data and total investor accounts
       await loadPortfolioData()
+      await loadTotalInvestorAccounts()
     } catch (error) {
       console.error('Error updating monthly performance:', error)
       setError(`Failed to update monthly performance: ${error.message}`)
@@ -1256,8 +1320,10 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
               </svg>
             </div>
             <div className="metric-content">
-              <h4 className="metric-label">5-Month Projection</h4>
-              <p className="metric-value">€{projection5Months.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <h4 className="metric-label">Total Investor Accounts</h4>
+              <p className="metric-value">
+                {loadingInvestorAccounts ? 'Loading...' : `€${totalInvestorAccounts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </p>
             </div>
           </div>
 
