@@ -61,6 +61,7 @@ const HomePage = () => {
     section3: null,
     section4: null
   })
+  const [heroAnimationsReady, setHeroAnimationsReady] = useState(false)
 
   // Handle hover navigation - simple and stable
   const handleNavSectionEnter = (section) => {
@@ -141,6 +142,15 @@ const HomePage = () => {
         clearTimeout(closeTimeoutRef.current)
       }
     }
+  }, [])
+
+  // Trigger hero animations on page load
+  useEffect(() => {
+    // Small delay to ensure page is fully loaded
+    const timer = setTimeout(() => {
+      setHeroAnimationsReady(true)
+    }, 100)
+    return () => clearTimeout(timer)
   }, [])
 
   // Load images and video from Firebase Storage
@@ -445,7 +455,7 @@ const HomePage = () => {
 
   return (
     <div className="home-page">
-      <header className="header">
+      <header className={`header ${heroAnimationsReady ? 'fade-in' : ''}`}>
         <nav className="nav">
           <div className="nav-container">
             <Link to="/" className="logo">
@@ -743,18 +753,24 @@ const HomePage = () => {
       <main className="main-content">
         <section className="hero">
           <div className="hero-content">
-            <h1 className="hero-title">Monetize, Track and Trade Energy & Environmental Commodities</h1>
-            <p className="hero-subtitle">
+            <h1 className="hero-title">
+              <span className={`hero-title-line1 ${heroAnimationsReady ? 'fade-in' : ''}`}>Monetize, Track and Trade Energy &</span>
+              <span className={`hero-title-line2 ${heroAnimationsReady ? 'fade-in' : ''}`}>Environmental Commodities</span>
+            </h1>
+            <p className={`hero-subtitle ${heroAnimationsReady ? 'fade-in' : ''}`}>
               Opessocius operates the world's largest integrated platform for the energy transition – trusted by financial institutions, corporations, governments and power producers worldwide.
             </p>
-            <div className="hero-buttons">
+            <div className={`hero-buttons ${heroAnimationsReady ? 'fade-in' : ''}`}>
               <button 
                 className="btn btn-primary"
                 onClick={() => {
-                  // Find the "Risk Management Built Into Every Allocation" section (third white-hero)
-                  const whiteHeroSections = document.querySelectorAll('.white-hero')
-                  if (whiteHeroSections.length >= 3) {
-                    whiteHeroSections[2].scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  // Find the consultation section or scroll to contact
+                  const consultationSection = document.querySelector('.consultation-section')
+                  if (consultationSection) {
+                    consultationSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  } else {
+                    // Fallback: scroll to contact section
+                    navigate('/contact')
                   }
                 }}
               >
@@ -775,7 +791,7 @@ const HomePage = () => {
             </div>
           </div>
           
-          <div className="partners-section">
+          <div className={`partners-section ${heroAnimationsReady ? 'fade-in' : ''}`}>
             <div className="partners-container">
               <div className="partners-track">
                 {[...partners, ...partners].map((partner, index) => (
