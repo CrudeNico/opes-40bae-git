@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
+import { getFirestore, collection, getDocs } from 'firebase/firestore'
 import './AdminEmails.css'
 
 const AdminEmails = () => {
+  const [recipientEmails, setRecipientEmails] = useState([]) // Array of email objects {email, id}
+  const [emailInput, setEmailInput] = useState('') // Current input value
+  const [sendToAllInvestors, setSendToAllInvestors] = useState(false) // Toggle for all investors
   const [emailData, setEmailData] = useState({
-    recipientEmails: '',
     subject: '',
     content: ''
   })
@@ -19,6 +22,60 @@ const AdminEmails = () => {
       ...prev,
       [name]: value
     }))
+  }
+
+  // Validate email format
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  // Handle email input change - detect spaces and create chips
+  const handleEmailInputChange = (e) => {
+    const value = e.target.value
+    setEmailInput(value)
+  }
+
+  // Handle key press - detect Enter or Space to create chips
+  const handleEmailInputKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      const email = emailInput.trim()
+      
+      if (email) {
+        if (isValidEmail(email)) {
+          // Check if email already exists
+          if (!recipientEmails.some(r => r.email.toLowerCase() === email.toLowerCase())) {
+            setRecipientEmails(prev => [...prev, { email, id: Date.now().toString() }])
+            setEmailInput('')
+            setError('')
+          } else {
+            setError('This email is already in the recipients list')
+            setTimeout(() => setError(''), 3000)
+            setEmailInput('')
+          }
+        } else {
+          setError('Please enter a valid email address')
+          setTimeout(() => setError(''), 3000)
+          setEmailInput('')
+        }
+      }
+    }
+  }
+
+  // Remove email from recipients list
+  const handleRemoveEmail = (id) => {
+    setRecipientEmails(prev => prev.filter(r => r.id !== id))
+  }
+
+  // Toggle "All Investors" option
+  const handleToggleAllInvestors = () => {
+    setSendToAllInvestors(prev => !prev)
+    // Clear manual emails when selecting all investors
+    if (!sendToAllInvestors) {
+      setRecipientEmails([])
+      setEmailInput('')
+    }
   }
 
   // Helper function to read file as base64
@@ -87,12 +144,6 @@ const AdminEmails = () => {
 
     try {
       // Validate inputs
-      if (!emailData.recipientEmails.trim()) {
-        setError('Please enter recipient email(s)')
-        setSending(false)
-        return
-      }
-
       if (!emailData.subject.trim()) {
         setError('Please enter email subject')
         setSending(false)
@@ -105,25 +156,51 @@ const AdminEmails = () => {
         return
       }
 
-      // Parse recipient emails (can be comma-separated)
-      const emailList = emailData.recipientEmails
-        .split(',')
-        .map(email => email.trim())
-        .filter(email => email.length > 0)
+      let emailList = []
 
-      if (emailList.length === 0) {
-        setError('Please enter at least one valid email address')
-        setSending(false)
-        return
-      }
+      // If "All Investors" is selected, fetch all investor emails
+      if (sendToAllInvestors) {
+        const db = getFirestore()
+        const usersCollection = collection(db, 'users')
+        const usersSnapshot = await getDocs(usersCollection)
+        
+        usersSnapshot.forEach((docSnapshot) => {
+          const userData = docSnapshot.data()
+          const statuses = userData.statuses || []
+          const email = userData.email
+          
+          // Include users who are investors or traders with approved investment accounts
+          if ((statuses.includes('Investor') || statuses.includes('Trader')) && 
+              userData.investmentData && 
+              userData.investmentData.status === 'approved' &&
+              email &&
+              isValidEmail(email)) {
+            
+            // Exclude specific users
+            if (email !== 'nicolas.fernandez@opessocius.support' &&
+                userData.displayName !== 'Nicolas De Rodrigo' &&
+                email !== 'marcoscollab@gmail.com' &&
+                userData.displayName !== 'Marcos De Rodrigo' &&
+                email !== 'ndrf1806@gmail.com' &&
+                userData.displayName !== 'Nicolas') {
+              emailList.push(email)
+            }
+          }
+        })
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      const invalidEmails = emailList.filter(email => !emailRegex.test(email))
-      if (invalidEmails.length > 0) {
-        setError(`Invalid email format: ${invalidEmails.join(', ')}`)
-        setSending(false)
-        return
+        if (emailList.length === 0) {
+          setError('No investors found with valid email addresses')
+          setSending(false)
+          return
+        }
+      } else {
+        // Use manually added emails
+        if (recipientEmails.length === 0) {
+          setError('Please add at least one recipient email or select "All Investors"')
+          setSending(false)
+          return
+        }
+        emailList = recipientEmails.map(r => r.email)
       }
 
       // Get Brevo API credentials
@@ -274,8 +351,10 @@ const AdminEmails = () => {
       setSuccess(`Email sent successfully to ${emailList.length} recipient(s)!`)
       
       // Reset form
+      setRecipientEmails([])
+      setEmailInput('')
+      setSendToAllInvestors(false)
       setEmailData({
-        recipientEmails: '',
         subject: '',
         content: ''
       })
@@ -299,20 +378,66 @@ const AdminEmails = () => {
 
       <form onSubmit={handleSendEmail} className="admin-email-form">
         <div className="form-group">
-          <label htmlFor="recipientEmails" className="form-label">
+          <label htmlFor="emailInput" className="form-label">
             Recipient Email(s) <span className="required">*</span>
-            <span className="form-help">Enter one or more email addresses separated by commas</span>
+            <span className="form-help">Type email addresses separated by spaces. Each email will appear as a bubble.</span>
           </label>
-          <input
-            type="text"
-            id="recipientEmails"
-            name="recipientEmails"
-            className="form-input"
-            value={emailData.recipientEmails}
-            onChange={handleInputChange}
-            placeholder="user@example.com, another@example.com"
-            required
-          />
+          
+          <div className="email-input-container">
+            <input
+              type="text"
+              id="emailInput"
+              className="form-input email-input-field"
+              value={emailInput}
+              onChange={handleEmailInputChange}
+              onKeyDown={handleEmailInputKeyDown}
+              placeholder="Type email addresses and press Enter or Space"
+              disabled={sendToAllInvestors}
+            />
+            <button
+              type="button"
+              onClick={handleToggleAllInvestors}
+              className={`btn-all-investors ${sendToAllInvestors ? 'active' : ''}`}
+            >
+              All Investors
+            </button>
+          </div>
+
+          {sendToAllInvestors && (
+            <div className="all-investors-indicator">
+              <span className="indicator-text">✓ Email will be sent to all investors</span>
+            </div>
+          )}
+
+          {recipientEmails.length > 0 && (
+            <div className="recipients-list">
+              <div className="recipients-header">
+                <span className="recipients-count">{recipientEmails.length} recipient(s)</span>
+                <button
+                  type="button"
+                  onClick={() => setRecipientEmails([])}
+                  className="btn-clear-all"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="recipients-chips">
+                {recipientEmails.map((recipient) => (
+                  <div key={recipient.id} className="email-chip">
+                    <span className="chip-email">{recipient.email}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEmail(recipient.id)}
+                      className="chip-remove"
+                      title="Remove email"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="form-group">
