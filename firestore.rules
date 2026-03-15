@@ -146,6 +146,15 @@ service cloud.firestore {
       // Only admins can create, update, delete reports
       allow create, update, delete: if isAdmin();
     }
+
+    // Admin Daily Performance collection
+    match /adminDailyPerformance/{performanceId} {
+      // Only admins can read their own daily performance data
+      allow read: if isAdmin() && 
+        (resource == null || resource.data.userId == request.auth.uid);
+      // Only admins can write their own daily performance data
+      allow create, update, delete: if isAdmin() && 
+        request.resource.data.userId == request.auth.uid;
+    }
   }
 }
-

@@ -13,12 +13,13 @@ import AdminCommunityManagement from '../components/AdminCommunityManagement'
 import AdminPortfolio from '../components/AdminPortfolio'
 import AdminEmails from '../components/AdminEmails'
 import AdminSettings from '../components/AdminSettings'
+import AdminOverview from '../components/AdminOverview'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState('portfolio')
+  const [activeSection, setActiveSection] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -130,6 +131,7 @@ const AdminDashboardPage = () => {
   }
 
   const sections = [
+    { id: 'overview', title: 'Overview' },
     { id: 'portfolio', title: 'Portfolio' },
     { id: 'users', title: 'Manage Users' },
     { id: 'investors', title: 'Investors' },
@@ -230,7 +232,9 @@ const AdminDashboardPage = () => {
       {/* Main Content Area */}
       <main className="dashboard-content">
         <div className="content-wrapper">
-          {activeSection === 'portfolio' ? (
+          {activeSection === 'overview' ? (
+            <AdminOverview user={user} />
+          ) : activeSection === 'portfolio' ? (
             <AdminPortfolio user={user} userStatuses={user?.userStatuses || []} />
           ) : activeSection === 'users' ? (
             <AdminUsersManagement currentUserStatuses={user?.userStatuses || []} />
