@@ -333,10 +333,35 @@
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 1rem;
   padding-top: 1.5rem;
   border-top: 1px solid #e5e7eb;
+  gap: 1rem;
+}
+
+.btn-clear-form {
+  padding: 0.875rem 2rem;
+  background: #ffffff;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-form:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.btn-clear-form:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-submit {
@@ -487,6 +512,18 @@ html.dark-mode .remove-file-button:hover {
 
 html.dark-mode .form-actions {
   border-top-color: #374151;
+}
+
+html.dark-mode .btn-clear-form {
+  background: #111827;
+  color: #9ca3af;
+  border-color: #374151;
+}
+
+html.dark-mode .btn-clear-form:hover:not(:disabled) {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #d1d5db;
 }
 
 html.dark-mode .email-input-field:disabled {

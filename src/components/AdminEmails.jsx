@@ -1,20 +1,92 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs } from 'firebase/firestore'
 import './AdminEmails.css'
 
 const AdminEmails = () => {
-  const [recipientEmails, setRecipientEmails] = useState([]) // Array of email objects {email, id}
-  const [emailInput, setEmailInput] = useState('') // Current input value
-  const [sendToAllInvestors, setSendToAllInvestors] = useState(false) // Toggle for all investors
-  const [emailData, setEmailData] = useState({
-    subject: '',
-    content: ''
-  })
-  const [attachedFiles, setAttachedFiles] = useState([])
+  // Load saved form data from localStorage on mount
+  const loadSavedFormData = () => {
+    try {
+      const saved = localStorage.getItem('adminEmailFormData')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return {
+          recipientEmails: parsed.recipientEmails || [],
+          emailInput: parsed.emailInput || '',
+          sendToAllInvestors: parsed.sendToAllInvestors || false,
+          emailData: parsed.emailData || { subject: '', content: '' },
+          attachedFiles: parsed.attachedFiles || []
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved form data:', error)
+    }
+    return {
+      recipientEmails: [],
+      emailInput: '',
+      sendToAllInvestors: false,
+      emailData: { subject: '', content: '' },
+      attachedFiles: []
+    }
+  }
+
+  const savedData = loadSavedFormData()
+  const [recipientEmails, setRecipientEmails] = useState(savedData.recipientEmails)
+  const [emailInput, setEmailInput] = useState(savedData.emailInput)
+  const [sendToAllInvestors, setSendToAllInvestors] = useState(savedData.sendToAllInvestors)
+  const [emailData, setEmailData] = useState(savedData.emailData)
+  const [attachedFiles, setAttachedFiles] = useState(savedData.attachedFiles)
   const [uploading, setUploading] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      const formDataToSave = {
+        recipientEmails,
+        emailInput,
+        sendToAllInvestors,
+        emailData,
+        attachedFiles
+      }
+      const dataString = JSON.stringify(formDataToSave)
+      // Check localStorage size (limit is typically 5-10MB)
+      if (dataString.length > 4 * 1024 * 1024) { // 4MB limit to be safe
+        console.warn('Form data is too large for localStorage. Some data may not be saved.')
+        // Save without files if too large
+        const formDataWithoutFiles = {
+          recipientEmails,
+          emailInput,
+          sendToAllInvestors,
+          emailData,
+          attachedFiles: []
+        }
+        localStorage.setItem('adminEmailFormData', JSON.stringify(formDataWithoutFiles))
+        setError('File attachments are too large to save. Please re-attach files before sending.')
+        setTimeout(() => setError(''), 5000)
+      } else {
+        localStorage.setItem('adminEmailFormData', dataString)
+      }
+    } catch (error) {
+      console.error('Error saving form data to localStorage:', error)
+      // If saving fails (e.g., quota exceeded), try saving without files
+      try {
+        const formDataWithoutFiles = {
+          recipientEmails,
+          emailInput,
+          sendToAllInvestors,
+          emailData,
+          attachedFiles: []
+        }
+        localStorage.setItem('adminEmailFormData', JSON.stringify(formDataWithoutFiles))
+        setError('Could not save file attachments. Please re-attach files before sending.')
+        setTimeout(() => setError(''), 5000)
+      } catch (e) {
+        console.error('Error saving form data without files:', e)
+      }
+    }
+  }, [recipientEmails, emailInput, sendToAllInvestors, emailData, attachedFiles])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -66,6 +138,22 @@ const AdminEmails = () => {
   // Remove email from recipients list
   const handleRemoveEmail = (id) => {
     setRecipientEmails(prev => prev.filter(r => r.id !== id))
+  }
+
+  // Clear all form data manually
+  const handleClearForm = () => {
+    setRecipientEmails([])
+    setEmailInput('')
+    setSendToAllInvestors(false)
+    setEmailData({
+      subject: '',
+      content: ''
+    })
+    setAttachedFiles([])
+    localStorage.removeItem('adminEmailFormData')
+    setError('')
+    setSuccess('Form cleared')
+    setTimeout(() => setSuccess(''), 3000)
   }
 
   // Toggle "All Investors" option
@@ -350,7 +438,7 @@ const AdminEmails = () => {
 
       setSuccess(`Email sent successfully to ${emailList.length} recipient(s)!`)
       
-      // Reset form
+      // Reset form and clear localStorage
       setRecipientEmails([])
       setEmailInput('')
       setSendToAllInvestors(false)
@@ -359,6 +447,7 @@ const AdminEmails = () => {
         content: ''
       })
       setAttachedFiles([])
+      localStorage.removeItem('adminEmailFormData')
       
       setTimeout(() => setSuccess(''), 5000)
     } catch (error) {
@@ -510,6 +599,14 @@ const AdminEmails = () => {
         </div>
 
         <div className="form-actions">
+          <button
+            type="button"
+            onClick={handleClearForm}
+            className="btn-clear-form"
+            disabled={sending || uploading}
+          >
+            Clear Form
+          </button>
           <button
             type="submit"
             className="btn-submit"
