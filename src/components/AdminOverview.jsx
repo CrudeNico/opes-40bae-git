@@ -191,13 +191,20 @@ const AdminOverview = ({ user }) => {
       setPendingConsultations(consultationsSnapshot.size)
 
       // Load user message alerts (unread chat messages)
+      // We mirror the logic from AdminSupport: count users that have at least one pending support message
       const messagesQuery = query(
-        collection(db, 'supportRequests'),
-        where('status', '==', 'pending'),
-        where('type', '==', 'chat')
+        collection(db, 'supportMessages'),
+        where('status', '==', 'pending')
       )
       const messagesSnapshot = await getDocs(messagesQuery)
-      setUserMessageAlerts(messagesSnapshot.size)
+      const unreadUserIds = new Set()
+      messagesSnapshot.forEach((docSnapshot) => {
+        const msgData = docSnapshot.data()
+        if (msgData.userId) {
+          unreadUserIds.add(msgData.userId)
+        }
+      })
+      setUserMessageAlerts(unreadUserIds.size)
 
       // Calculate investor payout target
       await calculateInvestorPayoutTarget(db)
@@ -515,6 +522,14 @@ const AdminOverview = ({ user }) => {
     }
   }
 
+  // Determine if current progress label should be hidden to avoid overlapping with targets
+  const hideCurrentProgressLabel =
+    progressAmount !== 0 &&
+    (
+      (secondTargetAmount > 0 && Math.abs(progressAmount - secondTargetAmount) <= 200) ||
+      (monthlyProjection > 0 && Math.abs(progressAmount - monthlyProjection) <= 200)
+    )
+
   if (loading) {
     return (
       <div className="admin-overview-loading">
@@ -582,6 +597,15 @@ const AdminOverview = ({ user }) => {
             >
               {secondTargetAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
+            {/* Current progress amount label */}
+            {progressAmount !== 0 && !hideCurrentProgressLabel && progressPercentage > 0 && progressPercentage <= 100 && (
+              <div
+                className="current-progress-label"
+                style={{ left: `${Math.min(Math.max(progressPercentage, 5), 95)}%` }}
+              >
+                {progressAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </div>
+            )}
           </div>
           <div className="progress-bar" key={progressBarKey}>
             {/* Positive progress: blue up to investor target (1/3 of bar) */}

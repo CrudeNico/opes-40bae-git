@@ -132,6 +132,20 @@
   transform: translateX(-50%);
 }
 
+.current-progress-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+}
+
+html.dark-mode .current-progress-label {
+  color: #f9fafb;
+}
+
 .progress-bar-container {
   margin-bottom: 0;
 }
@@ -303,7 +317,7 @@ html.dark-mode .projection-description {
 }
 
 /* Calendar Widget */
-.calendar-widget {
+.admin-overview-container .calendar-widget {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
@@ -312,21 +326,21 @@ html.dark-mode .projection-description {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.calendar-header {
+.admin-overview-container .calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
 }
 
-.calendar-title {
+.admin-overview-container .calendar-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
 }
 
-.calendar-nav-button {
+.admin-overview-container .calendar-nav-button {
   background: transparent;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
@@ -339,19 +353,19 @@ html.dark-mode .projection-description {
   justify-content: center;
 }
 
-.calendar-nav-button:hover {
+.admin-overview-container .calendar-nav-button:hover {
   background: #f3f4f6;
   border-color: #d1d5db;
   color: #1f2937;
 }
 
-.calendar-grid {
+.admin-overview-container .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.5rem;
 }
 
-.calendar-day-header {
+.admin-overview-container .calendar-day-header {
   text-align: center;
   font-size: 0.75rem;
   font-weight: 600;
@@ -361,11 +375,11 @@ html.dark-mode .projection-description {
   padding: 0.5rem 0;
 }
 
-.calendar-day-empty {
+.admin-overview-container .calendar-day-empty {
   aspect-ratio: 1;
 }
 
-.calendar-day {
+.admin-overview-container .calendar-day {
   aspect-ratio: 1;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
@@ -380,56 +394,56 @@ html.dark-mode .projection-description {
   position: relative;
 }
 
-.calendar-day:hover {
+.admin-overview-container .calendar-day:hover {
   border-color: #3b82f6;
   transform: translateY(-2px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.calendar-day.current-day {
+.admin-overview-container .calendar-day.current-day {
   background: #f3f4f6;
   border-color: #9ca3af;
   border-width: 2px;
 }
 
-.calendar-day.day-win {
+.admin-overview-container .calendar-day.day-win {
   background: #d1fae5;
   border-color: #10b981;
 }
 
-.calendar-day.day-loss {
+.admin-overview-container .calendar-day.day-loss {
   background: #fee2e2;
   border-color: #ef4444;
 }
 
-.day-number {
+.admin-overview-container .day-number {
   font-size: 0.875rem;
   font-weight: 600;
   color: #1f2937;
 }
 
 /* Keep day numbers always dark for readability on colored backgrounds */
-.calendar-day.day-win .day-number,
-.calendar-day.day-loss .day-number {
+.admin-overview-container .calendar-day.day-win .day-number,
+.admin-overview-container .calendar-day.day-loss .day-number {
   color: #1f2937;
 }
 
-.day-performance {
+.admin-overview-container .day-performance {
   font-size: 0.625rem;
   font-weight: 600;
   margin-top: 0.25rem;
 }
 
-.calendar-day.day-win .day-performance {
+.admin-overview-container .calendar-day.day-win .day-performance {
   color: #059669;
 }
 
-.calendar-day.day-loss .day-performance {
+.admin-overview-container .calendar-day.day-loss .day-performance {
   color: #dc2626;
 }
 
 /* Day Performance Modal */
-.modal-overlay {
+.admin-overview-container .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -442,7 +456,7 @@ html.dark-mode .projection-description {
   z-index: 1000;
 }
 
-.day-modal-content {
+.admin-overview-container .day-modal-content {
   background: #ffffff;
   border-radius: 0.75rem;
   width: 90%;
@@ -450,7 +464,7 @@ html.dark-mode .projection-description {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.day-modal-header {
+.admin-overview-container .day-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -458,14 +472,14 @@ html.dark-mode .projection-description {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.day-modal-header h3 {
+.admin-overview-container .day-modal-header h3 {
   font-size: 1.25rem;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
 }
 
-.modal-close {
+.admin-overview-container .modal-close {
   background: transparent;
   border: none;
   font-size: 1.5rem;
@@ -481,21 +495,21 @@ html.dark-mode .projection-description {
   transition: all 0.2s ease;
 }
 
-.modal-close:hover {
+.admin-overview-container .modal-close:hover {
   background: #f3f4f6;
   color: #1f2937;
 }
 
-.day-modal-body {
+.admin-overview-container .day-modal-body {
   padding: 1.5rem;
 }
 
-.performance-type-buttons {
+.admin-overview-container .performance-type-buttons {
   display: flex;
   gap: 0.75rem;
 }
 
-.type-button {
+.admin-overview-container .type-button {
   flex: 1;
   padding: 0.75rem 1rem;
   border: 2px solid #e5e7eb;
@@ -507,17 +521,17 @@ html.dark-mode .projection-description {
   transition: all 0.2s ease;
 }
 
-.type-button:hover {
+.admin-overview-container .type-button:hover {
   border-color: #d1d5db;
 }
 
-.type-button.active {
+.admin-overview-container .type-button.active {
   border-color: #3b82f6;
   background: #3b82f6;
   color: #ffffff;
 }
 
-.day-modal-footer {
+.admin-overview-container .day-modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -525,7 +539,7 @@ html.dark-mode .projection-description {
   border-top: 1px solid #e5e7eb;
 }
 
-.btn-primary {
+.admin-overview-container .btn-primary {
   padding: 0.75rem 1.5rem;
   background: #3b82f6;
   color: #ffffff;
@@ -536,16 +550,16 @@ html.dark-mode .projection-description {
   transition: all 0.2s ease;
 }
 
-.btn-primary:hover:not(:disabled) {
+.admin-overview-container .btn-primary:hover:not(:disabled) {
   background: #2563eb;
 }
 
-.btn-primary:disabled {
+.admin-overview-container .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn-delete {
+.admin-overview-container .btn-delete {
   padding: 0.75rem 1.5rem;
   background: #ef4444;
   color: #ffffff;
@@ -556,111 +570,111 @@ html.dark-mode .projection-description {
   transition: all 0.2s ease;
 }
 
-.btn-delete:hover {
+.admin-overview-container .btn-delete:hover {
   background: #dc2626;
 }
 
 /* Dark Mode Calendar */
-html.dark-mode .calendar-widget {
+html.dark-mode .admin-overview-container .calendar-widget {
   background: #1f2937;
   border-color: #374151;
 }
 
-html.dark-mode .calendar-title {
+html.dark-mode .admin-overview-container .calendar-title {
   color: #f9fafb;
 }
 
-html.dark-mode .calendar-nav-button {
+html.dark-mode .admin-overview-container .calendar-nav-button {
   border-color: #374151;
   color: #9ca3af;
 }
 
-html.dark-mode .calendar-nav-button:hover {
+html.dark-mode .admin-overview-container .calendar-nav-button:hover {
   background: #374151;
   border-color: #4b5563;
   color: #f9fafb;
 }
 
-html.dark-mode .calendar-day-header {
+html.dark-mode .admin-overview-container .calendar-day-header {
   color: #9ca3af;
 }
 
-html.dark-mode .calendar-day {
+html.dark-mode .admin-overview-container .calendar-day {
   background: #111827;
   border-color: #374151;
 }
 
-html.dark-mode .calendar-day:hover {
+html.dark-mode .admin-overview-container .calendar-day:hover {
   border-color: #3b82f6;
 }
 
-html.dark-mode .calendar-day.current-day {
+html.dark-mode .admin-overview-container .calendar-day.current-day {
   background: #374151;
   border-color: #6b7280;
 }
 
-html.dark-mode .calendar-day.day-win {
+html.dark-mode .admin-overview-container .calendar-day.day-win {
   background: #064e3b;
   border-color: #10b981;
 }
 
-html.dark-mode .calendar-day.day-loss {
+html.dark-mode .admin-overview-container .calendar-day.day-loss {
   background: #7f1d1d;
   border-color: #ef4444;
 }
 
-html.dark-mode .day-number {
+html.dark-mode .admin-overview-container .day-number {
   color: #f9fafb;
 }
 
-html.dark-mode .day-modal-content {
+html.dark-mode .admin-overview-container .day-modal-content {
   background: #1f2937;
 }
 
-html.dark-mode .day-modal-header {
+html.dark-mode .admin-overview-container .day-modal-header {
   border-bottom-color: #374151;
 }
 
-html.dark-mode .day-modal-header h3 {
+html.dark-mode .admin-overview-container .day-modal-header h3 {
   color: #f9fafb;
 }
 
-html.dark-mode .modal-close {
+html.dark-mode .admin-overview-container .modal-close {
   color: #9ca3af;
 }
 
-html.dark-mode .modal-close:hover {
+html.dark-mode .admin-overview-container .modal-close:hover {
   background: #374151;
   color: #f9fafb;
 }
 
-html.dark-mode .type-button {
+html.dark-mode .admin-overview-container .type-button {
   background: #111827;
   border-color: #374151;
   color: #9ca3af;
 }
 
-html.dark-mode .type-button:hover {
+html.dark-mode .admin-overview-container .type-button:hover {
   border-color: #4b5563;
 }
 
-html.dark-mode .type-button.active {
+html.dark-mode .admin-overview-container .type-button.active {
   border-color: #3b82f6;
   background: #3b82f6;
   color: #ffffff;
 }
 
-html.dark-mode .day-modal-footer {
+html.dark-mode .admin-overview-container .day-modal-footer {
   border-top-color: #374151;
 }
 
-html.dark-mode .form-input {
+html.dark-mode .admin-overview-container .form-input {
   background: #111827;
   border-color: #374151;
   color: #f9fafb;
 }
 
-html.dark-mode .form-input:focus {
+html.dark-mode .admin-overview-container .form-input:focus {
   border-color: #3b82f6;
   outline: none;
 }
@@ -699,23 +713,23 @@ html.dark-mode .form-group label {
 
 /* Mobile Responsive Calendar */
 @media (max-width: 768px) {
-  .calendar-widget {
+  .admin-overview-container .calendar-widget {
     padding: 1.5rem;
   }
 
-  .calendar-title {
+  .admin-overview-container .calendar-title {
     font-size: 1.25rem;
   }
 
-  .calendar-day {
+  .admin-overview-container .calendar-day {
     padding: 0.375rem;
   }
 
-  .day-number {
+  .admin-overview-container .day-number {
     font-size: 0.75rem;
   }
 
-  .day-performance {
+  .admin-overview-container .day-performance {
     font-size: 0.5rem;
   }
 }
