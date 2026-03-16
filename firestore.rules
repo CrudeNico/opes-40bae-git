@@ -149,10 +149,9 @@ service cloud.firestore {
 
     // Admin Daily Performance collection
     match /adminDailyPerformance/{performanceId} {
-      // Only admins can read their own daily performance data
-      allow read: if isAdmin() && 
-        (resource == null || resource.data.userId == request.auth.uid);
-      // Only admins can write their own daily performance data
+      // Any admin (Admin, Admin 2, Relations) can read admin performance data
+      allow read: if isAdmin();
+      // Only full admins can write their own daily performance data
       allow create, update, delete: if isAdmin() && 
         request.resource.data.userId == request.auth.uid;
     }

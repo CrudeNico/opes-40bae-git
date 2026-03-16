@@ -233,7 +233,7 @@ const AdminDashboardPage = () => {
       <main className="dashboard-content">
         <div className="content-wrapper">
           {activeSection === 'overview' ? (
-            <AdminOverview user={user} />
+            <AdminOverview user={user} userStatuses={user?.userStatuses || []} />
           ) : activeSection === 'portfolio' ? (
             <AdminPortfolio user={user} userStatuses={user?.userStatuses || []} />
           ) : activeSection === 'users' ? (

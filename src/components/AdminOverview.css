@@ -146,6 +146,44 @@ html.dark-mode .current-progress-label {
   color: #f9fafb;
 }
 
+.admin-overview-container .calendar-footer {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.admin-overview-container .calendar-pdf-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  color: #ffffff;
+}
+
+.admin-overview-container .calendar-pdf-button:hover {
+  background: #1f2937;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.admin-overview-container .calendar-pdf-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+@media (max-width: 768px) {
+  .admin-overview-container .calendar-footer {
+    justify-content: center;
+  }
+}
+
 .progress-bar-container {
   margin-bottom: 0;
 }

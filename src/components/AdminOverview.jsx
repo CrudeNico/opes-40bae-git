@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp } from 'firebase/firestore'
+import React, { useState, useEffect, useRef } from 'react'
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, onSnapshot } from 'firebase/firestore'
 import './AdminOverview.css'
 
-const AdminOverview = ({ user }) => {
+const AdminOverview = ({ user, userStatuses = [] }) => {
   const [loading, setLoading] = useState(true)
   const [currentBalance, setCurrentBalance] = useState(0)
   const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
@@ -18,6 +18,9 @@ const AdminOverview = ({ user }) => {
   const [showDayModal, setShowDayModal] = useState(false)
   const [dayPerformanceForm, setDayPerformanceForm] = useState({ type: 'win', amount: '' })
   const [totalDailyPerformance, setTotalDailyPerformance] = useState(0)
+  const [performanceOwnerId, setPerformanceOwnerId] = useState(null)
+  const [isAdmin2, setIsAdmin2] = useState(false)
+  const dailyPerfUnsubscribeRef = useRef(null)
 
   useEffect(() => {
     loadOverviewData()
@@ -39,10 +42,16 @@ const AdminOverview = ({ user }) => {
     localStorage.setItem('adminOverviewCalendarYear', calendarYear.toString())
   }, [calendarMonth, calendarYear])
 
-  // Load daily performances when month/year changes
+  // Load daily performances when month/year or owner changes
   useEffect(() => {
     loadDailyPerformances()
-  }, [user, calendarMonth, calendarYear])
+    return () => {
+      if (dailyPerfUnsubscribeRef.current) {
+        dailyPerfUnsubscribeRef.current()
+        dailyPerfUnsubscribeRef.current = null
+      }
+    }
+  }, [user, calendarMonth, calendarYear, performanceOwnerId])
 
   // Calculate total daily performance
   useEffect(() => {
@@ -66,20 +75,22 @@ const AdminOverview = ({ user }) => {
       setLoading(true)
       const db = getFirestore()
 
-      // Load admin portfolio current balance
+      // Load admin portfolio current balance and determine performance owner (Admin vs Admin 2)
       if (user?.uid) {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
         if (userDoc.exists()) {
           const userData = userDoc.data()
-          const userStatuses = userData.statuses || []
+          const docStatuses = userData.statuses || []
           
           // Check if user is Admin 2 (has limited permissions)
-          const isAdmin2 = userStatuses && (userStatuses.includes('Admin 2') || userStatuses.includes('Relations'))
+          const isAdmin2Local = docStatuses && (docStatuses.includes('Admin 2') || docStatuses.includes('Relations'))
+          setIsAdmin2(isAdmin2Local)
           
           let portfolioData = null
+          let ownerId = user.uid
           
-          // If Admin 2, find and load the Admin's portfolio data
-          if (isAdmin2) {
+          // If Admin 2, find and use the main Admin's data
+          if (isAdmin2Local) {
             const usersCollection = collection(db, 'users')
             const usersSnapshot = await getDocs(usersCollection)
             
@@ -104,8 +115,11 @@ const AdminOverview = ({ user }) => {
               }
             })
             
-            if (adminUser && adminUser.investmentData) {
-              portfolioData = adminUser.investmentData
+            if (adminUser) {
+              ownerId = adminUser.id
+              if (adminUser.investmentData) {
+                portfolioData = adminUser.investmentData
+              }
             }
           } else {
             // For full Admin, load their own portfolio data
@@ -113,6 +127,8 @@ const AdminOverview = ({ user }) => {
               portfolioData = userData.investmentData
             }
           }
+          
+          setPerformanceOwnerId(ownerId)
           
           // Calculate current balance
           if (portfolioData) {
@@ -328,28 +344,36 @@ const AdminOverview = ({ user }) => {
     }
   }
 
-  const loadDailyPerformances = async () => {
-    if (!user?.uid) return
+  const loadDailyPerformances = () => {
+    const ownerId = performanceOwnerId || user?.uid
+    if (!ownerId) return
+
+    // Clean up any existing listener
+    if (dailyPerfUnsubscribeRef.current) {
+      dailyPerfUnsubscribeRef.current()
+      dailyPerfUnsubscribeRef.current = null
+    }
     
-    try {
-      const db = getFirestore()
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December']
-      const monthName = monthNames[calendarMonth]
-      const docId = `dailyPerformance_${user.uid}_${calendarYear}_${monthName}`
-      
-      const perfDoc = await getDoc(doc(db, 'adminDailyPerformance', docId))
-      
+    const db = getFirestore()
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December']
+    const monthName = monthNames[calendarMonth]
+    const docId = `dailyPerformance_${ownerId}_${calendarYear}_${monthName}`
+    const perfDocRef = doc(db, 'adminDailyPerformance', docId)
+    
+    const unsubscribe = onSnapshot(perfDocRef, (perfDoc) => {
       if (perfDoc.exists()) {
         const data = perfDoc.data()
         setDailyPerformances(data.performances || {})
       } else {
         setDailyPerformances({})
       }
-    } catch (error) {
-      console.error('Error loading daily performances:', error)
+    }, (error) => {
+      console.error('Error listening to daily performances:', error)
       setDailyPerformances({})
-    }
+    })
+
+    dailyPerfUnsubscribeRef.current = unsubscribe
   }
 
   const handleDayClick = (day) => {
@@ -367,6 +391,9 @@ const AdminOverview = ({ user }) => {
   }
 
   const handleSaveDayPerformance = async () => {
+    // Admin 2 cannot edit performance
+    if (isAdmin2) return
+
     if (!selectedDay || !dayPerformanceForm.amount || parseFloat(dayPerformanceForm.amount) <= 0) {
       return
     }
@@ -376,7 +403,9 @@ const AdminOverview = ({ user }) => {
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                          'July', 'August', 'September', 'October', 'November', 'December']
       const monthName = monthNames[calendarMonth]
-      const docId = `dailyPerformance_${user.uid}_${calendarYear}_${monthName}`
+      const ownerId = performanceOwnerId || user?.uid
+      if (!ownerId) return
+      const docId = `dailyPerformance_${ownerId}_${calendarYear}_${monthName}`
       
       const dayKey = selectedDay.toString()
       const updatedPerformances = {
@@ -406,6 +435,8 @@ const AdminOverview = ({ user }) => {
   }
 
   const handleDeleteDayPerformance = async () => {
+    // Admin 2 cannot edit performance
+    if (isAdmin2) return
     if (!selectedDay) return
 
     try {
@@ -413,7 +444,9 @@ const AdminOverview = ({ user }) => {
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                          'July', 'August', 'September', 'October', 'November', 'December']
       const monthName = monthNames[calendarMonth]
-      const docId = `dailyPerformance_${user.uid}_${calendarYear}_${monthName}`
+      const ownerId = performanceOwnerId || user?.uid
+      if (!ownerId) return
+      const docId = `dailyPerformance_${ownerId}_${calendarYear}_${monthName}`
       
       const dayKey = selectedDay.toString()
       const updatedPerformances = { ...dailyPerformances }
@@ -477,6 +510,132 @@ const AdminOverview = ({ user }) => {
     return day === current.day && 
            calendarMonth === current.month && 
            calendarYear === current.year
+  }
+
+  // Download monthly performance as a printable HTML report (user can save as PDF)
+  const handleDownloadMonthlyReport = () => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December']
+    const monthName = monthNames[calendarMonth]
+
+    const entries = Object.entries(dailyPerformances).sort((a, b) => Number(a[0]) - Number(b[0]))
+    let totalPnL = 0
+
+    const rowsHtml = entries.map(([day, perf]) => {
+      const amount = Number(perf.amount) || 0
+      const signedAmount = perf.type === 'loss' ? -amount : amount
+      totalPnL += signedAmount
+
+      const date = new Date(calendarYear, calendarMonth, Number(day))
+      const dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+      return `
+        <tr>
+          <td>${dateLabel}</td>
+          <td>${perf.type === 'win' ? 'Win' : 'Loss'}</td>
+          <td style="text-align:right;">${signedAmount >= 0 ? '+' : ''}${signedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+      `
+    }).join('')
+
+    const totalPnLPercent = currentBalance > 0 ? (totalPnL / currentBalance) * 100 : 0
+
+    const summaryHtml = `
+      <h2>Summary</h2>
+      <p><strong>Total Net Result:</strong> ${totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+      <p><strong>Total Net % vs Current Balance:</strong> ${totalPnLPercent.toFixed(2)}%</p>
+      <p><strong>Current Balance:</strong> ${currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+    `
+
+    const html = `
+      <html>
+        <head>
+          <title>Opessocius - Monthly Performance Report - ${monthName} ${calendarYear}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px 32px 80px; color: #111827; position: relative; }
+            h1 { font-size: 24px; margin-bottom: 4px; }
+            h2 { font-size: 18px; margin-top: 24px; }
+            p { margin: 4px 0; font-size: 14px; }
+            .report-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+            .report-brand { font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #1f2937; }
+            .report-tag { font-size: 12px; font-weight: 500; color: #6b7280; }
+            .report-subtitle { font-size: 13px; color: #4b5563; margin-top: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+            th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
+            th { background: #f3f4f6; text-align: left; }
+            tfoot td { background: #f9fafb; font-weight: 600; }
+            .wave-footer {
+              position: fixed;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              height: 80px;
+              background: radial-gradient(120% 200% at 50% 120%, rgba(15,23,42,0.9) 0%, rgba(30,64,175,0.95) 40%, rgba(15,23,42,1) 100%);
+              border-top-left-radius: 80% 100%;
+              border-top-right-radius: 80% 100%;
+            }
+            .wave-footer::before {
+              content: '';
+              position: absolute;
+              inset: 0;
+              background: radial-gradient(150% 240% at 50% 130%, rgba(59,130,246,0.35), transparent 55%);
+              opacity: 0.9;
+            }
+            .wave-footer-inner {
+              position: absolute;
+              inset: 0 32px 12px 32px;
+              display: flex;
+              align-items: flex-end;
+              justify-content: space-between;
+              color: #e5e7eb;
+              font-size: 11px;
+            }
+            .wave-footer-inner span {
+              opacity: 0.9;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-header">
+            <div>
+              <div class="report-brand">Opessocius</div>
+              <h1>Monthly Performance Report</h1>
+              <p class="report-subtitle">${monthName} ${calendarYear}</p>
+            </div>
+            <div class="report-tag">Internal Reporting</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th style="text-align:right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colspan="3">No daily performance recorded for this month.</td></tr>'}
+            </tbody>
+          </table>
+          ${summaryHtml}
+          <div class="wave-footer">
+            <div class="wave-footer-inner">
+              <span>Opessocius • Internal Reporting</span>
+              <span>${monthName} ${calendarYear}</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    const reportWindow = window.open('', '_blank')
+    if (reportWindow) {
+      reportWindow.document.open()
+      reportWindow.document.write(html)
+      reportWindow.document.close()
+      reportWindow.focus()
+      // Let user choose "Save as PDF" from the browser's print dialog
+      reportWindow.print()
+    }
   }
 
   // Calculate monthly projection (7% increase)
@@ -679,7 +838,11 @@ const AdminOverview = ({ user }) => {
                 <div
                   key={day}
                   className={`calendar-day ${isCurrent ? 'current-day' : ''} ${performance ? (performance.type === 'win' ? 'day-win' : 'day-loss') : ''}`}
-                  onClick={() => handleDayClick(day)}
+                  onClick={() => {
+                    if (!isAdmin2) {
+                      handleDayClick(day)
+                    }
+                  }}
                 >
                   <span className="day-number">{day}</span>
                   {performance && (
@@ -691,6 +854,18 @@ const AdminOverview = ({ user }) => {
                 </div>
               )
             })}
+          </div>
+          <div className="calendar-footer">
+            <button
+              className="calendar-pdf-button"
+              onClick={handleDownloadMonthlyReport}
+              type="button"
+              aria-label="Download monthly performance report as PDF"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
+                <path d="M320 528C205.1 528 112 434.9 112 320C112 205.1 205.1 112 320 112C434.9 112 528 205.1 528 320C528 434.9 434.9 528 320 528zM320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64zM308.7 451.3C314.9 457.5 325.1 457.5 331.3 451.3L435.3 347.3C439.9 342.7 441.2 335.8 438.8 329.9C436.4 324 430.5 320 424 320L352 320L352 216C352 202.7 341.3 192 328 192L312 192C298.7 192 288 202.7 288 216L288 320L216 320C209.5 320 203.7 323.9 201.2 329.9C198.7 335.9 200.1 342.8 204.7 347.3L308.7 451.3z" />
+              </svg>
+            </button>
           </div>
         </div>
 
