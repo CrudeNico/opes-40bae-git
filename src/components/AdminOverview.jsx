@@ -475,17 +475,45 @@ const AdminOverview = ({ user }) => {
   // Calculate monthly projection (7% increase)
   const monthlyProjection = currentBalance * 0.07
   
-  // Calculate progress bar percentages
-  // First target marker: fixed at 1/3 (33.33%) of the bar
+  // Progress bar configuration
+  // First target marker: fixed at 1/3 (33.33%) of the bar (investor payout target)
   const firstTargetPosition = 33.33
-  // Second target: investor payout target as percentage of current balance
   const secondTargetAmount = investorPayoutTarget
-  const secondTargetPercentage = currentBalance > 0 ? (secondTargetAmount / currentBalance) * 100 : 0
   
   // Calculate progress based on daily performance
-  // Progress is based on how much we've gained towards the targets
+  // We map daily performance to the bar in two segments:
+  // - From 0 up to investorPayoutTarget -> fills 0 to firstTargetPosition (blue)
+  // - From investorPayoutTarget up to monthlyProjection -> fills firstTargetPosition to 100% (green)
   const progressAmount = totalDailyPerformance
-  const progressPercentage = currentBalance > 0 ? (progressAmount / currentBalance) * 100 : 0
+  let progressPercentage = 0
+  
+  if (monthlyProjection > 0 && progressAmount !== 0) {
+    // Handle negative performance (losses) separately
+    if (progressAmount < 0) {
+      // Negative progress: show red section proportional to magnitude vs monthlyProjection
+      progressPercentage = -Math.min(Math.abs(progressAmount) / monthlyProjection * 100, 100)
+    } else {
+      // Positive progress
+      if (secondTargetAmount > 0) {
+        if (progressAmount <= secondTargetAmount) {
+          // Before reaching investor payout target: fill within first 1/3
+          progressPercentage = Math.min(
+            (progressAmount / secondTargetAmount) * firstTargetPosition,
+            firstTargetPosition
+          )
+        } else {
+          // Beyond investor payout target: fill remaining 2/3 up to monthlyProjection
+          const extra = Math.min(progressAmount, monthlyProjection) - secondTargetAmount
+          const remainingNeeded = Math.max(monthlyProjection - secondTargetAmount, 0.0001)
+          const extraRatio = Math.min(extra / remainingNeeded, 1)
+          progressPercentage = firstTargetPosition + extraRatio * (100 - firstTargetPosition)
+        }
+      } else {
+        // Fallback: map directly to monthly projection
+        progressPercentage = Math.min((progressAmount / monthlyProjection) * 100, 100)
+      }
+    }
+  }
 
   if (loading) {
     return (
@@ -546,41 +574,36 @@ const AdminOverview = ({ user }) => {
               className="target-label-amount target-1"
               style={{ right: '0%' }}
             >
-              {monthlyProjection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {monthlyProjection.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
             <div 
               className="target-label-amount target-2"
               style={{ left: '33.33%' }}
             >
-              {secondTargetAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {secondTargetAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
           </div>
           <div className="progress-bar" key={progressBarKey}>
-            {/* Blue section up to first target (1/3 = 33.33%) */}
-            {progressPercentage > 0 && progressPercentage <= firstTargetPosition && (
-              <div 
-                className="progress-bar-fill progress-bar-blue"
-                style={{ width: `${Math.min(progressPercentage, firstTargetPosition)}%` }}
-              ></div>
+            {/* Positive progress: blue up to investor target (1/3 of bar) */}
+            {progressPercentage > 0 && (
+              <>
+                <div 
+                  className="progress-bar-fill progress-bar-blue"
+                  style={{ width: `${Math.min(progressPercentage, firstTargetPosition) + 0.6}%` }}
+                ></div>
+                {/* Green from investor target to 7% target */}
+                {progressPercentage > firstTargetPosition && (
+                  <div 
+                    className="progress-bar-fill progress-bar-green"
+                    style={{ 
+                      width: `${Math.min(progressPercentage - firstTargetPosition, 100 - firstTargetPosition)}%`,
+                      left: `${firstTargetPosition}%`
+                    }}
+                  ></div>
+                )}
+              </>
             )}
-            {/* Blue section if progress exceeds first target */}
-            {progressPercentage > firstTargetPosition && (
-              <div 
-                className="progress-bar-fill progress-bar-blue"
-                style={{ width: `${firstTargetPosition}%` }}
-              ></div>
-            )}
-            {/* Green section from first target to second target (investor payout) */}
-            {progressPercentage > firstTargetPosition && secondTargetPercentage > firstTargetPosition && (
-              <div 
-                className="progress-bar-fill progress-bar-green"
-                style={{ 
-                  width: `${Math.min(progressPercentage - firstTargetPosition, Math.min(secondTargetPercentage - firstTargetPosition, 100 - firstTargetPosition))}%`,
-                  left: `${firstTargetPosition}%`
-                }}
-              ></div>
-            )}
-            {/* Red section if loss (negative progress) */}
+            {/* Negative progress: red from start */}
             {progressPercentage < 0 && (
               <div 
                 className="progress-bar-fill progress-bar-red"

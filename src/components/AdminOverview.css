@@ -157,7 +157,7 @@
 
 .progress-bar-blue {
   background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-  z-index: 1;
+  z-index: 3; /* Ensure blue sits visually above green for a stronger overlap */
 }
 
 .progress-bar-blue::after {
@@ -167,8 +167,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shimmer 2s infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  animation: shimmer 5s infinite;
 }
 
 .progress-bar-green {
@@ -183,8 +183,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shimmer 2s infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  animation: shimmer 5s infinite;
 }
 
 .progress-bar-red {
@@ -199,8 +199,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shimmer 2s infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  animation: shimmer 5s infinite;
 }
 
 
@@ -408,9 +408,10 @@ html.dark-mode .projection-description {
   color: #1f2937;
 }
 
+/* Keep day numbers always dark for readability on colored backgrounds */
 .calendar-day.day-win .day-number,
 .calendar-day.day-loss .day-number {
-  color: #ffffff;
+  color: #1f2937;
 }
 
 .day-performance {
