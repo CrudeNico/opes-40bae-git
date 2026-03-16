@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import Settings from '../components/Settings'
 import Portfolio from '../components/Portfolio'
+import TraderOverview from '../components/TraderOverview'
 import News from '../components/News'
 import Learning from '../components/Learning'
 import Community from '../components/Community'
@@ -16,6 +17,7 @@ const DashboardPage = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState('portfolio')
+  const [userStatuses, setUserStatuses] = useState([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -55,29 +57,29 @@ const DashboardPage = () => {
           const userDocRef = doc(db, 'users', currentUser.uid)
           const userDoc = await getDoc(userDocRef)
           
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
-            // Handle both old format (isAdmin as array) and new format (statuses as array)
-            let statuses = userData.statuses || []
-            // If statuses doesn't exist but isAdmin does (as array), use isAdmin
-            if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
-              statuses = userData.isAdmin
-            }
-            // If isAdmin is boolean true, convert to array
-            if (statuses.length === 0 && userData.isAdmin === true) {
-              statuses = ['Admin']
-            }
-            
-            // If user is Admin or Admin 2, redirect to admin dashboard
-            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
-              navigate('/admin')
-              setLoading(false)
-              return // Don't set user state, will redirect
-            }
+            if (userDoc.exists()) {
+              const userData = userDoc.data()
+              // Handle both old format (isAdmin as array) and new format (statuses as array)
+              let statuses = userData.statuses || []
+              if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
+                statuses = userData.isAdmin
+              }
+              if (statuses.length === 0 && userData.isAdmin === true) {
+                statuses = ['Admin']
+              }
 
-            // Load and apply dark mode preference immediately after login
-            loadDarkModeSettings(currentUser.uid)
-          }
+              // If user is Admin or Admin 2, redirect to admin dashboard
+              if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
+                navigate('/admin')
+                setLoading(false)
+                return // Don't set user state, will redirect
+              }
+
+              setUserStatuses(statuses)
+
+              // Load and apply dark mode preference immediately after login
+              loadDarkModeSettings(currentUser.uid)
+            }
         } catch (error) {
           console.error('Error checking user status:', error)
           // Continue to regular dashboard on error
@@ -119,7 +121,17 @@ const DashboardPage = () => {
     }
   }
 
+  const isTrader = userStatuses.includes('Trader')
+
+  // When a trader logs in, default to the Overview section instead of Portfolio
+  useEffect(() => {
+    if (isTrader) {
+      setActiveSection('overview')
+    }
+  }, [isTrader])
+
   const sections = [
+    ...(isTrader ? [{ id: 'overview', title: 'Overview' }] : []),
     { id: 'portfolio', title: 'Portfolio' },
     { id: 'news', title: 'News' },
     { id: 'learning', title: 'Learning' },
@@ -218,6 +230,8 @@ const DashboardPage = () => {
         <div className="content-wrapper">
           {activeSection === 'settings' ? (
             <Settings user={user} onProfileUpdate={handleProfileUpdate} />
+          ) : activeSection === 'overview' && isTrader ? (
+            <TraderOverview user={user} />
           ) : activeSection === 'portfolio' ? (
             <Portfolio user={user} onStatusUpdate={handleProfileUpdate} />
           ) : activeSection === 'news' ? (

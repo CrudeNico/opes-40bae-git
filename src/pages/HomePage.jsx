@@ -1234,16 +1234,21 @@ const HomePage = () => {
                     <div className="calendar-layout">
                       <div className="advisor-section">
                         <div className="advisor-profile">
-                          <div className="advisor-avatar" style={{
-                            backgroundImage: profileImageUrl ? `url(${profileImageUrl})` : 'none',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat'
-                          }}>
+                          <div
+                            className="advisor-avatar"
+                            style={{
+                              backgroundImage: profileImageUrl ? `url(${profileImageUrl})` : 'none',
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              backgroundRepeat: 'no-repeat'
+                            }}
+                          >
                             <div className="live-indicator"></div>
                           </div>
                           <h4 className="advisor-name">Daniel</h4>
-                          <p className="response-time-mobile">receive a response within 24 hours</p>
+                          <p className="response-time-mobile">
+                            receive a response within 24 hours
+                          </p>
                         </div>
                         <div className="consultation-steps">
                           <h5 className="steps-title">How it works:</h5>
@@ -1274,18 +1279,29 @@ const HomePage = () => {
                         </div>
                       </div>
                       <div className="calendar-section">
-                        <p className="mobile-description">Schedule a appointment with a specialise investment advisor from our team and get strated now!</p>
+                        <p className="mobile-description">
+                          Schedule a appointment with a specialise investment advisor from our team
+                          and get strated now!
+                        </p>
                         <h3 className="calendar-title">Select a Consultation Date</h3>
                         <div className="calendar-widget">
                           <div className="calendar-header">
-                            <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
-                            <h4 className="calendar-month">{monthNames[currentMonth]} {currentYear}</h4>
-                            <button className="calendar-nav" onClick={handleNextMonth}>›</button>
+                            <button className="calendar-nav" onClick={handlePrevMonth}>
+                              ‹
+                            </button>
+                            <h4 className="calendar-month">
+                              {monthNames[currentMonth]} {currentYear}
+                            </h4>
+                            <button className="calendar-nav" onClick={handleNextMonth}>
+                              ›
+                            </button>
                           </div>
                           <div className="calendar-grid">
                             <div className="calendar-weekdays">
                               {weekdays.map((day) => (
-                                <div key={day} className="calendar-weekday">{day}</div>
+                                <div key={day} className="calendar-weekday">
+                                  {day}
+                                </div>
                               ))}
                             </div>
                             <div className="calendar-days">
@@ -1296,8 +1312,12 @@ const HomePage = () => {
                                 return (
                                   <button
                                     key={index}
-                                    className={`calendar-day ${dayData.isAvailable ? 'available' : 'unavailable'}`}
-                                    onClick={() => dayData.isAvailable && setSelectedDate(dayData.date)}
+                                    className={`calendar-day ${
+                                      dayData.isAvailable ? 'available' : 'unavailable'
+                                    }`}
+                                    onClick={() =>
+                                      dayData.isAvailable && setSelectedDate(dayData.date)
+                                    }
                                     disabled={!dayData.isAvailable}
                                   >
                                     {dayData.day}

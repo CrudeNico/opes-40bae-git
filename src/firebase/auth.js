@@ -160,15 +160,22 @@ export const signInWithGoogle = async () => {
     
     // Only send welcome message if this is a new user
     const isNewUser = !userDoc.exists()
-    
-    await setDoc(userDocRef, {
+
+    // Build payload without overwriting existing statuses for returning users
+    const baseData = {
       email: result.user.email || '',
       displayName: result.user.displayName || '',
       profileImageUrl: result.user.photoURL || '',
-      statuses: [], // Empty array - no statuses by default
-      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    }, { merge: true })
+    }
+
+    // For brand new users, initialize statuses as empty and set createdAt
+    if (isNewUser) {
+      baseData.statuses = [] // Empty array - no statuses by default
+      baseData.createdAt = new Date().toISOString()
+    }
+    
+    await setDoc(userDocRef, baseData, { merge: true })
     
     // Send welcome message only for new users
     if (isNewUser) {

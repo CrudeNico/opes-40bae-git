@@ -2616,7 +2616,9 @@ a.btn-secondary-white {
   }
 
   .calendar-day {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
+    min-width: 40px;
+    min-height: 40px;
   }
 
   .form-title {
@@ -2841,7 +2843,9 @@ a.btn-secondary-white {
   }
 
   .calendar-day {
-    font-size: 0.8rem;
+    font-size: 0.95rem;
+    min-width: 40px;
+    min-height: 40px;
   }
 
   .form-content-layout {

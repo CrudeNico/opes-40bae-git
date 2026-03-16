@@ -178,22 +178,51 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
 
     try {
       const db = getFirestore()
+
+      const requestedAccountType = investmentData.accountType || 'Investor'
+
+      // Build safe payload, avoiding undefined fields for Trader
+      const updatedInvestmentData = {
+        initialInvestment: editedInvestmentData.initialInvestment ?? investmentData.initialInvestment,
+        startingDate: editedInvestmentData.startingDate ?? investmentData.startingDate,
+        country: editedInvestmentData.country ?? investmentData.country,
+        phoneNumber: editedInvestmentData.phoneNumber ?? investmentData.phoneNumber,
+        monthlyAdditions: editedInvestmentData.monthlyAdditions ?? (investmentData.monthlyAdditions || 0),
+        accountType: requestedAccountType,
+        status: investmentData.status,
+        initiatedAt: investmentData.initiatedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      if (requestedAccountType === 'Investor') {
+        updatedInvestmentData.riskTolerance =
+          editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
+        updatedInvestmentData.monthlyReturnRate =
+          editedInvestmentData.monthlyReturnRate ||
+          investmentData.monthlyReturnRate ||
+          (updatedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+      } else {
+        // Trader: ensure no undefined fields
+        updatedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
+      }
+
       await updateDoc(doc(db, 'users', selectedUser.id), {
-        investmentData: {
-          ...editedInvestmentData,
-          updatedAt: new Date().toISOString()
-        },
+        investmentData: updatedInvestmentData,
         updatedAt: new Date().toISOString()
       }, { merge: true })
 
-      setSuccess('Investment data updated successfully!')
+      setSuccess(
+        requestedAccountType === 'Trader'
+          ? 'Tracking data updated successfully!'
+          : 'Investment data updated successfully!'
+      )
       setEditingInvestment(false)
       await loadUsers()
       
       // Update selected user
-      const updatedUser = { ...selectedUser, investmentData: editedInvestmentData }
+      const updatedUser = { ...selectedUser, investmentData: updatedInvestmentData }
       setSelectedUser(updatedUser)
-      setInvestmentData(editedInvestmentData)
+      setInvestmentData(updatedInvestmentData)
     } catch (error) {
       console.error('Error updating investment:', error)
       setError('Failed to update investment data. Please try again.')
@@ -232,33 +261,56 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
         }
       }
 
-      // Add Investor status if not already present
-      if (!currentStatuses.includes('Investor')) {
-        currentStatuses.push('Investor')
+      // Determine requested account type (Investor or Trader)
+      const requestedAccountType = investmentData.accountType || 'Investor'
+
+      // Add appropriate status if not already present
+      if (requestedAccountType === 'Trader') {
+        if (!currentStatuses.includes('Trader')) {
+          currentStatuses.push('Trader')
+        }
+      } else {
+        if (!currentStatuses.includes('Investor')) {
+          currentStatuses.push('Investor')
+        }
       }
 
       // Prepare approved investment data with all fields
       const approvedInvestmentData = {
-        initialInvestment: editedInvestmentData.initialInvestment || investmentData.initialInvestment,
-        startingDate: editedInvestmentData.startingDate || investmentData.startingDate,
-        country: editedInvestmentData.country || investmentData.country,
-        phoneNumber: editedInvestmentData.phoneNumber || investmentData.phoneNumber,
-        monthlyAdditions: editedInvestmentData.monthlyAdditions !== undefined ? editedInvestmentData.monthlyAdditions : (investmentData.monthlyAdditions || 0),
-        riskTolerance: editedInvestmentData.riskTolerance || investmentData.riskTolerance,
-        monthlyReturnRate: editedInvestmentData.monthlyReturnRate || investmentData.monthlyReturnRate || (editedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04),
+        initialInvestment: editedInvestmentData.initialInvestment ?? investmentData.initialInvestment,
+        startingDate: editedInvestmentData.startingDate ?? investmentData.startingDate,
+        country: editedInvestmentData.country ?? investmentData.country,
+        phoneNumber: editedInvestmentData.phoneNumber ?? investmentData.phoneNumber,
+        monthlyAdditions: editedInvestmentData.monthlyAdditions ?? (investmentData.monthlyAdditions || 0),
+        accountType: requestedAccountType,
         status: 'approved',
         initiatedAt: investmentData.initiatedAt || new Date().toISOString(),
         approvedAt: new Date().toISOString()
       }
 
-      // Update user document with Investor status and approved investment data
+      if (requestedAccountType === 'Investor') {
+        approvedInvestmentData.riskTolerance =
+          editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
+        approvedInvestmentData.monthlyReturnRate =
+          editedInvestmentData.monthlyReturnRate ||
+          investmentData.monthlyReturnRate ||
+          (approvedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+      } else {
+        approvedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
+      }
+
+      // Update user document with new status and approved investment data
       await updateDoc(userDocRef, {
         statuses: currentStatuses,
         investmentData: approvedInvestmentData,
         updatedAt: new Date().toISOString()
       })
 
-      setSuccess('Investment approved! User is now an investor.')
+      setSuccess(
+        requestedAccountType === 'Trader'
+          ? 'Tracking account approved! User is now a trader.'
+          : 'Investment approved! User is now an investor.'
+      )
       setEditingInvestment(false)
       
       // Reload users to get fresh data
@@ -457,10 +509,14 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                 </div>
               </div>
 
-              {/* Investment Data Section */}
+              {/* Investment / Tracking Data Section */}
               {investmentData && investmentData.status === 'pending' && (
                 <div className="user-detail-section investment-section">
-                  <h3 className="section-title">Pending Investment Request</h3>
+                  <h3 className="section-title">
+                    {investmentData.accountType === 'Trader'
+                      ? 'Pending Tracking Request'
+                      : 'Pending Investment Request'}
+                  </h3>
                   {!editingInvestment ? (
                     <div className="investment-display">
                       <div className="investment-info-grid">
@@ -484,13 +540,15 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                           <span className="info-label">Monthly Additions:</span>
                           <span className="info-value">${investmentData.monthlyAdditions?.toLocaleString() || '0'}</span>
                         </div>
-                        <div className="info-item">
-                          <span className="info-label">Risk Tolerance:</span>
-                          <span className="info-value">
-                            {investmentData.riskTolerance === 'conservative' ? 'Conservative (2% per month)' : 
-                             investmentData.riskTolerance === 'moderate' ? 'Moderate (4% per month)' : 'N/A'}
-                          </span>
-                        </div>
+                        {investmentData.accountType !== 'Trader' && (
+                          <div className="info-item">
+                            <span className="info-label">Risk Tolerance:</span>
+                            <span className="info-value">
+                              {investmentData.riskTolerance === 'conservative' ? 'Conservative (2% per month)' : 
+                              investmentData.riskTolerance === 'moderate' ? 'Moderate (4% per month)' : 'N/A'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       {/* Completely hide action buttons for Admin 2 - only show if user has permissions */}
                       {!isAdmin2 && (
@@ -500,7 +558,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                               onClick={() => setEditingInvestment(true)}
                               className="btn-edit"
                             >
-                              Edit Investment
+                              {investmentData.accountType === 'Trader' ? 'Edit Tracking' : 'Edit Investment'}
                             </button>
                           )}
                           {canApproveInvestments && (
@@ -509,7 +567,11 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                               disabled={loadingApprove}
                               className="btn-approve"
                             >
-                              {loadingApprove ? 'Approving...' : 'Approve Investment'}
+                              {loadingApprove
+                                ? 'Approving...'
+                                : investmentData.accountType === 'Trader'
+                                  ? 'Approve Tracking'
+                                  : 'Approve Investment'}
                             </button>
                           )}
                         </div>
@@ -572,17 +634,19 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                             step="0.01"
                           />
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Risk Tolerance</label>
-                          <select
-                            className="form-input"
-                            value={editedInvestmentData.riskTolerance || ''}
-                            onChange={(e) => handleInvestmentFieldChange('riskTolerance', e.target.value)}
-                          >
-                            <option value="conservative">Conservative (2% per month)</option>
-                            <option value="moderate">Moderate (4% per month)</option>
-                          </select>
-                        </div>
+                        {investmentData.accountType !== 'Trader' && (
+                          <div className="form-group">
+                            <label className="form-label">Risk Tolerance</label>
+                            <select
+                              className="form-input"
+                              value={editedInvestmentData.riskTolerance || ''}
+                              onChange={(e) => handleInvestmentFieldChange('riskTolerance', e.target.value)}
+                            >
+                              <option value="conservative">Conservative (2% per month)</option>
+                              <option value="moderate">Moderate (4% per month)</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <div className="investment-edit-actions">
                         <button

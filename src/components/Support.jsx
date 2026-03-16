@@ -297,40 +297,40 @@ const Support = ({ user }) => {
             {!selectedDate ? (
               <div className="calendar-container">
                 <div className="calendar-section">
-                    <div className="calendar-widget">
-                      <div className="calendar-header">
-                        <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
-                        <h4 className="calendar-month">{monthNames[currentMonth]} {currentYear}</h4>
-                        <button className="calendar-nav" onClick={handleNextMonth}>›</button>
+                  <div className="calendar-widget">
+                    <div className="calendar-header">
+                      <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
+                      <h4 className="calendar-month">{monthNames[currentMonth]} {currentYear}</h4>
+                      <button className="calendar-nav" onClick={handleNextMonth}>›</button>
+                    </div>
+                    <div className="calendar-grid">
+                      <div className="calendar-weekdays">
+                        {weekdays.map((day) => (
+                          <div key={day} className="calendar-weekday">{day}</div>
+                        ))}
                       </div>
-                      <div className="calendar-grid">
-                        <div className="calendar-weekdays">
-                          {weekdays.map((day) => (
-                            <div key={day} className="calendar-weekday">{day}</div>
-                          ))}
-                        </div>
-                        <div className="calendar-days">
-                          {days.map((dayData, index) => {
-                            if (dayData === null) {
-                              return <div key={index} className="calendar-day empty"></div>
-                            }
-                            return (
-                              <button
-                                key={index}
-                                className={`calendar-day ${dayData.isAvailable ? 'available' : 'unavailable'}`}
-                                onClick={() => dayData.isAvailable && setSelectedDate(dayData.date)}
-                                disabled={!dayData.isAvailable}
-                              >
-                                {dayData.day}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                        </div>
+                      <div className="calendar-days">
+                        {days.map((dayData, index) => {
+                          if (dayData === null) {
+                            return <div key={index} className="calendar-day empty"></div>
+                          }
+                          return (
+                            <button
+                              key={index}
+                              className={`calendar-day ${dayData.isAvailable ? 'available' : 'unavailable'}`}
+                              onClick={() => dayData.isAvailable && setSelectedDate(dayData.date)}
+                              disabled={!dayData.isAvailable}
+                            >
+                              {dayData.day}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
-                ) : (
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="calendar-widget consultation-form">
                 <div className="form-header">
                   <button className="back-button" onClick={() => setSelectedDate(null)}>← Back</button>

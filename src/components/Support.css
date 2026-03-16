@@ -151,6 +151,7 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+  width: 100%;
 }
 
 .support-container .calendar-weekday {
@@ -165,6 +166,7 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.5rem;
+  width: 100%;
 }
 
 .support-container .calendar-day {
@@ -173,13 +175,15 @@
   border-radius: 0.5rem;
   background: #ffffff;
   color: #1f2937;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 42px;
+  min-height: 42px;
 }
 
 .support-container .calendar-day.empty {
@@ -659,8 +663,8 @@
 
   .support-container .calendar-widget,
   .support-container .consultation-form {
-    padding: 1rem;
-    min-height: auto;
+    padding: 1.25rem;
+    min-height: 420px;
     border: 1px solid #e5e7eb;
     border-radius: 0.75rem;
     width: 100%;
@@ -679,8 +683,10 @@
   }
 
   .support-container .calendar-day {
-    font-size: 0.8rem;
+    font-size: 0.95rem;
     padding: 0.5rem;
+    min-width: 38px;
+    min-height: 38px;
   }
 
   .support-container .form-header {

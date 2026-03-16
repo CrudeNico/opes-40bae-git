@@ -8,6 +8,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
   const [isPending, setIsPending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState(null) // 'investor' or 'trader'
   const [submitting, setSubmitting] = useState(false)
   const [investmentDataState, setInvestmentDataState] = useState(null)
   const [formData, setFormData] = useState({
@@ -377,6 +378,163 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     setSuccess('')
   }
 
+  const handleDeleteRecord = async (record, index) => {
+    if (!isTrader || !investmentDataState) {
+      setError('You do not have permission to delete monthly performance.')
+      return
+    }
+
+    try {
+      const db = getFirestore()
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
+
+      if (!userDoc.exists()) {
+        setError('User document not found')
+        return
+      }
+
+      const userData = userDoc.data()
+      const currentInvestmentData = userData.investmentData || {}
+      const existingHistory = sortMonthlyHistory(currentInvestmentData.monthlyHistory || [])
+
+      // Find the record to delete by month/year
+      const recordIndex = existingHistory.findIndex(r =>
+        r.month === record.month && r.year === record.year
+      )
+
+      if (recordIndex === -1) {
+        setError('Could not find the record to delete.')
+        return
+      }
+
+      const historyWithoutRecord = [
+        ...existingHistory.slice(0, recordIndex),
+        ...existingHistory.slice(recordIndex + 1)
+      ]
+
+      // Recalculate balances after deletion
+      const getDaysInMonth = (month, year) => {
+        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+        return new Date(year, monthIndex + 1, 0).getDate()
+      }
+
+      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const depositDate = new Date(date)
+        const dayOfMonth = depositDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        let daysRemaining = daysInMonth - dayOfMonth + 1
+        if (dayOfMonth === daysInMonth) {
+          daysRemaining = 0
+        }
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const withdrawalDate = new Date(date)
+        const dayOfMonth = withdrawalDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        const daysRemaining = daysInMonth - dayOfMonth
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const sortedHistory = sortMonthlyHistory(historyWithoutRecord)
+      let runningBalance = currentInvestmentData.initialInvestment || 0
+
+      const recalculatedHistory = sortedHistory.map((rec, idx) => {
+        if (idx === 0) {
+          runningBalance = rec.startingBalance || runningBalance
+        } else {
+          runningBalance = sortedHistory[idx - 1].endingBalance
+        }
+
+        const recalculatedGrowth = runningBalance * (rec.percentageGrowth / 100)
+        const recalculatedDepositGrowth = calculateProratedGrowth(
+          rec.depositAmount || 0,
+          rec.percentageGrowth,
+          rec.depositDate,
+          rec.month,
+          rec.year
+        )
+        const recalculatedWithdrawalGrowth = calculateWithdrawalGrowthLoss(
+          rec.withdrawalAmount || 0,
+          rec.percentageGrowth,
+          rec.withdrawalDate,
+          rec.month,
+          rec.year
+        )
+
+        runningBalance =
+          runningBalance +
+          recalculatedGrowth +
+          (rec.depositAmount || 0) +
+          recalculatedDepositGrowth -
+          (rec.withdrawalAmount || 0) -
+          recalculatedWithdrawalGrowth
+
+        return {
+          ...rec,
+          startingBalance:
+            runningBalance -
+            recalculatedGrowth -
+            (rec.depositAmount || 0) -
+            recalculatedDepositGrowth +
+            (rec.withdrawalAmount || 0) +
+            recalculatedWithdrawalGrowth,
+          growthAmount: recalculatedGrowth,
+          depositGrowth: recalculatedDepositGrowth,
+          withdrawalGrowth: recalculatedWithdrawalGrowth,
+          endingBalance: runningBalance
+        }
+      }
+      )
+
+      const totalDeposits =
+        (currentInvestmentData.initialInvestment || 0) +
+        recalculatedHistory.reduce((sum, r) => sum + (r.depositAmount || 0), 0)
+      const totalWithdrawals =
+        recalculatedHistory.reduce((sum, r) => sum + (r.withdrawalAmount || 0), 0)
+
+      const updatedInvestmentData = {
+        ...currentInvestmentData,
+        monthlyHistory: recalculatedHistory,
+        currentBalance:
+          recalculatedHistory.length > 0
+            ? recalculatedHistory[recalculatedHistory.length - 1].endingBalance
+            : currentInvestmentData.initialInvestment || 0,
+        totalDeposits,
+        totalWithdrawals,
+        updatedAt: new Date().toISOString()
+      }
+
+      await updateDoc(userDocRef, {
+        investmentData: updatedInvestmentData
+      })
+
+      setInvestmentDataState(updatedInvestmentData)
+      setEditingRecordIndex(null)
+      setEditedRecordData({
+        month: '',
+        year: '',
+        percentageGrowth: '',
+        depositAmount: '',
+        depositDate: '',
+        withdrawalAmount: '',
+        withdrawalDate: ''
+      })
+      setSuccess('Monthly performance record deleted successfully.')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (error) {
+      console.error('Error deleting monthly performance record:', error)
+      setError('Failed to delete monthly performance record. Please try again.')
+    }
+  }
+
   const handleUpdateRecord = async (e) => {
     e.preventDefault()
     
@@ -578,8 +736,21 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     setSubmitting(true)
 
     // Validation
-    if (!formData.initialInvestment || !formData.startingDate || !formData.country || !formData.phoneNumber || !formData.riskTolerance) {
+    if (!formMode) {
+      setError('Please select an account type to initiate.')
+      setSubmitting(false)
+      return
+    }
+
+    if (!formData.initialInvestment || !formData.startingDate || !formData.country || !formData.phoneNumber) {
       setError('Please fill in all required fields.')
+      setSubmitting(false)
+      return
+    }
+
+    // For investor mode, risk tolerance is required; for trader mode it is not used
+    if (formMode === 'investor' && !formData.riskTolerance) {
+      setError('Please select your risk tolerance.')
       setSubmitting(false)
       return
     }
@@ -602,26 +773,45 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       const userDocRef = doc(db, 'users', user.uid)
       const userDoc = await getDoc(userDocRef)
       
-      // Calculate monthly return rate based on risk tolerance
-      const monthlyReturnRate = formData.riskTolerance === 'conservative' ? 0.02 : 0.04
+      // Calculate monthly return rate based on risk tolerance (Investor only)
+      const monthlyReturnRate = formMode === 'investor'
+        ? (formData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+        : 0
 
       // Update user document with investment data (status: pending)
+      const baseInvestmentData = {
+        initialInvestment: parseFloat(formData.initialInvestment),
+        startingDate: formData.startingDate,
+        country: formData.country,
+        phoneNumber: formData.phoneNumber,
+        monthlyAdditions: parseFloat(formData.monthlyAdditions),
+        status: 'pending',
+        initiatedAt: new Date().toISOString(),
+        accountType: formMode === 'trader' ? 'Trader' : 'Investor'
+      }
+
+      const investmentDataToSave =
+        formMode === 'investor'
+          ? {
+              ...baseInvestmentData,
+              riskTolerance: formData.riskTolerance,
+              monthlyReturnRate: monthlyReturnRate
+            }
+          : {
+              ...baseInvestmentData,
+              monthlyReturnRate: monthlyReturnRate
+            }
+
       await updateDoc(userDocRef, {
-        investmentData: {
-          initialInvestment: parseFloat(formData.initialInvestment),
-          startingDate: formData.startingDate,
-          country: formData.country,
-          phoneNumber: formData.phoneNumber,
-          monthlyAdditions: parseFloat(formData.monthlyAdditions),
-          riskTolerance: formData.riskTolerance,
-          monthlyReturnRate: monthlyReturnRate,
-          status: 'pending',
-          initiatedAt: new Date().toISOString()
-        },
+        investmentData: investmentDataToSave,
         updatedAt: new Date().toISOString()
       }, { merge: true })
 
-      setSuccess('Your investment request has been submitted and is being reviewed.')
+      setSuccess(
+        formMode === 'trader'
+          ? 'Your tracking account request has been submitted and is being reviewed.'
+          : 'Your investment request has been submitted and is being reviewed.'
+      )
       setIsPending(true)
       
       // Notify parent component to update user status
@@ -639,6 +829,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
         riskTolerance: ''
       })
       setShowForm(false)
+      setFormMode(null)
     } catch (error) {
       console.error('Error initiating investment:', error)
       setError('Failed to initiate investment. Please try again.')
@@ -1651,53 +1842,78 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '1.5rem' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setEditingRecordIndex(null)
-                      setEditedRecordData({
-                        month: '',
-                        year: '',
-                        percentageGrowth: '',
-                        depositAmount: '',
-                        depositDate: '',
-                        withdrawalAmount: '',
-                        withdrawalDate: ''
-                      })
+                    onClick={async () => {
+                      if (!investmentDataState || editingRecordIndex === null) return
+                      const recordToDelete = investmentDataState.monthlyHistory[editingRecordIndex]
+                      if (!recordToDelete) return
+                      await handleDeleteRecord(recordToDelete, editingRecordIndex)
                     }}
                     disabled={loadingEdit}
                     style={{
                       padding: '0.75rem 1.5rem',
-                      background: '#ffffff',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
+                      background: '#fee2e2',
+                      color: '#b91c1c',
+                      border: '1px solid #ef4444',
                       borderRadius: '0.5rem',
-                      fontSize: '1rem',
+                      fontSize: '0.95rem',
                       fontWeight: '500',
                       cursor: loadingEdit ? 'not-allowed' : 'pointer',
-                      opacity: loadingEdit ? 0.6 : 1
+                      opacity: loadingEdit ? 0.7 : 1
                     }}
                   >
-                    Cancel
+                    Delete Record
                   </button>
-                  <button
-                    type="submit"
-                    disabled={loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth}
-                    style={{
-                      padding: '0.75rem 1.5rem',
-                      background: '#3b82f6',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontSize: '1rem',
-                      fontWeight: '500',
-                      cursor: loadingEdit ? 'not-allowed' : 'pointer',
-                      opacity: (loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth) ? 0.6 : 1
-                    }}
-                  >
-                    {loadingEdit ? 'Updating...' : 'Update Record'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingRecordIndex(null)
+                        setEditedRecordData({
+                          month: '',
+                          year: '',
+                          percentageGrowth: '',
+                          depositAmount: '',
+                          depositDate: '',
+                          withdrawalAmount: '',
+                          withdrawalDate: ''
+                        })
+                      }}
+                      disabled={loadingEdit}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: '#ffffff',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        fontWeight: '500',
+                        cursor: loadingEdit ? 'not-allowed' : 'pointer',
+                        opacity: loadingEdit ? 0.6 : 1
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: '#3b82f6',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        fontWeight: '500',
+                        cursor: loadingEdit ? 'not-allowed' : 'pointer',
+                        opacity: (loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth) ? 0.6 : 1
+                      }}
+                    >
+                      {loadingEdit ? 'Updating...' : 'Update Record'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -1712,8 +1928,8 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     )
   }
 
-  // Not an investor - show initiation widget
-  if (!isInvestor) {
+  // Not an investor or trader - show initiation widgets
+  if (!isInvestor && !isTrader) {
     return (
       <div className="portfolio-container">
         {isPending ? (
@@ -1725,36 +1941,73 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                 <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h2 className="widget-title">Your Investment is Being Reviewed</h2>
+            <h2 className="widget-title">
+              {investmentDataState?.accountType === 'Trader'
+                ? 'Your Tracking is Being Reviewed'
+                : 'Your Investment is Being Reviewed'}
+            </h2>
             <p className="widget-description">
-              Your investment request has been submitted and is currently under review. Once it's accepted, your information will be displayed accordingly.
+              {investmentDataState?.accountType === 'Trader'
+                ? "Your tracking account request has been submitted and is currently under review. Once it's accepted, your performance tracking will be activated."
+                : "Your investment request has been submitted and is currently under review. Once it's accepted, your information will be displayed accordingly."}
             </p>
           </div>
         ) : !showForm ? (
-          <div className="investor-initiation-widget">
-            <div className="widget-icon">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+          <div className="initiation-widgets-container">
+            <div className="investor-initiation-widget">
+              <div className="widget-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h2 className="widget-title">You are not yet an investor</h2>
+              <p className="widget-description">
+                You don't have a portfolio to display. To get started as an investor, initiate an investment account.
+              </p>
+              <button 
+                onClick={() => {
+                  setFormMode('investor')
+                  setShowForm(true)
+                }}
+                className="widget-button"
+              >
+                Initiate Investment
+              </button>
             </div>
-            <h2 className="widget-title">You are not yet an investor</h2>
-            <p className="widget-description">
-              You don't have a portfolio to display. In order to get started, you must initiate an investment.
-            </p>
-            <button 
-              onClick={() => setShowForm(true)}
-              className="widget-button"
-            >
-              Initiate Investment
-            </button>
+
+            <div className="trader-initiation-widget">
+              <div className="widget-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 3V21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7 14L11 10L15 13L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h2 className="widget-title">You are not yet a trader</h2>
+              <p className="widget-description">
+                You can also create a tracking account to monitor your own trading performance independently.
+              </p>
+              <button 
+                onClick={() => {
+                  setFormMode('trader')
+                  setShowForm(true)
+                }}
+                className="widget-button"
+              >
+                Initiate Tracking
+              </button>
+            </div>
           </div>
         ) : (
           <div className="investment-form-container">
             <div className="form-header">
-              <h2>Initiate Your Investment</h2>
-              <p>Please fill in the following information to become an investor</p>
+              <h2>{formMode === 'trader' ? 'Initiate Your Tracking Account' : 'Initiate Your Investment'}</h2>
+              <p>
+                {formMode === 'trader'
+                  ? 'Please fill in the following information to set up your trading performance tracking account.'
+                  : 'Please fill in the following information to become an investor.'}
+              </p>
             </div>
 
             {error && <div className="alert alert-error">{error}</div>}
@@ -1850,75 +2103,77 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                   <small className="form-help">Amount you plan to add monthly (0 to 20,000)</small>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="riskTolerance" className="form-label">
-                    Risk Tolerance <span className="required">*</span>
-                  </label>
-                  <div className="custom-select-wrapper" ref={dropdownRef}>
-                    <button
-                      type="button"
-                      className={`custom-select-button ${riskDropdownOpen ? 'open' : ''} ${!formData.riskTolerance ? 'placeholder' : ''}`}
-                      onClick={() => setRiskDropdownOpen(!riskDropdownOpen)}
-                      aria-expanded={riskDropdownOpen}
-                      aria-haspopup="listbox"
-                    >
-                      <span>
-                        {formData.riskTolerance === 'conservative' 
-                          ? 'Conservative (2% per month)' 
-                          : formData.riskTolerance === 'moderate' 
-                          ? 'Moderate (4% per month)' 
-                          : 'Select risk tolerance'}
-                      </span>
-                      <svg 
-                        className="select-arrow" 
-                        width="12" 
-                        height="12" 
-                        viewBox="0 0 12 12" 
-                        fill="none" 
-                        xmlns="http://www.w3.org/2000/svg"
+                {formMode === 'investor' && (
+                  <div className="form-group">
+                    <label htmlFor="riskTolerance" className="form-label">
+                      Risk Tolerance <span className="required">*</span>
+                    </label>
+                    <div className="custom-select-wrapper" ref={dropdownRef}>
+                      <button
+                        type="button"
+                        className={`custom-select-button ${riskDropdownOpen ? 'open' : ''} ${!formData.riskTolerance ? 'placeholder' : ''}`}
+                        onClick={() => setRiskDropdownOpen(!riskDropdownOpen)}
+                        aria-expanded={riskDropdownOpen}
+                        aria-haspopup="listbox"
                       >
-                        <path d="M6 9L1 4h10z" fill="#374151"/>
-                      </svg>
-                    </button>
-                    {riskDropdownOpen && (
-                      <>
-                        <div 
-                          className="dropdown-backdrop" 
-                          onClick={() => setRiskDropdownOpen(false)}
-                        />
-                        <div className="custom-select-dropdown">
-                          <button
-                            type="button"
-                            className={`dropdown-option ${formData.riskTolerance === 'conservative' ? 'selected' : ''}`}
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, riskTolerance: 'conservative' }))
-                              setRiskDropdownOpen(false)
-                            }}
-                          >
-                            Conservative (2% per month)
-                          </button>
-                          <button
-                            type="button"
-                            className={`dropdown-option ${formData.riskTolerance === 'moderate' ? 'selected' : ''}`}
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, riskTolerance: 'moderate' }))
-                              setRiskDropdownOpen(false)
-                            }}
-                          >
-                            Moderate (4% per month)
-                          </button>
-                        </div>
-                      </>
-                    )}
-                    {/* Hidden input for form validation */}
-                    <input
-                      type="hidden"
-                      name="riskTolerance"
-                      value={formData.riskTolerance}
-                      required
-                    />
+                        <span>
+                          {formData.riskTolerance === 'conservative' 
+                            ? 'Conservative (2% per month)' 
+                            : formData.riskTolerance === 'moderate' 
+                            ? 'Moderate (4% per month)' 
+                            : 'Select risk tolerance'}
+                        </span>
+                        <svg 
+                          className="select-arrow" 
+                          width="12" 
+                          height="12" 
+                          viewBox="0 0 12 12" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path d="M6 9L1 4h10z" fill="#374151"/>
+                        </svg>
+                      </button>
+                      {riskDropdownOpen && (
+                        <>
+                          <div 
+                            className="dropdown-backdrop" 
+                            onClick={() => setRiskDropdownOpen(false)}
+                          />
+                          <div className="custom-select-dropdown">
+                            <button
+                              type="button"
+                              className={`dropdown-option ${formData.riskTolerance === 'conservative' ? 'selected' : ''}`}
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, riskTolerance: 'conservative' }))
+                                setRiskDropdownOpen(false)
+                              }}
+                            >
+                              Conservative (2% per month)
+                            </button>
+                            <button
+                              type="button"
+                              className={`dropdown-option ${formData.riskTolerance === 'moderate' ? 'selected' : ''}`}
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, riskTolerance: 'moderate' }))
+                                setRiskDropdownOpen(false)
+                              }}
+                            >
+                              Moderate (4% per month)
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      {/* Hidden input for form validation */}
+                      <input
+                        type="hidden"
+                        name="riskTolerance"
+                        value={formData.riskTolerance}
+                        required={formMode === 'investor'}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="form-actions">
@@ -1926,6 +2181,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                   type="button"
                   onClick={() => {
                     setShowForm(false)
+                    setFormMode(null)
                     setError('')
                     setSuccess('')
                   }}

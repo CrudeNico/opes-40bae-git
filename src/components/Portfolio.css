@@ -17,8 +17,9 @@
   color: #6b7280;
 }
 
-/* Investor Initiation Widget */
+/* Investor & Trader Initiation Widgets */
 .investor-initiation-widget,
+.trader-initiation-widget,
 .investment-pending-widget {
   background: #ffffff;
   border: 2px dashed #d1d5db;
@@ -35,7 +36,8 @@
   background: #fffbeb;
 }
 
-.investor-initiation-widget:hover {
+.investor-initiation-widget:hover,
+.trader-initiation-widget:hover {
   border-color: #3b82f6;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
@@ -77,6 +79,21 @@
   background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.initiation-widgets-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.initiation-widgets-container .investor-initiation-widget,
+.initiation-widgets-container .trader-initiation-widget {
+  flex: 1 1 280px;
+  max-width: 500px;
+  margin: 1rem 0;
 }
 
 /* Investment Form */
@@ -688,7 +705,8 @@ select.form-input option {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-  .investor-initiation-widget {
+  .investor-initiation-widget,
+  .trader-initiation-widget {
     padding: 2rem 1.5rem;
     margin: 1rem;
   }
