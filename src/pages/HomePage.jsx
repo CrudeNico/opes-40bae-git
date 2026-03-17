@@ -1254,27 +1254,15 @@ const HomePage = () => {
                           <h5 className="steps-title">How it works:</h5>
                           <div className="step-item">
                             <span className="step-number">1</span>
-                            <p className="step-text">Select your preferred date and time</p>
+                            <p className="step-text">Select your preferred date</p>
                           </div>
                           <div className="step-item">
                             <span className="step-number">2</span>
-                            <p className="step-text">Fill in your contact information</p>
+                            <p className="step-text">Prepare your questions</p>
                           </div>
                           <div className="step-item">
                             <span className="step-number">3</span>
-                            <p className="step-text">Receive confirmation and meeting details</p>
-                          </div>
-                          <div className="step-item">
-                            <span className="step-number">4</span>
-                            <p className="step-text">Prepare your questions and topics</p>
-                          </div>
-                          <div className="step-item">
-                            <span className="step-number">5</span>
-                            <p className="step-text">Join the consultation at scheduled time</p>
-                          </div>
-                          <div className="step-item">
-                            <span className="step-number">6</span>
-                            <p className="step-text">Follow up with any additional needs</p>
+                            <p className="step-text">A specialist will contact you</p>
                           </div>
                         </div>
                       </div>
@@ -1283,7 +1271,6 @@ const HomePage = () => {
                           Schedule a appointment with a specialise investment advisor from our team
                           and get strated now!
                         </p>
-                        <h3 className="calendar-title">Select a Consultation Date</h3>
                         <div className="calendar-widget">
                           <div className="calendar-header">
                             <button className="calendar-nav" onClick={handlePrevMonth}>
@@ -1296,23 +1283,33 @@ const HomePage = () => {
                               ›
                             </button>
                           </div>
-                          <div className="calendar-grid">
-                            <div className="calendar-weekdays">
+                          <div className="calendar-list-wrapper">
+                            <div className="calendar-list-header">
                               {weekdays.map((day) => (
-                                <div key={day} className="calendar-weekday">
+                                <span key={day} className="calendar-list-weekday">
                                   {day}
-                                </div>
+                                </span>
                               ))}
                             </div>
-                            <div className="calendar-days">
+                            <div className="calendar-list">
                               {days.map((dayData, index) => {
                                 if (dayData === null) {
-                                  return <div key={index} className="calendar-day empty"></div>
+                                  return null
                                 }
+
+                                const today = new Date(new Date().setHours(0, 0, 0, 0))
+                                if (dayData.date < today) {
+                                  return null
+                                }
+
+                                const isToday =
+                                  dayData.date.toDateString() ===
+                                  today.toDateString()
+
                                 return (
                                   <button
                                     key={index}
-                                    className={`calendar-day ${
+                                    className={`calendar-list-item ${
                                       dayData.isAvailable ? 'available' : 'unavailable'
                                     }`}
                                     onClick={() =>
@@ -1320,7 +1317,29 @@ const HomePage = () => {
                                     }
                                     disabled={!dayData.isAvailable}
                                   >
-                                    {dayData.day}
+                                    <div className="calendar-list-item-main">
+                                      <span className="calendar-list-item-day">
+                                        {dayData.day}
+                                      </span>
+                                      <div className="calendar-list-item-text">
+                                        <span className="calendar-list-item-label">
+                                          {weekdays[dayData.date.getDay()]}
+                                        </span>
+                                        <span className="calendar-list-item-date">
+                                          {monthNames[currentMonth]} {dayData.day}, {currentYear}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="calendar-list-item-status">
+                                      {isToday && (
+                                        <span className="calendar-chip today">Today</span>
+                                      )}
+                                      {dayData.isAvailable ? (
+                                        <span className="calendar-chip active">Available</span>
+                                      ) : (
+                                        <span className="calendar-chip muted">Unavailable</span>
+                                      )}
+                                    </div>
                                   </button>
                                 )
                               })}
@@ -1410,7 +1429,7 @@ const HomePage = () => {
                         )}
                         {consultationSuccess && (
                           <div className="alert alert-success" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#f0fdf4', color: '#166534', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
-                            Consultation request submitted successfully! You will receive a confirmation email shortly.
+                            Consultation request submitted successfully! You will receive a confirmation email shortly. Please check your inbox and spam folder within 5 minutes.
                           </div>
                         )}
                         <button 
