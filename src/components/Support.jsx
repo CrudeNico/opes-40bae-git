@@ -292,36 +292,83 @@ const Support = ({ user }) => {
         {success && <div className="alert alert-success">{success}</div>}
 
         <div className="support-layout">
-          {/* Calendar Consultation Section */}
+          {/* Calendar Consultation Section - match Home Page widget */}
           <div className="consultation-section">
             {!selectedDate ? (
               <div className="calendar-container">
                 <div className="calendar-section">
+                  <p className="mobile-description">
+                    Schedule a appointment with a specialise investment advisor from our team
+                    and get strated now!
+                  </p>
                   <div className="calendar-widget">
                     <div className="calendar-header">
-                      <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
-                      <h4 className="calendar-month">{monthNames[currentMonth]} {currentYear}</h4>
-                      <button className="calendar-nav" onClick={handleNextMonth}>›</button>
+                      <button className="calendar-nav" onClick={handlePrevMonth}>
+                        ‹
+                      </button>
+                      <h4 className="calendar-month">
+                        {monthNames[currentMonth]} {currentYear}
+                      </h4>
+                      <button className="calendar-nav" onClick={handleNextMonth}>
+                        ›
+                      </button>
                     </div>
-                    <div className="calendar-grid">
-                      <div className="calendar-weekdays">
+                    <div className="calendar-list-wrapper">
+                      <div className="calendar-list-header">
                         {weekdays.map((day) => (
-                          <div key={day} className="calendar-weekday">{day}</div>
+                          <span key={day} className="calendar-list-weekday">
+                            {day}
+                          </span>
                         ))}
                       </div>
-                      <div className="calendar-days">
+                      <div className="calendar-list">
                         {days.map((dayData, index) => {
                           if (dayData === null) {
-                            return <div key={index} className="calendar-day empty"></div>
+                            return null
                           }
+
+                          const today = new Date(new Date().setHours(0, 0, 0, 0))
+                          if (dayData.date < today) {
+                            return null
+                          }
+
+                          const isToday =
+                            dayData.date.toDateString() ===
+                            today.toDateString()
+
                           return (
                             <button
                               key={index}
-                              className={`calendar-day ${dayData.isAvailable ? 'available' : 'unavailable'}`}
-                              onClick={() => dayData.isAvailable && setSelectedDate(dayData.date)}
+                              className={`calendar-list-item ${
+                                dayData.isAvailable ? 'available' : 'unavailable'
+                              }`}
+                              onClick={() =>
+                                dayData.isAvailable && setSelectedDate(dayData.date)
+                              }
                               disabled={!dayData.isAvailable}
                             >
-                              {dayData.day}
+                              <div className="calendar-list-date">
+                                <span className="calendar-list-day">
+                                  {dayData.date.toLocaleDateString('en-US', {
+                                    weekday: 'short'
+                                  })}
+                                </span>
+                                <span className="calendar-list-number">
+                                  {dayData.day}
+                                </span>
+                              </div>
+                              <div className="calendar-list-status">
+                                {isToday && (
+                                  <span className="calendar-list-today">Today</span>
+                                )}
+                                <span
+                                  className={`calendar-list-availability ${
+                                    dayData.isAvailable ? 'available' : 'unavailable'
+                                  }`}
+                                >
+                                  {dayData.isAvailable ? 'Available' : 'Unavailable'}
+                                </span>
+                              </div>
                             </button>
                           )
                         })}

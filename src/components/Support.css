@@ -69,6 +69,12 @@
   width: 100%;
 }
 
+/* Adjust calendar list height in Support Center */
+.support-container .calendar-list {
+  max-height: 470px;
+  overflow-y: auto;
+}
+
 .support-container .calendar-title {
   font-size: 1.5rem;
   font-weight: 600;
