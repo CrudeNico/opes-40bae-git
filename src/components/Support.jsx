@@ -358,9 +358,6 @@ const Support = ({ user }) => {
                                 </span>
                               </div>
                               <div className="calendar-list-status">
-                                {isToday && (
-                                  <span className="calendar-list-today">Today</span>
-                                )}
                                 <span
                                   className={`calendar-list-availability ${
                                     dayData.isAvailable ? 'available' : 'unavailable'

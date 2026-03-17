@@ -161,8 +161,16 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  padding: 2rem;
-  margin-top: 2rem;
+  padding: 2.5rem;
+  margin-top: 2.5rem;
+  /* Make the calendar widget span full width below the smaller overview widgets */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* Make the calendar box much taller, similar width to the projection/loading bar */
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -170,11 +178,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .calendar-title {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
@@ -202,17 +210,19 @@
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.5rem;
+  gap: 0.75rem;
+  width: 100%;
+  flex: 1;
 }
 
 .calendar-day-header {
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.5rem 0;
+  padding: 0.75rem 0;
 }
 
 .calendar-day-empty {
@@ -222,8 +232,8 @@
 .calendar-day {
   aspect-ratio: 1;
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -257,15 +267,15 @@
 }
 
 .day-number {
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #1f2937;
 }
 
 .day-performance {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
 }
 
 .calendar-day.day-win .day-performance {

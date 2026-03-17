@@ -362,6 +362,8 @@ html.dark-mode .projection-description {
   padding: 2rem;
   margin-top: 2rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: none;
 }
 
 .admin-overview-container .calendar-header {
