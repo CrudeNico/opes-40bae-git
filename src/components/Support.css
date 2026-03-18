@@ -1028,6 +1028,49 @@ html.dark-mode .support-container .form-textarea {
   color: #f9fafb;
 }
 
+/* Support Center "list calendar" (the selectable days list) dark mode */
+html.dark-mode .support-container .calendar-list-wrapper,
+html.dark-mode .support-container .calendar-list-header,
+html.dark-mode .support-container .calendar-list {
+  background: transparent;
+}
+
+html.dark-mode .support-container .calendar-list-weekday {
+  color: #9ca3af;
+}
+
+html.dark-mode .support-container .calendar-list-item {
+  background: #111827;
+  border: 1px solid #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .support-container .calendar-list-item.available:hover {
+  background: #1f3a8a;
+  border-color: #2563eb;
+}
+
+html.dark-mode .support-container .calendar-list-item.unavailable {
+  background: #0b1220;
+  border-color: #1f2937;
+  color: #9ca3af;
+  opacity: 0.6;
+}
+
+html.dark-mode .support-container .calendar-list-day,
+html.dark-mode .support-container .calendar-list-number,
+html.dark-mode .support-container .calendar-list-availability {
+  background: transparent; /* avoid any "highlight block" behind text */
+  color: inherit;
+}
+
+/* Consultation form header text in dark mode (avoid highlight blocks) */
+html.dark-mode .support-container .selected-date,
+html.dark-mode .support-container .form-label,
+html.dark-mode .support-container .form-title {
+  background: transparent;
+}
+
 html.dark-mode .chat-messages {
   background: #1f2937;
 }
