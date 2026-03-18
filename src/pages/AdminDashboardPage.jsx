@@ -143,14 +143,6 @@ const AdminDashboardPage = () => {
     { id: 'settings', title: 'Settings' }
   ]
 
-  if (loading) {
-    return (
-      <div className="dashboard-loading">
-        <div className="loading-spinner">Loading...</div>
-      </div>
-    )
-  }
-
   if (!user) {
     return null // Will redirect
   }

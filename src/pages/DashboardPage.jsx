@@ -140,14 +140,6 @@ const DashboardPage = () => {
     { id: 'support', title: 'Support' }
   ]
 
-  if (loading) {
-    return (
-      <div className="dashboard-loading">
-        <div className="loading-spinner">Loading...</div>
-      </div>
-    )
-  }
-
   if (!user) {
     return null // Will redirect to login
   }

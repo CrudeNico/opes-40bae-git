@@ -19,6 +19,11 @@
   color: #6b7280;
 }
 
+/* Hide all loading spinners inside the admin dashboard UI */
+.dashboard-page .loading-spinner {
+  display: none !important;
+}
+
 /* Left Sidebar */
 .dashboard-sidebar {
   width: 260px;
