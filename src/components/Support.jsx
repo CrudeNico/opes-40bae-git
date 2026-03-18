@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { auth, storage } from '../firebase/config'
+import { getImageUrl } from '../utils/imageStorage'
 import './Support.css'
 
 const Support = ({ user }) => {
@@ -23,6 +24,7 @@ const Support = ({ user }) => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [adminProfileImageUrl, setAdminProfileImageUrl] = useState(null)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -39,6 +41,15 @@ const Support = ({ user }) => {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    // Load admin profile image
+    const loadAdminProfileImage = async () => {
+      const profileUrl = await getImageUrl('homepage/diegorequena.JPG')
+      if (profileUrl) setAdminProfileImageUrl(profileUrl)
+    }
+    loadAdminProfileImage()
   }, [])
 
   useEffect(() => {
@@ -485,6 +496,12 @@ const Support = ({ user }) => {
                       )}
                       {msg.adminResponse && (msg.adminResponse.message || msg.adminResponse.imageUrl || msg.adminResponse.fileUrl) && (
                         <div className="message-item admin-message">
+                          <div className="admin-name">
+                            {adminProfileImageUrl && (
+                              <img src={adminProfileImageUrl} alt="Daniel G." className="admin-profile-pic" />
+                            )}
+                            <span>Daniel G.</span>
+                          </div>
                           <div className="message-content">
                             {msg.adminResponse.message && <p>{msg.adminResponse.message}</p>}
                             {msg.adminResponse.imageUrl && (
