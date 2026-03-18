@@ -66,6 +66,42 @@
   flex: 1;
 }
 
+/* Account numbers (below Choose Image) */
+.account-numbers {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.account-number-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.account-number-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.account-number-value {
+  font-size: 1rem;
+  color: #111827;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Make account numbers brighter in dark mode */
+html.dark-mode .account-number-label {
+  color: #e5e7eb;
+}
+
+html.dark-mode .account-number-value {
+  color: #f9fafb;
+}
+
 .file-input {
   display: none;
 }
@@ -386,12 +422,12 @@ html.dark-mode .settings-form {
 }
 
 html.dark-mode .form-group {
-  background: transparent;
+  background: transparent !important;
 }
 
 html.dark-mode .form-label {
   color: #f9fafb;
-  background: transparent;
+  background: transparent !important;
 }
 
 html.dark-mode .form-input,
@@ -408,7 +444,7 @@ html.dark-mode .form-textarea:focus {
 
 html.dark-mode .form-help {
   color: #d1d5db;
-  background: transparent;
+  background: transparent !important;
 }
 
 html.dark-mode .profile-image-preview img {
@@ -440,5 +476,18 @@ html.dark-mode .alert-success {
   background: #14532d;
   border-color: #166534;
   color: #bbf7d0;
+}
+
+/* Ensure no extra dark "highlight" blocks behind text in settings dark mode */
+html.dark-mode .settings-container,
+html.dark-mode .settings-section-content,
+html.dark-mode .account-numbers,
+html.dark-mode .account-number-row,
+html.dark-mode .account-number-col,
+html.dark-mode .account-number-label,
+html.dark-mode .account-number-value,
+html.dark-mode .settings-section-title,
+html.dark-mode .notification-info {
+  background: transparent;
 }
 

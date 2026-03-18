@@ -28,6 +28,8 @@ const Settings = ({ user }) => {
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const [darkModeEnabled, setDarkModeEnabled] = useState(false)
   const [loadingDarkMode, setLoadingDarkMode] = useState(false)
+  const [identificationNumber, setIdentificationNumber] = useState('')
+  const [investmentNumber, setInvestmentNumber] = useState('')
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -38,8 +40,43 @@ const Settings = ({ user }) => {
       setProfileImageUrl(user.photoURL || '')
       loadNotificationSettings()
       loadDarkModeSettings()
+      loadAccountNumbers()
     }
   }, [user])
+
+  const generateNumberString = (length = 10) => {
+    try {
+      const bytes = new Uint32Array(length)
+      crypto.getRandomValues(bytes)
+      return Array.from(bytes, (n) => (n % 10).toString()).join('')
+    } catch {
+      return Array.from({ length }, () => Math.floor(Math.random() * 10)).join('')
+    }
+  }
+
+  const loadAccountNumbers = async () => {
+    try {
+      const db = getFirestore()
+      const userRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userRef)
+      const data = userDoc.exists() ? userDoc.data() : {}
+
+      let idNum = data?.identificationNumber || ''
+      let invNum = data?.investmentNumber || ''
+
+      // Backfill for older accounts (generate once and persist)
+      if (!idNum || !invNum) {
+        if (!idNum) idNum = generateNumberString(10)
+        if (!invNum) invNum = generateNumberString(10)
+        await setDoc(userRef, { identificationNumber: idNum, investmentNumber: invNum }, { merge: true })
+      }
+
+      setIdentificationNumber(idNum)
+      setInvestmentNumber(invNum)
+    } catch (error) {
+      console.error('Error loading account numbers:', error)
+    }
+  }
 
   const loadNotificationSettings = async () => {
     try {
@@ -140,9 +177,6 @@ const Settings = ({ user }) => {
       await setDoc(doc(db, 'users', user.uid), {
         darkMode: newValue
       }, { merge: true })
-      
-      setSuccess(`Dark mode ${newValue ? 'enabled' : 'disabled'}`)
-      setTimeout(() => setSuccess(''), 3000)
     } catch (error) {
       console.error('Error updating dark mode settings:', error)
       setError('Failed to update dark mode settings')
@@ -422,7 +456,7 @@ service firebase.storage {
       
       <div className="settings-grid">
         <div className="settings-section">
-          <h2 className="settings-section-title">Profile Picture</h2>
+          <h2 className="settings-section-title">Account</h2>
           <div className="profile-image-section">
             <div className="profile-image-preview">
               {profileImageUrl ? (
@@ -454,6 +488,17 @@ service firebase.storage {
                   {loadingImage ? 'Uploading...' : 'Upload Image'}
                 </button>
               )}
+
+              <div className="account-numbers">
+                <div className="account-number-row">
+                  <span className="account-number-label">Identification Number</span>
+                  <span className="account-number-value">{identificationNumber || '—'}</span>
+                </div>
+                <div className="account-number-row">
+                  <span className="account-number-label">Investment Number</span>
+                  <span className="account-number-value">{investmentNumber || '—'}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -68,9 +68,20 @@ export const signUpWithEmail = async (email, password, fullName) => {
     
     // Create user document in Firestore
     const db = getFirestore()
+    const generateNumberString = (length = 10) => {
+      try {
+        const bytes = new Uint32Array(length)
+        crypto.getRandomValues(bytes)
+        return Array.from(bytes, (n) => (n % 10).toString()).join('')
+      } catch {
+        return Array.from({ length }, () => Math.floor(Math.random() * 10)).join('')
+      }
+    }
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       email: email,
       displayName: fullName || '',
+      identificationNumber: generateNumberString(10),
+      investmentNumber: generateNumberString(10),
       statuses: [], // Empty array - no statuses by default
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -171,8 +182,19 @@ export const signInWithGoogle = async () => {
 
     // For brand new users, initialize statuses as empty and set createdAt
     if (isNewUser) {
+      const generateNumberString = (length = 10) => {
+        try {
+          const bytes = new Uint32Array(length)
+          crypto.getRandomValues(bytes)
+          return Array.from(bytes, (n) => (n % 10).toString()).join('')
+        } catch {
+          return Array.from({ length }, () => Math.floor(Math.random() * 10)).join('')
+        }
+      }
       baseData.statuses = [] // Empty array - no statuses by default
       baseData.createdAt = new Date().toISOString()
+      baseData.identificationNumber = generateNumberString(10)
+      baseData.investmentNumber = generateNumberString(10)
     }
     
     await setDoc(userDocRef, baseData, { merge: true })
