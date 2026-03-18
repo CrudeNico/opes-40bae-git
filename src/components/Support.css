@@ -78,7 +78,8 @@
 
 /* Adjust calendar list height in Support Center */
 .support-container .calendar-list {
-  max-height: 470px;
+  /* Increase this to show more selectable days without changing the widget card height */
+  max-height: var(--support-calendar-list-max-height, 540px);
   overflow-y: auto;
   min-height: 0;
 }
@@ -139,22 +140,26 @@
 }
 
 .support-container .calendar-nav {
-  background: #f3f4f6;
+  background: transparent; /* remove grey box */
   border: none;
-  border-radius: 0.5rem;
-  width: 36px;
-  height: 36px;
+  border-radius: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.25rem;
   color: #1f2937;
   transition: all 0.2s ease;
 }
 
 .support-container .calendar-nav:hover {
-  background: #e5e7eb;
+  color: #2563eb;
+}
+
+.support-container .calendar-nav svg {
+  width: 20px;
+  height: 20px;
 }
 
 .support-container .calendar-month {
@@ -946,12 +951,12 @@ html.dark-mode .support-container .calendar-month {
 }
 
 html.dark-mode .support-container .calendar-nav {
-  background: #374151;
+  background: transparent;
   color: #f9fafb;
 }
 
 html.dark-mode .support-container .calendar-nav:hover {
-  background: #4b5563;
+  color: #93c5fd;
 }
 
 html.dark-mode .support-container .calendar-weekday {
