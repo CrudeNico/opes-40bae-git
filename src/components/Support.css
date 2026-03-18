@@ -75,6 +75,7 @@
 .support-container .calendar-list {
   max-height: 470px;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .support-container .calendar-title {
@@ -98,9 +99,14 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   padding: 1.5rem;
+  /* Keep widget height fixed; internal areas scroll instead of expanding the card */
+  height: 600px;
   min-height: 600px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .support-container .consultation-form {
@@ -110,11 +116,14 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   padding: 1.5rem;
+  /* Match calendar widget height and scroll inside instead of stretching */
+  height: 600px;
   min-height: 600px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .support-container .calendar-header {
@@ -261,7 +270,9 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  overflow-y: auto;
   overflow-x: hidden;
+  padding-right: 0.25rem; /* room for scrollbar without layout jump */
 }
 
 .support-container .time-selection {
