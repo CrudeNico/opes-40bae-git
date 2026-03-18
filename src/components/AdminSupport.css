@@ -310,6 +310,19 @@
   height: 40px;
 }
 
+/* Specialist toggle buttons (S1/S2) */
+.specialist-toggle {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #1f2937;
+}
+
+.specialist-toggle.active {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
 .chat-attachment-button:hover {
   background: #f3f4f6;
   border-color: #3b82f6;
@@ -344,6 +357,15 @@
 .send-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Centered "system" notices inside the chat stream */
+.chat-system-notice {
+  width: 100%;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  padding: 0.5rem 0.75rem;
 }
 
 /* Consultations Section */

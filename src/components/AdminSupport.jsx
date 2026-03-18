@@ -21,6 +21,42 @@ const AdminSupport = () => {
   const [userTypeFilter, setUserTypeFilter] = useState('all') // all, investor, learner, relations, admin
   const messagesEndRef = useRef(null)
 
+  // Admin "persona" controls for outgoing messages
+  const ADMIN_PERSONAS = {
+    daniel: { key: 'daniel', label: 'Daniel', name: 'Daniel G.', imagePath: 'homepage/diegorequena.JPG' },
+    specialist1: { key: 'specialist1', label: 'Specialist 1', name: 'Carlos S.', imagePath: 'homepage/Carlos.png' },
+    specialist2: { key: 'specialist2', label: 'Specialist 2', name: 'Manuel F.', imagePath: 'homepage/Manuel.png' }
+  }
+  const [activePersonaKey, setActivePersonaKey] = useState('daniel')
+  const activePersona = ADMIN_PERSONAS[activePersonaKey] || ADMIN_PERSONAS.daniel
+  const [personaByUserId, setPersonaByUserId] = useState({})
+
+  // Load per-user persona memory from localStorage (admin-only convenience)
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('adminSupportPersonaByUserId')
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        setPersonaByUserId(parsed)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const persistPersonaForUser = (userId, personaKey) => {
+    setPersonaByUserId((prev) => {
+      const next = { ...prev, [userId]: personaKey }
+      try {
+        window.localStorage.setItem('adminSupportPersonaByUserId', JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -32,6 +68,14 @@ const AdminSupport = () => {
 
   useEffect(() => {
     if (selectedUser) {
+      // Restore last-used operator/specialist for this user
+      const savedKey = personaByUserId[selectedUser.uid]
+      if (savedKey && ADMIN_PERSONAS[savedKey]) {
+        setActivePersonaKey(savedKey)
+      } else {
+        setActivePersonaKey('daniel')
+      }
+
       loadUserMessages(selectedUser.uid)
       markMessagesAsRead(selectedUser.uid)
       // Immediately remove unread indicator when user is selected
@@ -48,7 +92,7 @@ const AdminSupport = () => {
         )
       )
     }
-  }, [selectedUser])
+  }, [selectedUser, personaByUserId])
 
   useEffect(() => {
     // Scroll to bottom when messages are updated
@@ -328,7 +372,9 @@ const AdminSupport = () => {
       // This ensures all messages are preserved and displayed correctly
       const adminResponseData = {
         message: newMessage.trim() || '',
-        createdAt: Timestamp.now()
+        createdAt: Timestamp.now(),
+        adminName: activePersona.name,
+        adminImagePath: activePersona.imagePath
       }
       
       if (fileUrl) {
@@ -359,6 +405,44 @@ const AdminSupport = () => {
       setUploadingFile(false)
     } finally {
       setLoadingMessage(false)
+    }
+  }
+
+  const handleRouteToSpecialist = async (personaKey) => {
+    if (!selectedUser) return
+
+    const persona = ADMIN_PERSONAS[personaKey]
+    if (!persona) return
+
+    setActivePersonaKey(personaKey)
+    persistPersonaForUser(selectedUser.uid, personaKey)
+
+    // Persist a "routing" message so it appears in the chat history immediately
+    try {
+      const db = getFirestore()
+      const routingMessage =
+        personaKey === 'daniel'
+          ? 'Specialist session closed — returning you to the operator.'
+          : 'Your request is being transferred to a specialist for further assistance.'
+
+      await addDoc(collection(db, 'supportMessages'), {
+        userId: selectedUser.uid,
+        userName: selectedUser.displayName || selectedUser.email,
+        userEmail: selectedUser.email,
+        status: 'responded',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        type: 'chat',
+        adminResponse: {
+          message: routingMessage,
+          createdAt: Timestamp.now(),
+          adminName: persona.name,
+          adminImagePath: persona.imagePath,
+          isSystem: true
+        }
+      })
+    } catch (error) {
+      console.error('Error routing to specialist:', error)
     }
   }
 
@@ -509,38 +593,44 @@ const AdminSupport = () => {
                         </div>
                       )}
                       {msg.adminResponse && (msg.adminResponse.message || msg.adminResponse.imageUrl || msg.adminResponse.fileUrl) && (
-                        <div className="message-item admin-message">
-                          <div className="message-header">
-                            <span className="message-author admin">Admin</span>
-                            <span className="message-date">
-                              {msg.adminResponse.createdAt?.toDate ? 
-                                msg.adminResponse.createdAt.toDate().toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : 
-                                'Just now'
-                              }
-                            </span>
+                        msg.adminResponse.isSystem ? (
+                          <div className="chat-system-notice">
+                            {msg.adminResponse.message}
                           </div>
-                          <div className="message-content">
-                            {msg.adminResponse.message && <p>{msg.adminResponse.message}</p>}
-                            {msg.adminResponse.imageUrl && (
-                              <div className="message-attachment">
-                                <img src={msg.adminResponse.imageUrl} alt="Uploaded image" className="message-image" />
-                              </div>
-                            )}
-                            {msg.adminResponse.fileUrl && (
-                              <div className="message-attachment">
-                                <a href={msg.adminResponse.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file">
-                                  📎 {msg.adminResponse.fileName || 'Download file'}
-                                </a>
-                              </div>
-                            )}
+                        ) : (
+                          <div className="message-item admin-message">
+                            <div className="message-header">
+                              <span className="message-author admin">Admin</span>
+                              <span className="message-date">
+                                {msg.adminResponse.createdAt?.toDate ? 
+                                  msg.adminResponse.createdAt.toDate().toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) : 
+                                  'Just now'
+                                }
+                              </span>
+                            </div>
+                            <div className="message-content">
+                              {msg.adminResponse.message && <p>{msg.adminResponse.message}</p>}
+                              {msg.adminResponse.imageUrl && (
+                                <div className="message-attachment">
+                                  <img src={msg.adminResponse.imageUrl} alt="Uploaded image" className="message-image" />
+                                </div>
+                              )}
+                              {msg.adminResponse.fileUrl && (
+                                <div className="message-attachment">
+                                  <a href={msg.adminResponse.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file">
+                                    📎 {msg.adminResponse.fileName || 'Download file'}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )
                       )}
                     </div>
                   ))
@@ -564,6 +654,36 @@ const AdminSupport = () => {
                   rows="3"
                 />
                 <div className="chat-actions">
+                  <button
+                    className={`chat-attachment-button specialist-toggle ${activePersonaKey === 'daniel' ? 'active' : ''}`}
+                    type="button"
+                    title="Switch back to Operator (Daniel G.)"
+                    aria-label="Switch back to Operator (Daniel G.)"
+                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    onClick={() => handleRouteToSpecialist('daniel')}
+                  >
+                    O1
+                  </button>
+                  <button
+                    className={`chat-attachment-button specialist-toggle ${activePersonaKey === 'specialist1' ? 'active' : ''}`}
+                    type="button"
+                    title="Switch to Specialist 1 (Carlos S.)"
+                    aria-label="Switch to Specialist 1 (Carlos S.)"
+                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    onClick={() => handleRouteToSpecialist('specialist1')}
+                  >
+                    S1
+                  </button>
+                  <button
+                    className={`chat-attachment-button specialist-toggle ${activePersonaKey === 'specialist2' ? 'active' : ''}`}
+                    type="button"
+                    title="Switch to Specialist 2 (Manuel F.)"
+                    aria-label="Switch to Specialist 2 (Manuel F.)"
+                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    onClick={() => handleRouteToSpecialist('specialist2')}
+                  >
+                    S2
+                  </button>
                   <button 
                     className="chat-attachment-button"
                     type="button"

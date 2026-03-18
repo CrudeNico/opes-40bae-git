@@ -24,7 +24,7 @@ const Support = ({ user }) => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
-  const [adminProfileImageUrl, setAdminProfileImageUrl] = useState(null)
+  const [adminImageUrlByPath, setAdminImageUrlByPath] = useState({})
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -43,14 +43,36 @@ const Support = ({ user }) => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  // Load/cached admin avatars referenced in chat messages (by storage path)
   useEffect(() => {
-    // Load admin profile image
-    const loadAdminProfileImage = async () => {
-      const profileUrl = await getImageUrl('homepage/diegorequena.JPG')
-      if (profileUrl) setAdminProfileImageUrl(profileUrl)
+    const paths = new Set()
+    chatMessages.forEach((m) => {
+      const p = m?.adminResponse?.adminImagePath
+      if (p) paths.add(p)
+    })
+
+    const missing = [...paths].filter((p) => !adminImageUrlByPath[p])
+    if (missing.length === 0) return
+
+    let cancelled = false
+    ;(async () => {
+      const entries = await Promise.all(
+        missing.map(async (p) => [p, await getImageUrl(p)])
+      )
+      if (cancelled) return
+      setAdminImageUrlByPath((prev) => {
+        const next = { ...prev }
+        entries.forEach(([p, url]) => {
+          if (url) next[p] = url
+        })
+        return next
+      })
+    })()
+
+    return () => {
+      cancelled = true
     }
-    loadAdminProfileImage()
-  }, [])
+  }, [chatMessages, adminImageUrlByPath])
 
   useEffect(() => {
     if (user) {
@@ -495,29 +517,45 @@ const Support = ({ user }) => {
                         </div>
                       )}
                       {msg.adminResponse && (msg.adminResponse.message || msg.adminResponse.imageUrl || msg.adminResponse.fileUrl) && (
-                        <div className="message-item admin-message">
-                          <div className="admin-name">
-                            {adminProfileImageUrl && (
-                              <img src={adminProfileImageUrl} alt="Daniel G." className="admin-profile-pic" />
-                            )}
-                            <span>Daniel G.</span>
+                        msg.adminResponse.isSystem ? (
+                          <div className="chat-system-notice">
+                            {msg.adminResponse.message}
                           </div>
-                          <div className="message-content">
-                            {msg.adminResponse.message && <p>{msg.adminResponse.message}</p>}
-                            {msg.adminResponse.imageUrl && (
-                              <div className="message-attachment">
-                                <img src={msg.adminResponse.imageUrl} alt="Uploaded image" className="message-image" />
-                              </div>
-                            )}
-                            {msg.adminResponse.fileUrl && (
-                              <div className="message-attachment">
-                                <a href={msg.adminResponse.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file">
-                                  📎 {msg.adminResponse.fileName || 'Download file'}
-                                </a>
-                              </div>
-                            )}
+                        ) : (
+                          <div className="message-item admin-message">
+                            <div className="admin-name">
+                              {(() => {
+                                const adminName = msg.adminResponse.adminName || 'Daniel G.'
+                                const imagePath = msg.adminResponse.adminImagePath || 'homepage/diegorequena.JPG'
+                                const imageUrl = adminImageUrlByPath[imagePath]
+
+                                return (
+                                  <>
+                                    {imageUrl && (
+                                      <img src={imageUrl} alt={adminName} className="admin-profile-pic" />
+                                    )}
+                                    <span>{adminName}</span>
+                                  </>
+                                )
+                              })()}
+                            </div>
+                            <div className="message-content">
+                              {msg.adminResponse.message && <p>{msg.adminResponse.message}</p>}
+                              {msg.adminResponse.imageUrl && (
+                                <div className="message-attachment">
+                                  <img src={msg.adminResponse.imageUrl} alt="Uploaded image" className="message-image" />
+                                </div>
+                              )}
+                              {msg.adminResponse.fileUrl && (
+                                <div className="message-attachment">
+                                  <a href={msg.adminResponse.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file">
+                                    📎 {msg.adminResponse.fileName || 'Download file'}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )
                       )}
                     </div>
                   ))
