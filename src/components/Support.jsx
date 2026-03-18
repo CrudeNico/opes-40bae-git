@@ -410,7 +410,11 @@ const Support = ({ user }) => {
             ) : (
               <div className="calendar-widget consultation-form">
                 <div className="form-header">
-                  <button className="back-button" onClick={() => setSelectedDate(null)}>← Back</button>
+                  <button className="back-button" onClick={() => setSelectedDate(null)} aria-label="Back">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
                   <h3 className="form-title">Schedule Your Consultation</h3>
                   <p className="selected-date">Selected: {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 </div>
