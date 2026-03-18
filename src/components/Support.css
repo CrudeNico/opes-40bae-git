@@ -6,7 +6,8 @@
 
 .support-content {
   background: transparent;
-  border: 1px solid #ffffff;
+  /* Remove the outer outline that can look like a duplicate box */
+  border: 1px solid transparent;
   border-radius: 0;
   padding: 0;
 }
@@ -27,13 +28,17 @@
   align-content: start;
 }
 
-.consultation-section,
-.chat-section {
+.support-container .consultation-section,
+.support-container .chat-section {
   display: flex;
   flex-direction: column;
   /* Allow grid to stretch the columns to the same height */
   align-self: stretch;
   width: 100%;
+  /* Ensure no outer "duplicate" card styling leaks onto the wrapper */
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .section-title {
@@ -99,10 +104,10 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  /* Keep widget height fixed; internal areas scroll instead of expanding the card */
-  height: 600px;
-  min-height: 600px;
-  max-height: 600px;
+  /* Match the chat widget height so both columns align perfectly */
+  height: var(--support-chat-height, 700px);
+  min-height: var(--support-chat-height, 700px);
+  max-height: var(--support-chat-height, 700px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -116,10 +121,10 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  /* Match calendar widget height and scroll inside instead of stretching */
-  height: 600px;
-  min-height: 600px;
-  max-height: 600px;
+  /* Match the calendar/chat widget height and scroll inside instead of stretching */
+  height: var(--support-chat-height, 700px);
+  min-height: var(--support-chat-height, 700px);
+  max-height: var(--support-chat-height, 700px);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -369,7 +374,7 @@
 }
 
 /* Chat Section */
-.chat-widget {
+.support-container .chat-widget {
   width: 100%;
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -384,7 +389,8 @@
     - Set `--support-chat-input-pad-top` / `--support-chat-input-pad-bottom`
       to control the top/bottom padding of the input area
   */
-  margin-top: var(--support-chat-top-offset, 0px);
+  /* Default: nudge down a bit so it aligns visually with the left widget stack */
+  margin-top: var(--support-chat-top-offset, 40px);
   height: var(--support-chat-height, 700px);
   min-height: var(--support-chat-height, 700px);
   max-height: var(--support-chat-height, 700px);
@@ -701,6 +707,11 @@
     overflow-x: hidden;
   }
 
+  /* Avoid extra top gap on mobile */
+  .support-container .chat-widget {
+    margin-top: 0px;
+  }
+
   .section-title {
     font-size: 1.1rem;
     margin-bottom: 1rem;
@@ -917,9 +928,16 @@ html.dark-mode .support-container .form-title {
 
 html.dark-mode .support-container .calendar-widget,
 html.dark-mode .support-container .consultation-form,
-html.dark-mode .chat-widget {
+html.dark-mode .support-container .chat-widget {
   background: #1f2937;
   border-color: #374151;
+}
+
+/* Prevent any dark-mode wrapper styling from showing as a second outline */
+html.dark-mode .support-container .chat-section,
+html.dark-mode .support-container .consultation-section {
+  background: transparent;
+  border: none;
 }
 
 html.dark-mode .support-container .calendar-header,
