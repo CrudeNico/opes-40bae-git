@@ -421,11 +421,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
-/* User message styling - Right aligned (mirror of admin page) */
+/* User message styling */
 .user-message {
-  align-items: flex-end;
+  width: 100%;
 }
 
 .user-message .message-header {
@@ -433,10 +434,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.25rem;
-  max-width: 70%;
-  width: fit-content;
-  margin-left: auto;
-  margin-right: 0;
+  width: 100%;
 }
 
 .user-message .message-content {
@@ -446,17 +444,15 @@
   font-size: 0.9rem;
   color: #1f2937;
   line-height: 1.5;
-  max-width: 70%;
-  width: fit-content;
-  margin-left: auto;
-  margin-right: 0;
+  width: 100%;
+  max-width: 100%;
   word-wrap: break-word;
   box-sizing: border-box;
 }
 
-/* Admin message styling - Left aligned (mirror of admin page) */
+/* Admin message styling */
 .admin-message {
-  align-items: flex-start;
+  width: 100%;
 }
 
 .admin-message .message-header {
@@ -464,10 +460,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.25rem;
-  max-width: 70%;
-  width: fit-content;
-  margin-left: 0;
-  margin-right: auto;
+  width: 100%;
 }
 
 .admin-message .message-content {
@@ -477,10 +470,8 @@
   font-size: 0.9rem;
   color: #1f2937;
   line-height: 1.5;
-  max-width: 70%;
-  width: fit-content;
-  margin-left: 0;
-  margin-right: auto;
+  width: 100%;
+  max-width: 100%;
   word-wrap: break-word;
   box-sizing: border-box;
 }

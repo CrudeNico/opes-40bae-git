@@ -207,7 +207,6 @@ const Support = ({ user }) => {
 
     setLoadingMessage(true)
     setError('')
-    setSuccess('')
 
     try {
       const db = getFirestore()
@@ -248,7 +247,6 @@ const Support = ({ user }) => {
       await addDoc(collection(db, 'supportMessages'), messageData)
 
       setNewMessage('')
-      setSuccess('Message sent successfully! An admin will respond shortly.')
       
       // Scroll to bottom after sending message
       setTimeout(() => {
@@ -468,21 +466,6 @@ const Support = ({ user }) => {
                       {/* Only show user message if there's actual content (non-empty message, image, or file) */}
                       {((msg.message && msg.message.trim()) || msg.imageUrl || msg.fileUrl) && (
                         <div className="message-item user-message">
-                          <div className="message-header">
-                            <span className="message-author">You</span>
-                            <span className="message-date">
-                              {msg.createdAt?.toDate ? 
-                                msg.createdAt.toDate().toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : 
-                                'Just now'
-                              }
-                            </span>
-                          </div>
                           <div className="message-content">
                             {msg.message && msg.message.trim() && <p>{msg.message}</p>}
                             {msg.imageUrl && (
@@ -502,21 +485,6 @@ const Support = ({ user }) => {
                       )}
                       {msg.adminResponse && (msg.adminResponse.message || msg.adminResponse.imageUrl || msg.adminResponse.fileUrl) && (
                         <div className="message-item admin-message">
-                          <div className="message-header">
-                            <span className="message-author admin">Admin</span>
-                            <span className="message-date">
-                              {msg.adminResponse.createdAt?.toDate ? 
-                                msg.adminResponse.createdAt.toDate().toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : 
-                                'Just now'
-                              }
-                            </span>
-                          </div>
                           <div className="message-content">
                             {msg.adminResponse.message && <p>{msg.adminResponse.message}</p>}
                             {msg.adminResponse.imageUrl && (
