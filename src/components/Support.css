@@ -22,7 +22,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  align-items: start;
+  /* Make both columns match height (row height is max of the two widgets) */
+  align-items: stretch;
   align-content: start;
 }
 
@@ -30,7 +31,8 @@
 .chat-section {
   display: flex;
   flex-direction: column;
-  align-self: start;
+  /* Allow grid to stretch the columns to the same height */
+  align-self: stretch;
   width: 100%;
 }
 
@@ -362,11 +364,23 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   padding: 0;
-  height: 600px;
-  max-height: 600px;
+  /*
+    Chat widget sizing controls (chat only):
+    - Set `--support-chat-height` to change overall widget height (default 600px)
+    - Set `--support-chat-top-offset` to nudge the whole chat widget down (default 0px)
+    - Set `--support-chat-messages-pad-top` / `--support-chat-messages-pad-bottom`
+      to control the top/bottom padding inside the messages area
+    - Set `--support-chat-input-pad-top` / `--support-chat-input-pad-bottom`
+      to control the top/bottom padding of the input area
+  */
+  margin-top: var(--support-chat-top-offset, 0px);
+  height: var(--support-chat-height, 700px);
+  min-height: var(--support-chat-height, 700px);
+  max-height: var(--support-chat-height, 700px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .chat-messages {
@@ -377,7 +391,10 @@
   flex-direction: column;
   gap: 1rem;
   min-height: 0;
-  padding: 1.5rem;
+  padding-top: var(--support-chat-messages-pad-top, 1.5rem);
+  padding-bottom: var(--support-chat-messages-pad-bottom, 1.5rem);
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
   flex-shrink: 1;
 }
 
@@ -522,7 +539,10 @@
 
 .chat-input-container {
   border-top: 1px solid #e5e7eb;
-  padding: 1.5rem;
+  padding-top: var(--support-chat-input-pad-top, 1.5rem);
+  padding-bottom: var(--support-chat-input-pad-bottom, 1.5rem);
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -771,7 +791,6 @@
 
   .support-container .form-textarea {
     min-height: 80px;
-    rows: 3;
   }
 
   .support-container .submit-button {

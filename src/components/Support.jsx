@@ -286,8 +286,6 @@ const Support = ({ user }) => {
   return (
     <div className="support-container">
       <div className="support-content">
-        <h2 className="support-title">Support Center</h2>
-
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
