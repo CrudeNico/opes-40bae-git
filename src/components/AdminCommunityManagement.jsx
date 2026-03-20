@@ -21,6 +21,8 @@ const AdminCommunityManagement = () => {
 
   // Trade Alerts states
   const [tradeAlerts, setTradeAlerts] = useState([])
+  const [showAddSimpleAlert, setShowAddSimpleAlert] = useState(false)
+  const [simpleAlertDescription, setSimpleAlertDescription] = useState('')
   const [showAddAlert, setShowAddAlert] = useState(false)
   const [editingAlert, setEditingAlert] = useState(null)
   const [alertFormData, setAlertFormData] = useState({
@@ -412,6 +414,34 @@ const AdminCommunityManagement = () => {
     }
   }
 
+  const descriptionHasBuyOrSell = (text) => {
+    const lower = (text || '').toLowerCase()
+    return lower.includes('buy') || lower.includes('sell')
+  }
+
+  const handleAddSimpleAlert = async (e) => {
+    e.preventDefault()
+    const desc = simpleAlertDescription.trim()
+    if (!desc) return
+    if (!descriptionHasBuyOrSell(desc)) {
+      alert('Description must contain "buy" or "sell" to post as a trade alert.')
+      return
+    }
+    try {
+      const db = getFirestore()
+      await addDoc(collection(db, 'tradeAlerts'), {
+        description: desc,
+        type: 'simple',
+        createdAt: Timestamp.now()
+      })
+      setSimpleAlertDescription('')
+      setShowAddSimpleAlert(false)
+      loadTradeAlerts()
+    } catch (error) {
+      console.error('Error saving simple alert:', error)
+    }
+  }
+
   const loadWeeklyReports = async () => {
     try {
       const db = getFirestore()
@@ -716,21 +746,60 @@ const AdminCommunityManagement = () => {
         <div className="admin-trade-alerts">
           <div className="section-header">
             <h2>Trade Alerts</h2>
-            <button className="btn-primary" onClick={() => {
-              setShowAddAlert(true)
-              setEditingAlert(null)
-              setAlertFormData({
-                symbol: '',
-                action: 'buy',
-                price: '',
-                takeProfit: '',
-                stopLoss: '',
-                chartLink: ''
-              })
-            }}>
-              Add Trade Alert
-            </button>
+            <div className="section-header-actions">
+              <button className="btn-secondary" onClick={() => {
+                setShowAddSimpleAlert(true)
+                setSimpleAlertDescription('')
+              }}>
+                Add Quick Alert (Description Only)
+              </button>
+              <button className="btn-primary" onClick={() => {
+                setShowAddAlert(true)
+                setEditingAlert(null)
+                setAlertFormData({
+                  symbol: '',
+                  action: 'buy',
+                  price: '',
+                  takeProfit: '',
+                  stopLoss: '',
+                  chartLink: ''
+                })
+              }}>
+                Add Full Trade Alert
+              </button>
+            </div>
           </div>
+
+          {showAddSimpleAlert && (
+            <div className="form-widget">
+              <h3>Add Quick Alert</h3>
+              <form onSubmit={handleAddSimpleAlert}>
+                <div className="form-group">
+                  <label>Description (must contain &quot;buy&quot; or &quot;sell&quot;)</label>
+                  <textarea
+                    value={simpleAlertDescription}
+                    onChange={(e) => setSimpleAlertDescription(e.target.value)}
+                    placeholder="Enter alert description (must include buy or sell)..."
+                    rows="3"
+                    required
+                  />
+                </div>
+                <div className="form-actions">
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={!descriptionHasBuyOrSell(simpleAlertDescription)}
+                  >
+                    Save
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={() => {
+                    setShowAddSimpleAlert(false)
+                    setSimpleAlertDescription('')
+                  }}>Cancel</button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {showAddAlert && (
             <div className="form-widget">
@@ -804,10 +873,15 @@ const AdminCommunityManagement = () => {
           )}
 
           <div className="alerts-list">
-            {tradeAlerts.length === 0 ? (
-              <p className="no-items">No trade alerts yet.</p>
-            ) : (
-              tradeAlerts.map((alert) => (
+            {tradeAlerts.map((alert) => (
+              alert.type === 'simple' ? (
+                <div key={alert.id} className="alert-card feed-post-card">
+                  <div className="feed-post-description">{alert.description || ''}</div>
+                  <div className="alert-actions">
+                    <button className="btn-delete" onClick={() => handleDeleteAlert(alert.id)}>Delete</button>
+                  </div>
+                </div>
+              ) : (
                 <div key={alert.id} className="alert-card">
                   <div className="alert-content">
                     <span className="trade-symbol">{alert.symbol}</span>
@@ -822,7 +896,10 @@ const AdminCommunityManagement = () => {
                     <button className="btn-delete" onClick={() => handleDeleteAlert(alert.id)}>Delete</button>
                   </div>
                 </div>
-              ))
+              )
+            ))}
+            {tradeAlerts.length === 0 && (
+              <p className="no-items">No trade alerts yet.</p>
             )}
           </div>
         </div>

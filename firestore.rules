@@ -130,6 +130,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Feed Posts (synced from external feeds; written by sync job via Admin SDK)
+    // Admins can read to import posts as trade alerts
+    match /feedPosts/{postId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Community Messages collection
     match /communityMessages/{messageId} {
       // Community members can create and read messages

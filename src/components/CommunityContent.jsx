@@ -18,8 +18,20 @@ const CommunityContent = ({ user }) => {
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    loadTradeAlerts()
     loadWeeklyReports()
+    const db = getFirestore()
+    const alertsQuery = query(
+      collection(db, 'tradeAlerts'),
+      orderBy('createdAt', 'desc')
+    )
+    const unsub = onSnapshot(alertsQuery, (snapshot) => {
+      const alerts = []
+      snapshot.forEach((doc) => {
+        alerts.push({ id: doc.id, ...doc.data() })
+      })
+      setTradeAlerts(alerts)
+    }, (err) => console.error('Trade alerts listener error:', err))
+    return () => unsub?.()
   }, [])
 
   useEffect(() => {
@@ -53,24 +65,6 @@ const CommunityContent = ({ user }) => {
     const d = ts.toDate ? ts.toDate() : new Date(ts)
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
       .replace(/\s*(AM|PM)$/i, (_, m) => m.toLowerCase())
-  }
-
-  const loadTradeAlerts = async () => {
-    try {
-      const db = getFirestore()
-      const alertsQuery = query(
-        collection(db, 'tradeAlerts'),
-        orderBy('createdAt', 'desc')
-      )
-      const snapshot = await getDocs(alertsQuery)
-      const alerts = []
-      snapshot.forEach((doc) => {
-        alerts.push({ id: doc.id, ...doc.data() })
-      })
-      setTradeAlerts(alerts)
-    } catch (error) {
-      console.error('Error loading trade alerts:', error)
-    }
   }
 
   const setupChatListener = (chatType) => {
@@ -248,10 +242,19 @@ const CommunityContent = ({ user }) => {
         <div className="trade-alerts-section">
           <h2 className="section-title">Trade Alerts</h2>
           <div className="trade-alerts-list">
-            {tradeAlerts.length === 0 ? (
-              <p className="no-items">No trade alerts yet.</p>
-            ) : (
-              tradeAlerts.slice(0, 2).map((alert) => (
+            {tradeAlerts.map((alert) => (
+              alert.type === 'simple' ? (
+                <div key={alert.id} className="trade-alert-tag">
+                  <div className="trade-alert-description">{alert.description || ''}</div>
+                  {alert.createdAt && (
+                    <span className="trade-alert-time">
+                      {alert.createdAt.toDate ? 
+                        alert.createdAt.toDate().toLocaleString() : 
+                        new Date(alert.createdAt).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              ) : (
                 <div key={alert.id} className="trade-alert-tag">
                   <div className="trade-alert-content">
                     <div className="trade-alert-main">
@@ -288,7 +291,10 @@ const CommunityContent = ({ user }) => {
                     </span>
                   )}
                 </div>
-              ))
+              )
+            ))}
+            {tradeAlerts.length === 0 && (
+              <p className="no-items">No trade alerts yet.</p>
             )}
           </div>
         </div>
