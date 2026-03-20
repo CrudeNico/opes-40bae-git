@@ -111,17 +111,39 @@ export function cleanMessageForDisplay(msg) {
     displayMessage = displayMessage
       .replace(/[\r\n\u2028\u2029\u000B\u000C]+/g, ' ') // all line/paragraph separators
       .replace(/\s+/g, ' ')
+      // Remove app.theprofessortrades.com and mightynetworks URLs from message text
+      .replace(/(https?:\/\/)?[^\s]*(?:app\.theprofessortrades\.com|mightynetworks\.imgix\.net)[^\s]*/gi, '')
+      .replace(/\s+/g, ' ')
       .trim()
   }
+
+  // Don't show internal links, profile/avatar images, or mightynetworks URLs in chat
+  const isHiddenImage = (url) => {
+    if (!url) return true
+    const u = String(url).toLowerCase()
+    if (u.includes('app.theprofessortrades.com')) return true
+    if (u.includes('mightynetworks.imgix.net')) return true
+    if (u.includes('gravatar.com') || u.includes('/avatar/')) return true
+    if (u.includes('pbs.twimg.com')) return true
+    if (u.includes('profile_images') || u.includes('profile-images')) return true
+    if (/[=_](?:s|size)(?:32|40|48|64)\b|_normal|_mini|_bigger/.test(u)) return true
+    return false
+  }
+  const isHiddenFile = (url) => {
+    if (!url) return false
+    const u = String(url).toLowerCase()
+    return u.includes('app.theprofessortrades.com') || u.includes('mightynetworks.imgix.net')
+  }
+  const imageUrl = isHiddenImage(msg.imageUrl) ? null : (msg.imageUrl || null)
+  const fileUrl = isHiddenFile(msg.fileUrl) ? null : (msg.fileUrl || null)
 
   return {
     ...msg,
     message: displayMessage ?? msg.message,
     displayName,
-    // Don't show images or documents (filtered at source; hide if any slip through)
-    imageUrl: null,
-    fileUrl: null,
-    fileName: null,
+    imageUrl,
+    fileUrl,
+    fileName: fileUrl ? (msg.fileName || null) : null,
   }
 }
 

@@ -153,17 +153,34 @@ async function main() {
 
       let savedThisChat = 0
       for (const m of messages) {
-        if (m.imageUrl || m.fileUrl) continue // Skip messages with images or documents
         const key = messageKey(chatType, m)
         const exists = (await col.doc(key).get()).exists
         if (!exists) {
+          const isProfileImage = (url) => {
+            if (!url) return true
+            const u = String(url).toLowerCase()
+            if (u.includes('app.theprofessortrades.com')) return true
+            if (u.includes('mightynetworks.imgix.net')) return true
+            if (u.includes('gravatar.com') || u.includes('/avatar/')) return true
+            if (u.includes('pbs.twimg.com')) return true
+            if (u.includes('profile_images') || u.includes('profile-images')) return true
+            if (/[=_](?:s|size)(?:32|40|48|64)\b|_normal|_mini|_bigger/.test(u)) return true
+            return false
+          }
+          const isInternalFile = (url) => {
+            if (!url) return false
+            const u = String(url).toLowerCase()
+            return u.includes('app.theprofessortrades.com') || u.includes('mightynetworks.imgix.net')
+          }
+          const imageUrl = isProfileImage(m.imageUrl) ? null : (m.imageUrl || null)
+          const fileUrl = isInternalFile(m.fileUrl) ? null : (m.fileUrl || null)
           await col.doc(key).set({
             userId: `imported-${key}`,
             userName: m.author || 'Community Member',
             message: m.message || '',
-            imageUrl: null,
-            fileUrl: null,
-            fileName: null,
+            imageUrl,
+            fileUrl,
+            fileName: fileUrl ? (m.fileName || null) : null,
             createdAt: admin.firestore.Timestamp.now(),
             chatType,
             sourceChatUrl: chat.url,

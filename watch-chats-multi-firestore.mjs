@@ -181,7 +181,6 @@ async function pollChat(browser, chat, state, db) {
     const chatType = chat.chatType || 'general'
     const newMessages = messages
       .filter((m) => !seenKeys[messageKey(chatType, m)])
-      .filter((m) => !m.imageUrl && !m.fileUrl) // Skip messages with images or documents
 
     const col = db.collection('communityMessages')
 
@@ -196,13 +195,31 @@ async function pollChat(browser, chat, state, db) {
       }
 
       state.seenKeys[key] = true
+      const isProfileImage = (url) => {
+        if (!url) return true
+        const u = String(url).toLowerCase()
+        if (u.includes('app.theprofessortrades.com')) return true
+        if (u.includes('mightynetworks.imgix.net')) return true
+        if (u.includes('gravatar.com') || u.includes('/avatar/')) return true
+        if (u.includes('pbs.twimg.com')) return true
+        if (u.includes('profile_images') || u.includes('profile-images')) return true
+        if (/[=_](?:s|size)(?:32|40|48|64)\b|_normal|_mini|_bigger/.test(u)) return true
+        return false
+      }
+      const isInternalFile = (url) => {
+        if (!url) return false
+        const u = String(url).toLowerCase()
+        return u.includes('app.theprofessortrades.com') || u.includes('mightynetworks.imgix.net')
+      }
+      const imageUrl = isProfileImage(m.imageUrl) ? null : (m.imageUrl || null)
+      const fileUrl = isInternalFile(m.fileUrl) ? null : (m.fileUrl || null)
       await docRef.set({
         userId: `imported-${key}`,
         userName: m.author || 'Community Member',
         message: m.message || '',
-        imageUrl: null,
-        fileUrl: null,
-        fileName: null,
+        imageUrl,
+        fileUrl,
+        fileName: fileUrl ? (m.fileName || null) : null,
         createdAt: admin.firestore.Timestamp.now(),
         chatType,
         sourceChatUrl: chat.url,

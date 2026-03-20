@@ -642,8 +642,8 @@ const AdminCommunityManagement = () => {
                       )}
                       {m.fileUrl && (
                         <div className="message-file">
-                          <a href={m.fileUrl} target="_blank" rel="noopener noreferrer">
-                            📎 {m.fileName}
+                          <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" title="Open in new tab">
+                            📎 {m.fileName || 'View document'}
                           </a>
                         </div>
                       )}

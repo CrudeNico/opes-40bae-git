@@ -121,8 +121,19 @@ async function loadState(db, key) {
   return { lastSeenMs: d?.lastSeenMs ?? 0, seenKeys: d?.seenKeys ?? {} }
 }
 
+const SEEN_KEYS_MAX = 2000
+
+function pruneSeenKeys(seenKeys) {
+  const keys = Object.keys(seenKeys)
+  if (keys.length <= SEEN_KEYS_MAX) return seenKeys
+  const pruned = {}
+  keys.slice(-SEEN_KEYS_MAX).forEach((k) => { pruned[k] = true })
+  return pruned
+}
+
 async function saveState(db, key, lastSeenMs, seenKeys) {
-  await db.collection(STATE_COLLECTION).doc(key).set({ lastSeenMs, seenKeys, updatedAt: admin.firestore.FieldValue.serverTimestamp() })
+  const pruned = pruneSeenKeys(seenKeys)
+  await db.collection(STATE_COLLECTION).doc(key).set({ lastSeenMs, seenKeys: pruned, updatedAt: admin.firestore.FieldValue.serverTimestamp() })
 }
 
 async function cleanupOldMessages(db) {
@@ -189,7 +200,6 @@ async function pollChat(browser, chat, state, db, sessionState) {
     const chatType = chat.chatType || 'general'
     const newMessages = messages
       .filter((m) => !seenKeys[messageKey(chatType, m)])
-      .filter((m) => !m.imageUrl && !m.fileUrl) // Skip messages with images or documents
 
     const col = db.collection('communityMessages')
 
@@ -204,13 +214,31 @@ async function pollChat(browser, chat, state, db, sessionState) {
       }
 
       state.seenKeys[key] = true
+      const isProfileImage = (url) => {
+        if (!url) return true
+        const u = String(url).toLowerCase()
+        if (u.includes('app.theprofessortrades.com')) return true
+        if (u.includes('mightynetworks.imgix.net')) return true
+        if (u.includes('gravatar.com') || u.includes('/avatar/')) return true
+        if (u.includes('pbs.twimg.com')) return true
+        if (u.includes('profile_images') || u.includes('profile-images')) return true
+        if (/[=_](?:s|size)(?:32|40|48|64)\b|_normal|_mini|_bigger/.test(u)) return true
+        return false
+      }
+      const isInternalFile = (url) => {
+        if (!url) return false
+        const u = String(url).toLowerCase()
+        return u.includes('app.theprofessortrades.com') || u.includes('mightynetworks.imgix.net')
+      }
+      const imageUrl = isProfileImage(m.imageUrl) ? null : (m.imageUrl || null)
+      const fileUrl = isInternalFile(m.fileUrl) ? null : (m.fileUrl || null)
       await docRef.set({
         userId: `imported-${key}`,
         userName: m.author || 'Community Member',
         message: m.message || '',
-        imageUrl: null,
-        fileUrl: null,
-        fileName: null,
+        imageUrl,
+        fileUrl,
+        fileName: fileUrl ? (m.fileName || null) : null,
         createdAt: admin.firestore.Timestamp.now(),
         chatType,
         sourceChatUrl: chat.url,
