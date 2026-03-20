@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, deleteDoc, where } from 'firebase/firestore'
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Timestamp, onSnapshot, deleteDoc, where } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { cleanMessageForDisplay } from '../synthesis/cleanForDisplay'
 import './CommunityContent.css'
@@ -22,7 +22,8 @@ const CommunityContent = ({ user }) => {
     const db = getFirestore()
     const alertsQuery = query(
       collection(db, 'tradeAlerts'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(3)
     )
     const unsub = onSnapshot(alertsQuery, (snapshot) => {
       const alerts = []
@@ -138,7 +139,8 @@ const CommunityContent = ({ user }) => {
       const db = getFirestore()
       const reportsQuery = query(
         collection(db, 'weeklyReports'),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(3)
       )
       const snapshot = await getDocs(reportsQuery)
       const reports = []
@@ -242,7 +244,7 @@ const CommunityContent = ({ user }) => {
         <div className="trade-alerts-section">
           <h2 className="section-title">Trade Alerts</h2>
           <div className="trade-alerts-list">
-            {tradeAlerts.map((alert) => (
+            {tradeAlerts.slice(0, 3).map((alert) => (
               alert.type === 'simple' ? (
                 <div key={alert.id} className="trade-alert-tag">
                   <div className="trade-alert-description">{alert.description || ''}</div>
@@ -306,7 +308,7 @@ const CommunityContent = ({ user }) => {
             {weeklyReports.length === 0 ? (
               <p className="no-items">No weekly reports available yet.</p>
             ) : (
-              weeklyReports.map((report) => (
+              weeklyReports.slice(0, 3).map((report) => (
                 <div key={report.id} className="report-card">
                   <h3 className="report-title">{report.title || 'Weekly Report'}</h3>
                   {report.description && (
