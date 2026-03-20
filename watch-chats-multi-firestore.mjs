@@ -20,8 +20,17 @@ const CHATS = [
   { key: 'chats-23098072', chatType: 'general', url: 'https://app.theprofessortrades.com/chats/23098072' }
 ]
 
+function normalizeForDedup(msg) {
+  const author = (msg.author || 'Community Member').trim().replace(/\s+/g, ' ')
+  const message = (msg.message || '').trim().replace(/\s+/g, ' ')
+  const imageUrl = msg.imageUrl || ''
+  const fileUrl = msg.fileUrl || ''
+  return { author, message, imageUrl, fileUrl }
+}
+
 function messageKey(chatType, msg) {
-  const str = `${chatType}-${msg.author}-${msg.message}`
+  const { author, message, imageUrl, fileUrl } = normalizeForDedup(msg)
+  const str = `${chatType}-${author}-${message}-${imageUrl}-${fileUrl}`
   return createHash('sha256').update(str).digest('hex').substring(0, 32)
 }
 
@@ -46,22 +55,26 @@ async function extractMessages(page) {
     const items = document.querySelectorAll('div.chat-item-content')
     items.forEach((contentEl, idx) => {
       const textEl = contentEl.querySelector('.chat-item-text, .chat-item-text-paragraph')
-      if (!textEl) return
-      const text = textEl.innerText?.trim() || ''
-      if (!text || text.length < 2) return
-
+      const text = textEl?.innerText?.trim() || ''
       const metaEl = contentEl.querySelector('.chat-item-meta')
       const author = metaEl?.textContent?.trim() || 'Community Member'
       const tsEl = contentEl.querySelector('[data-timestamp]')
       const dataTs = tsEl?.getAttribute?.('data-timestamp')
       const img = contentEl.querySelector('img')
+      const fileLink = contentEl.querySelector('a[href]')
+      const fileUrl = fileLink?.href && !fileLink.href.startsWith('javascript:') ? fileLink.href : null
+      const fileName = fileLink?.textContent?.trim() || fileLink?.download || (fileUrl ? 'File' : null)
+
+      if ((!text || text.length < 2) && !img?.src && !fileUrl) return
 
       const dataTimestamp = dataTs ? parseInt(dataTs, 10) : Date.now() - (10000 * (items.length - idx))
       arr.push({
         dataTimestamp,
         author,
-        message: text,
-        imageUrl: img?.src || null
+        message: text || '',
+        imageUrl: img?.src || null,
+        fileUrl: fileUrl || null,
+        fileName: fileName || null
       })
     })
     return arr
@@ -166,23 +179,30 @@ async function pollChat(browser, chat, state, db) {
 
     const { seenKeys } = state
     const chatType = chat.chatType || 'general'
-    const newMessages = messages.filter((m) => !seenKeys[messageKey(chatType, m)])
+    const newMessages = messages
+      .filter((m) => !seenKeys[messageKey(chatType, m)])
+      .filter((m) => !m.imageUrl && !m.fileUrl) // Skip messages with images or documents
 
     const col = db.collection('communityMessages')
 
     for (const m of newMessages) {
       const key = messageKey(chatType, m)
-      state.seenKeys[key] = true
 
       const docRef = col.doc(key)
       const exists = (await docRef.get()).exists
-      if (exists) continue
+      if (exists) {
+        state.seenKeys[key] = true
+        continue
+      }
 
+      state.seenKeys[key] = true
       await docRef.set({
         userId: `imported-${key}`,
         userName: m.author || 'Community Member',
         message: m.message || '',
-        imageUrl: m.imageUrl || null,
+        imageUrl: null,
+        fileUrl: null,
+        fileName: null,
         createdAt: admin.firestore.Timestamp.now(),
         chatType,
         sourceChatUrl: chat.url,

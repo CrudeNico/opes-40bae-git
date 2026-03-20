@@ -88,6 +88,12 @@
   font-size: 0.75rem;
 }
 
+.chat-watcher-hint {
+  color: #9ca3af;
+  font-size: 0.7rem;
+  margin-left: 0.5rem;
+}
+
 .chat-container {
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -119,14 +125,15 @@
   max-width: 70%;
 }
 
-.message-item.admin-message {
+/* Only the current admin's messages on the right; everyone else on the left */
+.message-item.own-message {
   align-self: flex-end;
   align-items: flex-end;
   margin-left: auto;
   margin-right: 0;
 }
 
-.message-item:not(.admin-message) {
+.message-item:not(.own-message) {
   align-self: flex-start;
   align-items: flex-start;
   margin-left: 0;
@@ -142,6 +149,12 @@
   color: #6b7280;
 }
 
+.message-author-with-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .admin-badge-icon {
   color: #10b981;
   flex-shrink: 0;
@@ -153,7 +166,8 @@
 }
 
 .message-time {
-  color: #9ca3af;
+  font-weight: 600;
+  color: #3b82f6;
   white-space: nowrap;
 }
 
@@ -163,22 +177,42 @@
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   word-wrap: break-word;
+  white-space: normal;
 }
 
-.message-item.admin-message .message-content {
+/* Only non-admin own messages get blue bubble */
+.message-item.own-message:not(.admin-message) .message-content {
   background: #3b82f6;
   color: #ffffff;
   border-color: #3b82f6;
+}
+
+/* Admin 1 and Admin 3: normal white bubble */
+.message-item.admin-message .message-content {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #111827;
 }
 
 .message-image {
   margin-top: 0.5rem;
 }
 
+.message-image a {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.message-image a:hover img {
+  opacity: 0.9;
+}
+
 .message-image img {
   max-width: 200px;
+  max-height: 300px;
   border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
+  transition: opacity 0.2s;
 }
 
 .message-file {
@@ -659,7 +693,7 @@ html.dark-mode .message-author {
 }
 
 html.dark-mode .message-time {
-  color: #6b7280;
+  color: #3b82f6;
 }
 
 html.dark-mode .message-content {

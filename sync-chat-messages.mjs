@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 /**
- * fetch-last-5-and-save.mjs
- * Fetches the last 5 messages from BOTH chats and saves them to Firestore communityMessages.
- * Run once to verify extraction works. Messages will appear in the website Community chat.
+ * sync-chat-messages.mjs
+ * Full re-sync: fetches ALL visible messages from both chats and saves any missing to Firestore.
+ * Use when messages on the website haven't been stored correctly.
+ * Run with --headed for best results (chat DOM often only renders in headed mode).
+ *
+ * Usage:
+ *   node sync-chat-messages.mjs           # headless (may get fewer messages)
+ *   node sync-chat-messages.mjs --headed  # recommended - opens browser, gets all visible
  */
 import { chromium } from 'playwright'
 import path from 'path'
@@ -13,7 +18,6 @@ import admin from 'firebase-admin'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SESSION_PATH = path.join(__dirname, '.pw-session', 'state.json')
-
 const HEADED = process.argv.includes('--headed')
 
 const CHATS = [
@@ -24,38 +28,43 @@ const CHATS = [
 function normalizeForDedup(msg) {
   const author = (msg.author || 'Community Member').trim().replace(/\s+/g, ' ')
   const message = (msg.message || '').trim().replace(/\s+/g, ' ')
-  return { author, message }
+  const imageUrl = msg.imageUrl || ''
+  const fileUrl = msg.fileUrl || ''
+  return { author, message, imageUrl, fileUrl }
 }
 
 function messageKey(chatType, msg) {
-  const { author, message } = normalizeForDedup(msg)
-  const str = `${chatType}-${author}-${message}`
+  const { author, message, imageUrl, fileUrl } = normalizeForDedup(msg)
+  const str = `${chatType}-${author}-${message}-${imageUrl}-${fileUrl}`
   return createHash('sha256').update(str).digest('hex').substring(0, 32)
 }
 
 async function extractMessages(page) {
   return page.evaluate(() => {
     const arr = []
-    // Each message is in div.chat-item-content; text in div.chat-item-text; author in div.chat-item-meta
     const items = document.querySelectorAll('div.chat-item-content')
     items.forEach((contentEl, idx) => {
       const textEl = contentEl.querySelector('.chat-item-text, .chat-item-text-paragraph')
-      if (!textEl) return
-      const text = textEl.innerText?.trim() || ''
-      if (!text || text.length < 2) return
-
+      const text = textEl?.innerText?.trim() || ''
       const metaEl = contentEl.querySelector('.chat-item-meta')
       const author = metaEl?.textContent?.trim() || 'Community Member'
       const tsEl = contentEl.querySelector('[data-timestamp]') || contentEl.closest('[data-timestamp]')
       const dataTs = tsEl?.getAttribute?.('data-timestamp')
       const img = contentEl.querySelector('img')
+      const fileLink = contentEl.querySelector('a[href]')
+      const fileUrl = fileLink?.href && !fileLink.href.startsWith('javascript:') ? fileLink.href : null
+      const fileName = fileLink?.textContent?.trim() || fileLink?.download || (fileUrl ? 'File' : null)
+
+      if ((!text || text.length < 2) && !img?.src && !fileUrl) return
 
       const dataTimestamp = dataTs ? parseInt(dataTs, 10) : Date.now() - (10000 * (items.length - idx))
       arr.push({
         dataTimestamp,
         author,
-        message: text,
-        imageUrl: img?.src || null
+        message: text || '',
+        imageUrl: img?.src || null,
+        fileUrl: fileUrl || null,
+        fileName: fileName || null
       })
     })
     return arr
@@ -100,6 +109,9 @@ async function main() {
   const browser = await chromium.launch({ headless: !HEADED })
   const col = db.collection('communityMessages')
 
+  console.log('Full re-sync of chat messages to Firestore.')
+  if (HEADED) console.log('Using headed mode (recommended for complete extraction).\n')
+
   let totalSaved = 0
   for (const chat of CHATS) {
     const context = await browser.newContext({ storageState: SESSION_PATH })
@@ -107,40 +119,41 @@ async function main() {
     try {
       console.log('Loading', chat.url, '...')
       await page.goto(chat.url, { waitUntil: 'domcontentloaded', timeout: 30000 })
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(3000)
 
       if (page.url().includes('sign_in') || page.url().includes('login')) {
-        console.error('Session expired. Run manual-login.mjs')
+        console.error('  Session expired. Run manual-login.mjs then upload-session.mjs')
         await context.close()
         continue
       }
 
-      // Wait for chat to render (up to 15 sec)
       try {
-        await page.waitForSelector('.chat-item-content, .chat-item-text', { timeout: 15000 })
+        await page.waitForSelector('.chat-item-content, .chat-item-text', { timeout: 20000 })
       } catch {
-        console.log('  Chat not visible yet, waiting 10s more...')
-        await page.waitForTimeout(10000)
+        console.log('  Chat not visible yet, waiting 15s more...')
+        await page.waitForTimeout(15000)
       }
 
-      // Scroll up to load more history
-      for (let i = 0; i < 5; i++) {
+      // Scroll up many times to load full history
+      console.log('  Scrolling to load history...')
+      for (let i = 0; i < 15; i++) {
         await page.evaluate(() => {
           const el = document.querySelector('[class*="scroll"], [class*="messages"], [class*="chat"]') || document.documentElement
           el.scrollTop = 0
         })
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(600)
       }
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(1500)
 
       const messages = await extractMessages(page)
       await context.close()
 
-      const last5 = messages.slice(-5)
-
-      console.log(`[${chat.key}] Found ${messages.length} messages, saving last 5:`)
       const chatType = chat.chatType || 'general'
-      for (const m of last5) {
+      console.log(`  [${chat.key}] Found ${messages.length} messages, syncing to Firestore...`)
+
+      let savedThisChat = 0
+      for (const m of messages) {
+        if (m.imageUrl || m.fileUrl) continue // Skip messages with images or documents
         const key = messageKey(chatType, m)
         const exists = (await col.doc(key).get()).exists
         if (!exists) {
@@ -148,7 +161,9 @@ async function main() {
             userId: `imported-${key}`,
             userName: m.author || 'Community Member',
             message: m.message || '',
-            imageUrl: m.imageUrl || null,
+            imageUrl: null,
+            fileUrl: null,
+            fileName: null,
             createdAt: admin.firestore.Timestamp.now(),
             chatType,
             sourceChatUrl: chat.url,
@@ -157,20 +172,24 @@ async function main() {
             isAdmin: false
           })
           totalSaved++
-          console.log('  -', m.message?.substring(0, 50) + (m.message?.length > 50 ? '...' : ''))
+          savedThisChat++
+          console.log('    +', m.message?.substring(0, 60) + (m.message?.length > 60 ? '...' : ''))
         }
       }
-      if (last5.length === 0) {
-        console.log('  (no messages found - check selectors)')
+      if (messages.length === 0) {
+        console.log('    (no messages found - try with --headed)')
+      } else {
+        console.log(`  Saved ${savedThisChat} new messages from this chat.`)
       }
     } catch (err) {
-      console.error(`[${chat.key}]`, err.message)
+      console.error(`  [${chat.key}]`, err.message)
       await context.close()
     }
   }
 
   await browser.close()
-  console.log(`\nDone. Saved ${totalSaved} new messages to Firestore. Check your website Community chat.`)
+  console.log(`\nDone. Total new messages saved: ${totalSaved}`)
+  console.log('Run with --headed if you got 0 messages (chat often needs headed browser).')
 }
 
 main().catch((err) => {

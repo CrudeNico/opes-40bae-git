@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, deleteDoc, where } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { cleanMessageForDisplay } from '../synthesis/cleanForDisplay'
 import './CommunityContent.css'
 
 const CommunityContent = ({ user }) => {
@@ -39,18 +40,19 @@ const CommunityContent = ({ user }) => {
 
 
   const scrollToBottom = () => {
-    // Only scroll the chat messages container, not the page
-    if (messagesEndRef.current) {
-      const chatMessagesContainer = messagesEndRef.current.closest('.chat-messages')
-      if (chatMessagesContainer) {
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight
-      }
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   const getFirstName = (name) => {
     if (!name) return 'User'
     return name.split(' ')[0]
+  }
+
+  const formatMessageTime = (ts) => {
+    if (!ts) return ''
+    const d = ts.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      .replace(/\s*(AM|PM)$/i, (_, m) => m.toLowerCase())
   }
 
   const loadTradeAlerts = async () => {
@@ -79,6 +81,7 @@ const CommunityContent = ({ user }) => {
       orderBy('createdAt', 'asc')
     )
 
+    // Real-time listener: fires whenever Cloud Run job or users add new messages
     let lastCount = 0
     const unsubscribe = onSnapshot(
       messagesQuery,
@@ -188,11 +191,12 @@ const CommunityContent = ({ user }) => {
       }
 
       const chatType = activeChatTab === 'londonSession' ? 'london-session' : 'general'
+      const cleanMsg = (newMessage.trim() || '').replace(/[\r\n\u2028\u2029]+/g, ' ').replace(/\s+/g, ' ').trim()
       await addDoc(collection(db, 'communityMessages'), {
         userId: user.uid,
         userName: user.displayName || user.email,
         userEmail: user.email,
-        message: newMessage.trim() || '',
+        message: cleanMsg || '',
         imageUrl: imageUrl,
         fileUrl: fileUrl,
         fileName: fileName,
@@ -359,38 +363,46 @@ const CommunityContent = ({ user }) => {
             ) : chatMessages.length === 0 ? (
               <p className="no-items">No messages yet. Start the conversation!</p>
             ) : (
-              chatMessages.map((msg) => (
+              chatMessages.map((msg) => {
+                const m = cleanMessageForDisplay(msg)
+                return (
                   <div 
                     key={msg.id} 
-                    className={`message-item ${msg.userId === user.uid ? 'own-message' : ''} ${msg.isAdmin ? 'admin-message' : ''}`}
+                    className={`message-item ${msg.userId === user.uid && !msg.isAdmin ? 'own-message' : ''} ${msg.isAdmin ? 'admin-message' : ''}`}
                   >
                     <div className="message-header">
-                      {msg.isAdmin && (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="admin-badge-icon" width="16" height="16">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-                        </svg>
-                      )}
-                      <span className="message-author">
-                        {msg.isAdmin ? 'Admin' : (msg.userName || msg.userEmail || 'User')}
+                      <span className="message-author-with-badge">
+                        <span className="message-author">{m.displayName}</span>
+                        {(m.displayName === 'Admin 1' || m.displayName === 'Admin 3') && (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="admin-badge-icon" width="16" height="16">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                          </svg>
+                        )}
+                        {msg.createdAt && (
+                          <span className="message-time">{formatMessageTime(msg.createdAt)}</span>
+                        )}
                       </span>
                     </div>
-                  {msg.message && (
-                    <div className="message-content">{msg.message}</div>
-                  )}
-                  {msg.imageUrl && (
-                    <div className="message-image">
-                      <img src={msg.imageUrl} alt="Shared image" />
-                    </div>
-                  )}
-                  {msg.fileUrl && (
-                    <div className="message-file">
-                      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                        📎 {msg.fileName || 'File'}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ))
+                    {(m.message || msg.message) && (
+                      <div className="message-content">{m.message || msg.message}</div>
+                    )}
+                    {m.imageUrl && (
+                      <div className="message-image">
+                        <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" title="View full size">
+                          <img src={m.imageUrl} alt="Shared image" />
+                        </a>
+                      </div>
+                    )}
+                    {m.fileUrl && (
+                      <div className="message-file">
+                        <a href={m.fileUrl} target="_blank" rel="noopener noreferrer">
+                          📎 {m.fileName}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )
+              })
             )}
             <div ref={messagesEndRef} />
           </div>

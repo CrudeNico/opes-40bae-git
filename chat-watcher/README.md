@@ -1,6 +1,6 @@
 # Chat Watcher (Cloud Run)
 
-Runs in Google Cloud every 5 minutes. Syncs messages from The Professor Trades community chats into your Firestore `communityMessages` collection.
+Runs in Google Cloud every 1 minute. Syncs messages from The Professor Trades community chats into your Firestore `communityMessages` collection.
 
 ## One-time setup
 
@@ -29,7 +29,17 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-### 4. Set env vars (Brevo + alert email)
+This deploys the job, grants the Scheduler permission to invoke it, and creates/updates a Cloud Scheduler job to run every 1 minute.
+
+### 4. Verify it's running
+
+```bash
+./verify.sh
+```
+
+To manually trigger a run: `gcloud run jobs execute chat-watcher --region us-central1 --project opes-40bae`
+
+### 5. Set env vars (Brevo + alert email)
 
 ```bash
 gcloud run jobs update chat-watcher --region us-central1 --project opes-40bae \
@@ -44,3 +54,13 @@ You’ll receive an email. Then:
 2. `node upload-session.mjs` → re-upload session
 
 No redeploy needed.
+
+## When messages are missing from Firebase
+
+If messages appear on The Professor Trades but not in your website, run a full re-sync from the project root:
+
+```bash
+node sync-chat-messages.mjs --headed
+```
+
+This fetches all visible messages from both chats and saves any missing to Firestore. Use `--headed` for best results (chat often needs a real browser to render).

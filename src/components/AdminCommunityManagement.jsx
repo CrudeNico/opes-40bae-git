@@ -3,6 +3,7 @@ import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, o
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { auth } from '../firebase/config'
 import { sendTradeAlertNotification, sendWeeklyReportNotification } from '../firebase/email'
+import { cleanMessageForDisplay } from '../synthesis/cleanForDisplay'
 import './AdminCommunityManagement.css'
 
 const AdminCommunityManagement = () => {
@@ -96,6 +97,13 @@ const AdminCommunityManagement = () => {
     return name.split(' ')[0]
   }
 
+  const formatMessageTime = (ts) => {
+    if (!ts) return ''
+    const d = ts.toDate ? ts.toDate() : new Date(ts)
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      .replace(/\s*(AM|PM)$/i, (_, m) => m.toLowerCase())
+  }
+
   const setupChatListener = (chatType) => {
     const db = getFirestore()
     const messagesQuery = query(
@@ -104,6 +112,7 @@ const AdminCommunityManagement = () => {
       orderBy('createdAt', 'asc')
     )
 
+    // Real-time listener: fires whenever Cloud Run job or admins add new messages
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const messages = []
       snapshot.forEach((doc) => {
@@ -191,11 +200,12 @@ const AdminCommunityManagement = () => {
       }
 
       const chatType = activeTab === 'londonSessionChat' ? 'london-session' : 'general'
+      const cleanMsg = (newMessage.trim() || '').replace(/[\r\n\u2028\u2029]+/g, ' ').replace(/\s+/g, ' ').trim()
       await addDoc(collection(db, 'communityMessages'), {
         userId: user.uid,
         userName: user.displayName || user.email,
         userEmail: user.email,
-        message: newMessage.trim() || '',
+        message: cleanMsg || '',
         imageUrl: imageUrl,
         fileUrl: fileUrl,
         fileName: fileName,
@@ -591,42 +601,55 @@ const AdminCommunityManagement = () => {
                 (last checked {chatWatcherStatus.lastChecked?.toDate?.()?.toLocaleString?.() || '—'})
               </span>
             )}
+            <span className="chat-watcher-hint" title="Run from project root to catch up on missed messages">
+              Missing messages? Run: node sync-chat-messages.mjs --headed
+            </span>
           </div>
           <div className="chat-container">
             <div className="chat-messages">
               {chatMessages.length === 0 ? (
                 <p className="no-items">No messages yet.</p>
               ) : (
-                chatMessages.map((msg) => (
-                  <div 
-                    key={msg.id} 
-                    className={`message-item ${msg.isAdmin ? 'admin-message' : ''}`}
-                  >
-                    <div className="message-header">
-                      {msg.isAdmin && (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="admin-badge-icon" width="16" height="16">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-                        </svg>
+                chatMessages.map((msg) => {
+                  const m = cleanMessageForDisplay(msg)
+                  return (
+                    <div 
+                      key={msg.id} 
+                      className={`message-item ${msg.userId === user?.uid && !msg.isAdmin ? 'own-message' : ''} ${msg.isAdmin ? 'admin-message' : ''}`}
+                    >
+                      <div className="message-header">
+                        <span className="message-author-with-badge">
+                          <span className="message-author">{m.displayName}</span>
+                          {(m.displayName === 'Admin 1' || m.displayName === 'Admin 3') && (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="admin-badge-icon" width="16" height="16">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                            </svg>
+                          )}
+                          {msg.createdAt && (
+                            <span className="message-time">{formatMessageTime(msg.createdAt)}</span>
+                          )}
+                        </span>
+                      </div>
+                      {(m.message || msg.message) && (
+                        <div className="message-content">{m.message || msg.message}</div>
                       )}
-                      <span className="message-author">{msg.userName || msg.userEmail || 'User'}</span>
+                      {m.imageUrl && (
+                        <div className="message-image">
+                          <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" title="View full size">
+                            <img src={m.imageUrl} alt="Shared image" />
+                          </a>
+                        </div>
+                      )}
+                      {m.fileUrl && (
+                        <div className="message-file">
+                          <a href={m.fileUrl} target="_blank" rel="noopener noreferrer">
+                            📎 {m.fileName}
+                          </a>
+                        </div>
+                      )}
                     </div>
-                    {msg.message && (
-                      <div className="message-content">{msg.message}</div>
-                    )}
-                    {msg.imageUrl && (
-                      <div className="message-image">
-                        <img src={msg.imageUrl} alt="Shared image" />
-                      </div>
-                    )}
-                    {msg.fileUrl && (
-                      <div className="message-file">
-                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                          📎 {msg.fileName || 'File'}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  )
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
