@@ -147,6 +147,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Chat watcher status (admins can read; watcher writes via Admin SDK)
+    match /chatWatcherStatus/{document} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Chat watcher internal state (only service account via Admin SDK)
+    match /_system/{document} {
+      allow read, write: if false;
+    }
+    match /_systemChatWatcherState/{document} {
+      allow read, write: if false;
+    }
+
     // Admin Daily Performance collection
     match /adminDailyPerformance/{performanceId} {
       // Traders and other authenticated users can read their own performance documents

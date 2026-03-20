@@ -1,0 +1,12 @@
+{
+  "name": "chat-watcher",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "playwright": "^1.49.0"
+  }
+}

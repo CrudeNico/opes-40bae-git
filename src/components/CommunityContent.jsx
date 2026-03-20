@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, deleteDoc } from 'firebase/firestore'
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, Timestamp, onSnapshot, deleteDoc, where } from 'firebase/firestore'
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import './CommunityContent.css'
 
 const CommunityContent = ({ user }) => {
+  const [activeChatTab, setActiveChatTab] = useState('general') // 'general' | 'londonSession'
   const [tradeAlerts, setTradeAlerts] = useState([])
   const [chatMessages, setChatMessages] = useState([])
   const [weeklyReports, setWeeklyReports] = useState([])
@@ -18,16 +19,21 @@ const CommunityContent = ({ user }) => {
   useEffect(() => {
     loadTradeAlerts()
     loadWeeklyReports()
-    setupChatListener()
-    
+  }, [])
+
+  useEffect(() => {
+    setChatMessages([])
+    setLoading(true)
+    const chatType = activeChatTab === 'londonSession' ? 'london-session' : 'general'
+    const unsub = setupChatListener(chatType)
+    return () => unsub?.()
+  }, [activeChatTab])
+
+  useEffect(() => {
     // Cleanup old messages on mount
     cleanupOldMessages()
-    
     // Set up periodic cleanup (every hour)
-    const cleanupInterval = setInterval(() => {
-      cleanupOldMessages()
-    }, 60 * 60 * 1000) // 1 hour
-    
+    const cleanupInterval = setInterval(cleanupOldMessages, 60 * 60 * 1000)
     return () => clearInterval(cleanupInterval)
   }, [])
 
@@ -65,39 +71,39 @@ const CommunityContent = ({ user }) => {
     }
   }
 
-  const setupChatListener = () => {
+  const setupChatListener = (chatType) => {
     const db = getFirestore()
     const messagesQuery = query(
       collection(db, 'communityMessages'),
+      where('chatType', '==', chatType),
       orderBy('createdAt', 'asc')
     )
 
-    let isInitialLoad = true
-    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+    let lastCount = 0
+    const unsubscribe = onSnapshot(
+      messagesQuery,
+      (snapshot) => {
       const messages = []
       snapshot.forEach((doc) => {
         messages.push({ id: doc.id, ...doc.data() })
       })
-      const previousMessageCount = chatMessages.length
+      const prevCount = lastCount
+      lastCount = messages.length
       setChatMessages(messages)
       setLoading(false)
-      
-      // On initial load, scroll chat to bottom (but don't scroll the page)
-      if (isInitialLoad && messages.length > 0) {
-        setTimeout(() => {
-          scrollToBottom()
-        }, 200)
-        isInitialLoad = false
-      }
-      // Also scroll if a new message was added after initial load
-      else if (!isInitialLoad && messages.length > previousMessageCount && previousMessageCount > 0) {
-        setTimeout(() => {
-          scrollToBottom()
-        }, 100)
-      }
-    })
 
-    return () => unsubscribe()
+      // Scroll to bottom on first load with messages, or when new message arrives
+      if (messages.length > 0 && (prevCount === 0 || messages.length > prevCount)) {
+        setTimeout(scrollToBottom, prevCount === 0 ? 200 : 100)
+      }
+    },
+    (err) => {
+      console.error('Community chat listener error:', err)
+      setLoading(false)
+    }
+    )
+
+    return unsubscribe
   }
 
   const cleanupOldMessages = async () => {
@@ -181,6 +187,7 @@ const CommunityContent = ({ user }) => {
         fileName = fileAttachment.name
       }
 
+      const chatType = activeChatTab === 'londonSession' ? 'london-session' : 'general'
       await addDoc(collection(db, 'communityMessages'), {
         userId: user.uid,
         userName: user.displayName || user.email,
@@ -189,6 +196,7 @@ const CommunityContent = ({ user }) => {
         imageUrl: imageUrl,
         fileUrl: fileUrl,
         fileName: fileName,
+        chatType,
         createdAt: Timestamp.now()
       })
 
@@ -197,7 +205,7 @@ const CommunityContent = ({ user }) => {
       setFileAttachment(null)
       
       // Scroll chat to bottom after sending message
-      scrollChatOnNewMessage()
+      setTimeout(scrollToBottom, 100)
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
@@ -330,9 +338,25 @@ const CommunityContent = ({ user }) => {
 
       {/* Community Chat - Full Width Below */}
       <div className="community-chat-section-full">
+        <div className="chat-tabs-row">
+          <button
+            className={`chat-tab-button ${activeChatTab === 'general' ? 'active' : ''}`}
+            onClick={() => setActiveChatTab('general')}
+          >
+            General Chat
+          </button>
+          <button
+            className={`chat-tab-button ${activeChatTab === 'londonSession' ? 'active' : ''}`}
+            onClick={() => setActiveChatTab('londonSession')}
+          >
+            London Session Chat
+          </button>
+        </div>
         <div className="chat-container">
           <div className="chat-messages">
-            {chatMessages.length === 0 ? (
+            {loading ? (
+              <p className="no-items">Loading messages...</p>
+            ) : chatMessages.length === 0 ? (
               <p className="no-items">No messages yet. Start the conversation!</p>
             ) : (
               chatMessages.map((msg) => (
@@ -347,12 +371,7 @@ const CommunityContent = ({ user }) => {
                         </svg>
                       )}
                       <span className="message-author">
-                        {msg.isAdmin ? 'Admin' : getFirstName(msg.userName || msg.userEmail)}
-                      </span>
-                      <span className="message-time">
-                        {msg.createdAt?.toDate ? 
-                          msg.createdAt.toDate().toLocaleTimeString() : 
-                          new Date(msg.createdAt).toLocaleTimeString()}
+                        {msg.isAdmin ? 'Admin' : (msg.userName || msg.userEmail || 'User')}
                       </span>
                     </div>
                   {msg.message && (

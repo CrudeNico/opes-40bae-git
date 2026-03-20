@@ -193,6 +193,36 @@
   gap: 1rem;
 }
 
+/* Community Chat Tabs */
+.chat-tabs-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem 0.5rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.chat-tab-button {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-tab-button:hover {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.chat-tab-button.active {
+  color: #ffffff;
+  background: #3b82f6;
+}
+
 /* Community Chat Section (Full Width Below) */
 .community-chat-section-full {
   background: #ffffff;

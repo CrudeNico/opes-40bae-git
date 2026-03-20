@@ -1,0 +1,14 @@
+=== URL ===
+https://app.theprofessortrades.com/spaces/12206623/chat
+
+=== chat-item-text elements (exact) ===
+Found: 0
+
+=== [class*="chat-item"] elements ===
+Found: 0
+
+=== All classes containing "chat" or "item" ===
+(none)
+
+=== Sample HTML of first message-like block ===
+(none found)

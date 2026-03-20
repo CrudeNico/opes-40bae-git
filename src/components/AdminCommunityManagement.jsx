@@ -6,12 +6,13 @@ import { sendTradeAlertNotification, sendWeeklyReportNotification } from '../fir
 import './AdminCommunityManagement.css'
 
 const AdminCommunityManagement = () => {
-  const [activeTab, setActiveTab] = useState('chat') // chat, tradeAlerts, weeklyReports
+  const [activeTab, setActiveTab] = useState('chat') // chat, londonSessionChat, tradeAlerts, weeklyReports
   const [user, setUser] = useState(null)
   
   // Chat states
   const [chatMessages, setChatMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
+  const [chatWatcherStatus, setChatWatcherStatus] = useState(null) // { loggedIn, lastChecked, lastError }
   const [sendingMessage, setSendingMessage] = useState(false)
   const [imageFile, setImageFile] = useState(null)
   const [fileAttachment, setFileAttachment] = useState(null)
@@ -51,13 +52,13 @@ const AdminCommunityManagement = () => {
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'chat') {
-      setupChatListener()
-      // Auto-scroll to bottom when switching to chat tab
-      setTimeout(() => {
-        scrollToBottom()
-      }, 100)
-      // Cleanup old messages when switching to chat tab
+    let chatUnsub
+    let statusUnsub
+    if (activeTab === 'chat' || activeTab === 'londonSessionChat') {
+      const chatType = activeTab === 'londonSessionChat' ? 'london-session' : 'general'
+      chatUnsub = setupChatListener(chatType)
+      statusUnsub = setupChatWatcherStatusListener()
+      setTimeout(() => scrollToBottom(), 100)
       cleanupOldMessages()
     } else if (activeTab === 'tradeAlerts') {
       loadTradeAlerts()
@@ -67,12 +68,16 @@ const AdminCommunityManagement = () => {
     
     // Set up periodic cleanup (every hour)
     const cleanupInterval = setInterval(() => {
-      if (activeTab === 'chat') {
+      if (activeTab === 'chat' || activeTab === 'londonSessionChat') {
         cleanupOldMessages()
       }
     }, 60 * 60 * 1000) // 1 hour
     
-    return () => clearInterval(cleanupInterval)
+    return () => {
+      clearInterval(cleanupInterval)
+      if (chatUnsub) chatUnsub()
+      if (statusUnsub) statusUnsub()
+    }
   }, [activeTab])
 
   useEffect(() => {
@@ -91,10 +96,11 @@ const AdminCommunityManagement = () => {
     return name.split(' ')[0]
   }
 
-  const setupChatListener = () => {
+  const setupChatListener = (chatType) => {
     const db = getFirestore()
     const messagesQuery = query(
       collection(db, 'communityMessages'),
+      where('chatType', '==', chatType),
       orderBy('createdAt', 'asc')
     )
 
@@ -107,6 +113,18 @@ const AdminCommunityManagement = () => {
     })
 
     return () => unsubscribe()
+  }
+
+  const setupChatWatcherStatusListener = () => {
+    const db = getFirestore()
+    const unsub = onSnapshot(doc(db, 'chatWatcherStatus', 'status'), (snap) => {
+      if (snap.exists()) {
+        setChatWatcherStatus(snap.data())
+      } else {
+        setChatWatcherStatus(null)
+      }
+    }, (err) => setChatWatcherStatus(null))
+    return unsub
   }
 
   const cleanupOldMessages = async () => {
@@ -172,6 +190,7 @@ const AdminCommunityManagement = () => {
         fileName = fileAttachment.name
       }
 
+      const chatType = activeTab === 'londonSessionChat' ? 'london-session' : 'general'
       await addDoc(collection(db, 'communityMessages'), {
         userId: user.uid,
         userName: user.displayName || user.email,
@@ -180,7 +199,8 @@ const AdminCommunityManagement = () => {
         imageUrl: imageUrl,
         fileUrl: fileUrl,
         fileName: fileName,
-        isAdmin: true, // Mark as admin message
+        isAdmin: true,
+        chatType,
         createdAt: Timestamp.now()
       })
 
@@ -519,7 +539,13 @@ const AdminCommunityManagement = () => {
           className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
           onClick={() => setActiveTab('chat')}
         >
-          Community Chat
+          General Chat
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'londonSessionChat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('londonSessionChat')}
+        >
+          London Session Chat
         </button>
         <button
           className={`tab-button ${activeTab === 'tradeAlerts' ? 'active' : ''}`}
@@ -535,9 +561,37 @@ const AdminCommunityManagement = () => {
         </button>
       </div>
 
-      {/* Community Chat Tab */}
-      {activeTab === 'chat' && (
+      {/* General Chat / London Session Chat Tab */}
+      {(activeTab === 'chat' || activeTab === 'londonSessionChat') && (
         <div className="admin-community-chat">
+          <h3 className="chat-tab-title">
+            {activeTab === 'londonSessionChat' ? 'London Session Chat' : 'General Chat'}
+          </h3>
+          <div className="chat-watcher-status-bar">
+            <span className="chat-watcher-label">Community sync:</span>
+            {chatWatcherStatus == null ? (
+              <span className="chat-watcher-status unknown" title="Run the watcher to check">
+                Unknown
+              </span>
+            ) : chatWatcherStatus.loggedIn ? (
+              <span className="chat-watcher-status connected">Logged in</span>
+            ) : (
+              <a
+                href="https://app.theprofessortrades.com/sign_in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="chat-watcher-status disconnected"
+                title={chatWatcherStatus.lastError || 'Session expired. Click to log in.'}
+              >
+                Session expired – click to re-login
+              </a>
+            )}
+            {chatWatcherStatus?.lastChecked && (
+              <span className="chat-watcher-last-checked">
+                (last checked {chatWatcherStatus.lastChecked?.toDate?.()?.toLocaleString?.() || '—'})
+              </span>
+            )}
+          </div>
           <div className="chat-container">
             <div className="chat-messages">
               {chatMessages.length === 0 ? (
@@ -554,12 +608,7 @@ const AdminCommunityManagement = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
                         </svg>
                       )}
-                      <span className="message-author">{msg.userName || msg.userEmail}</span>
-                      <span className="message-time">
-                        {msg.createdAt?.toDate ? 
-                          msg.createdAt.toDate().toLocaleTimeString() : 
-                          new Date(msg.createdAt).toLocaleTimeString()}
-                      </span>
+                      <span className="message-author">{msg.userName || msg.userEmail || 'User'}</span>
                     </div>
                     {msg.message && (
                       <div className="message-content">{msg.message}</div>
