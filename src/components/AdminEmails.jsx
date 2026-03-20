@@ -382,46 +382,9 @@ const AdminEmails = () => {
 
       const plainTextContent = emailData.content
 
-      // Build email payload
-      const emailPayload = {
-        sender: {
-          name: senderName,
-          email: senderEmail
-        },
-        to: emailList.map(email => ({ email })),
-        subject: emailData.subject,
-        htmlContent: emailHtml,
-        textContent: plainTextContent
-      }
-
-      // Add attachments if any files are attached
-      if (attachments.length > 0) {
-        emailPayload.attachment = attachments
-      }
-
-      // Send email via Brevo API
-      const url = 'https://api.brevo.com/v3/smtp/email'
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'api-key': apiKey
-        },
-        body: JSON.stringify(emailPayload)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Brevo API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData: errorData
-        })
-        
-        // Provide more helpful error messages
+      const buildErrorMessage = (responseStatus, responseStatusText, errorData = {}) => {
         let errorMessage = 'Failed to send email'
-        if (response.status === 401) {
+        if (responseStatus === 401) {
           if (errorData.message && errorData.message.includes('not enabled')) {
             errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
           } else {
@@ -430,13 +393,68 @@ const AdminEmails = () => {
         } else if (errorData.message) {
           errorMessage = `Failed to send email: ${errorData.message}`
         } else {
-          errorMessage = `Failed to send email: ${response.status} ${response.statusText}`
+          errorMessage = `Failed to send email: ${responseStatus} ${responseStatusText}`
         }
-        
-        throw new Error(errorMessage)
+        return errorMessage
       }
 
-      setSuccess(`Email sent successfully to ${emailList.length} recipient(s)!`)
+      // Send each email as an individual request to preserve recipient privacy.
+      const url = 'https://api.brevo.com/v3/smtp/email'
+      let successCount = 0
+      let firstFailureMessage = ''
+
+      for (const recipientEmail of emailList) {
+        const emailPayload = {
+          sender: {
+            name: senderName,
+            email: senderEmail
+          },
+          to: [{ email: recipientEmail }],
+          subject: emailData.subject,
+          htmlContent: emailHtml,
+          textContent: plainTextContent
+        }
+
+        if (attachments.length > 0) {
+          emailPayload.attachment = attachments
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'api-key': apiKey
+          },
+          body: JSON.stringify(emailPayload)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Brevo API error for recipient:', {
+            recipientEmail,
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          })
+          if (!firstFailureMessage) {
+            firstFailureMessage = buildErrorMessage(response.status, response.statusText, errorData)
+          }
+          continue
+        }
+
+        successCount += 1
+      }
+
+      if (successCount === 0) {
+        throw new Error(firstFailureMessage || 'Failed to send email to recipients')
+      }
+
+      if (successCount < emailList.length) {
+        setSuccess(`Email sent to ${successCount} of ${emailList.length} recipient(s). Some emails failed.`)
+      } else {
+        setSuccess(`Email sent successfully to ${successCount} recipient(s)!`)
+      }
       
       // Reset form and clear localStorage
       setRecipientEmails([])

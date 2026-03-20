@@ -855,8 +855,10 @@ html.dark-mode .form-header p,
 html.dark-mode .form-label,
 html.dark-mode .form-help,
 html.dark-mode .history-header {
+  /* Make all form text brighter in dark mode */
   color: #f9fafb;
-  background: #374151;
+  /* Remove darker highlight blocks behind text in dark mode */
+  background: transparent;
   border-bottom-color: #4b5563;
 }
 
@@ -870,11 +872,13 @@ html.dark-mode .custom-select-dropdown,
 html.dark-mode .dropdown-option {
   background: #374151;
   border-color: #4b5563;
+  /* Brighter text for all inputs/selects in dark mode */
   color: #f9fafb;
 }
 
 html.dark-mode .form-input::placeholder {
-  color: #9ca3af;
+  /* Make placeholders more legible on dark background */
+  color: #e5e7eb;
 }
 
 html.dark-mode .custom-select-button.placeholder {
@@ -987,5 +991,40 @@ html.dark-mode .edit-record-section button[type="button"] {
 html.dark-mode .edit-record-section button[type="button"]:hover:not(:disabled) {
   background: #4b5563 !important;
   border-color: #6b7280 !important;
+}
+
+/* Dark mode for trader "Add Monthly Performance" section on Portfolio page */
+html.dark-mode .add-performance-section {
+  background: #111827 !important;
+  border-color: #374151 !important;
+}
+
+html.dark-mode .add-performance-section .section-title,
+html.dark-mode .add-performance-section label {
+  color: #f9fafb !important;
+}
+
+html.dark-mode .add-performance-section input,
+html.dark-mode .add-performance-section select {
+  background: #374151 !important;
+  border-color: #4b5563 !important;
+  color: #f9fafb !important;
+}
+
+html.dark-mode .add-performance-section input::placeholder {
+  color: #e5e7eb !important;
+}
+
+html.dark-mode .add-performance-section input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+html.dark-mode .add-performance-section .btn-submit {
+  background: #2563eb;
+  color: #f9fafb;
+}
+
+html.dark-mode .add-performance-section .btn-submit:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
