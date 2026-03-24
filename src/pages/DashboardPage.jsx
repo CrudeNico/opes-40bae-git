@@ -69,7 +69,7 @@ const DashboardPage = () => {
               }
 
               // If user is Admin or Admin 2, redirect to admin dashboard
-              if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
+              if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Admin 3') || statuses.includes('Relations')) {
                 navigate('/admin')
                 setLoading(false)
                 return // Don't set user state, will redirect

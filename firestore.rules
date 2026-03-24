@@ -6,12 +6,27 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Helper function to check if user is admin or admin 2
-    // This reads the user's own document to check if they have Admin or Admin 2 status
-    // Handles both old format (isAdmin as array/boolean) and new format (statuses as array)
+    // Helper: user has any admin-like status (Admin, Admin 2, Admin 3, Relations)
     function isAdmin() {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (
+               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.statuses != null &&
+                (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.statuses.hasAny(['Admin', 'Admin 2', 'Admin 3', 'Relations']))) ||
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin != null &&
+                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin.hasAny(['Admin', 'Admin 2', 'Admin 3', 'Relations']))
+             );
+    }
+    // Admin 3: sandbox mode - can read everything but writes go to admin3Overrides only
+    function isAdmin3() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.statuses != null &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.statuses.hasAny(['Admin 3']);
+    }
+    // Full admin: can write to users/investments (not Admin 3 - they use overrides)
+    function isFullAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              (
                (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.statuses != null &&
                 (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.statuses.hasAny(['Admin', 'Admin 2', 'Relations']))) ||
@@ -40,11 +55,16 @@ service cloud.firestore {
       // Allow admins to read any user document (including listing)
       allow get, list: if isAdmin();
       
-      // Allow admins to update any user document
-      allow update: if isAdmin();
+      // Full admins can update; Admin 3 uses admin3Overrides instead
+      allow update: if isFullAdmin();
       
       // Allow admins to create user documents
-      allow create: if isAdmin();
+      allow create: if isFullAdmin();
+    }
+
+    // Admin 3 sandbox overrides (changes visible only to that Admin 3)
+    match /admin3Overrides/{admin3UserId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == admin3UserId;
     }
 
     // News collection
@@ -181,8 +201,8 @@ service cloud.firestore {
       allow create, update, delete: if isAuthenticated() &&
         request.resource.data.userId == request.auth.uid;
 
-      // Admins can write any performance data
-      allow create, update, delete: if isAdmin();
+      // Full admins can write; Admin 3 uses overrides (never writes here)
+      allow create, update, delete: if isFullAdmin();
     }
   }
 }

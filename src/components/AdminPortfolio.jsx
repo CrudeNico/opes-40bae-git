@@ -1,11 +1,123 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore'
+import { getAdmin3Overrides, saveAdmin3UserOverride } from '../utils/admin3Overrides'
 import './AdminPortfolio.css'
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function formatCompact(num) {
+  if (num >= 1e6) return `€${(num / 1e6).toFixed(2)}M`
+  if (num >= 1e3) {
+    const k = num / 1e3
+    return `€${k.toFixed(1)}k`.replace('.0k', 'k')
+  }
+  return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function createSeededRandom(seed) {
+  return function() {
+    seed = Math.imul(1103515245, seed) + 12345
+    return ((seed >>> 0) % 2147483648) / 2147483648
+  }
+}
+
+function generateAdmin3PortfolioData() {
+  const rand = createSeededRandom(42)
+  const initialBalance = 100000
+  const targetFinal = 4600000
+  const targetTotalDeposits = 2150000
+  const targetTotalWithdrawals = 890000
+  const numMonths = 60
+  const rnd = () => -5 + rand() * 15
+  const rawPcts = Array.from({ length: numMonths }, () => rnd())
+  let product = 1
+  rawPcts.forEach((p) => { product *= 1 + p / 100 })
+  const scale = Math.pow(targetFinal / initialBalance / product, 1 / numMonths)
+  const pcts = rawPcts.map((p) => {
+    const r = (1 + p / 100) * scale - 1
+    return r * 100
+  })
+  const depositMonths = []
+  const withdrawalMonths = []
+  for (let i = 0; i < numMonths; i++) {
+    if (rand() < 0.35) depositMonths.push(i)
+    if (rand() < 0.2) withdrawalMonths.push(i)
+  }
+  const depositsToAlloc = targetTotalDeposits - initialBalance
+  const depositAmounts = new Array(numMonths).fill(0)
+  if (depositMonths.length > 0) {
+    const perDeposit = depositsToAlloc / depositMonths.length
+    depositMonths.forEach((i) => { depositAmounts[i] = Math.round(perDeposit * 100) / 100 })
+  }
+  const perWithdrawal = withdrawalMonths.length > 0 ? targetTotalWithdrawals / withdrawalMonths.length : 0
+  const withdrawalAmounts = new Array(numMonths).fill(0)
+  withdrawalMonths.forEach((i) => { withdrawalAmounts[i] = Math.round(perWithdrawal * 100) / 100 })
+  const fixedGrowthRates = {
+    'February_2024': -6.30,
+    'February_2025': -3,
+    'March_2026': 0.42
+  }
+  const now = new Date()
+  const monthlyHistory = []
+  let balance = initialBalance
+  let totalDeposits = initialBalance
+  let totalWithdrawals = 0
+  for (let i = 0; i < numMonths; i++) {
+    const monthsAgo = numMonths - 1 - i
+    const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
+    const month = MONTH_NAMES[d.getMonth()]
+    const year = d.getFullYear()
+    const key = `${month}_${year}`
+    let pct = fixedGrowthRates[key] !== undefined ? fixedGrowthRates[key] : Math.min(pcts[i], 10)
+    if (fixedGrowthRates[key] === undefined && rand() < 0.8) {
+      pct -= 0.5 + rand() * 1.5
+    }
+    const growthAmount = balance * (pct / 100)
+    const startingBalance = balance
+    balance = balance + growthAmount
+    const depositAmount = depositAmounts[i] || 0
+    const withdrawalAmount = withdrawalAmounts[i] || 0
+    const depositDate = depositAmount ? `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(rand() * 28) + 1).padStart(2, '0')}` : null
+    const withdrawalDate = withdrawalAmount ? `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(rand() * 28) + 1).padStart(2, '0')}` : null
+    const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate()
+    const depositDay = depositDate ? parseInt(depositDate.slice(-2), 10) : 1
+    const withdrawalDay = withdrawalDate ? parseInt(withdrawalDate.slice(-2), 10) : 1
+    const depositGrowth = depositAmount ? depositAmount * (pct / 100) * Math.max(0, (daysInMonth - depositDay + 1) / daysInMonth) : 0
+    const withdrawalGrowth = withdrawalAmount ? withdrawalAmount * (pct / 100) * (daysInMonth - withdrawalDay) / daysInMonth : 0
+    balance += depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+    totalDeposits += depositAmount
+    totalWithdrawals += withdrawalAmount
+    monthlyHistory.push({
+      month,
+      year: year.toString(),
+      percentageGrowth: Math.round(pct * 100) / 100,
+      growthAmount: Math.round(growthAmount * 100) / 100,
+      depositAmount,
+      depositDate,
+      withdrawalAmount,
+      withdrawalDate,
+      startingBalance: Math.round(startingBalance * 100) / 100,
+      endingBalance: Math.round(balance * 100) / 100,
+      depositGrowth: Math.round(depositGrowth * 100) / 100,
+      withdrawalGrowth: Math.round(withdrawalGrowth * 100) / 100,
+      updatedAt: new Date().toISOString()
+    })
+  }
+  return {
+    initialInvestment: initialBalance,
+    currentBalance: Math.round(balance * 100) / 100,
+    totalDeposits,
+    totalWithdrawals,
+    monthlyHistory,
+    monthlyReturnRate: 0.03,
+    monthlyAdditions: 0
+  }
+}
+
 const AdminPortfolio = ({ user, userStatuses = [] }) => {
-  // Check if current user is Admin 2 (has limited permissions)
   const isAdmin2 = userStatuses && (userStatuses.includes('Admin 2') || userStatuses.includes('Relations'))
-  const canAddPerformance = !isAdmin2
+  const isAdmin3 = userStatuses && userStatuses.includes('Admin 3')
+  const canAddPerformance = !isAdmin2 && !isAdmin3
   
   const [loading, setLoading] = useState(true)
   const [portfolioData, setPortfolioData] = useState(null)
@@ -35,6 +147,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const [loadingEdit, setLoadingEdit] = useState(false)
   const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
   const [loadingInvestorAccounts, setLoadingInvestorAccounts] = useState(true)
+  const [portfolioOwnerId, setPortfolioOwnerId] = useState(null)
 
   useEffect(() => {
     if (user) {
@@ -42,7 +155,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       loadTotalInvestorAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isAdmin2])
+  }, [user, isAdmin2, isAdmin3])
 
   // Helper function to sort monthly history chronologically
   const sortMonthlyHistory = (history) => {
@@ -127,60 +240,47 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     try {
       const db = getFirestore()
       
-      // If Admin 2, find and load the Admin's portfolio data
-      if (isAdmin2) {
+      if (isAdmin2 || isAdmin3) {
         const usersCollection = collection(db, 'users')
         const usersSnapshot = await getDocs(usersCollection)
-        
-        // Find the Admin user (not Admin 2, just Admin)
+        const overrides = isAdmin3 && user?.uid ? await getAdmin3Overrides(user.uid) : {}
         let adminUser = null
         usersSnapshot.forEach((docSnapshot) => {
           const userData = docSnapshot.data()
           let statuses = userData.statuses || []
-          
-          // Handle old format (isAdmin as array)
-          if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
-            statuses = userData.isAdmin
-          }
-          // Handle old format (isAdmin as boolean)
-          if (statuses.length === 0 && userData.isAdmin === true) {
-            statuses = ['Admin']
-          }
-          
-          // Find user with 'Admin' status but not 'Admin 2'
-          if (statuses.includes('Admin') && !statuses.includes('Admin 2') && !statuses.includes('Relations')) {
+          if (statuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) statuses = userData.isAdmin
+          if (statuses.length === 0 && userData.isAdmin === true) statuses = ['Admin']
+          if (statuses.includes('Admin') && !statuses.includes('Admin 2') && !statuses.includes('Admin 3') && !statuses.includes('Relations')) {
             adminUser = { id: docSnapshot.id, ...userData }
           }
         })
-        
-        if (adminUser && adminUser.investmentData) {
-          // Sort monthly history before setting
-          const sortedData = {
-            ...adminUser.investmentData,
-            monthlyHistory: sortMonthlyHistory(adminUser.investmentData.monthlyHistory || [])
-          }
-          setPortfolioData(sortedData)
+        if (isAdmin3) {
+          setPortfolioOwnerId(adminUser?.id || null)
+          setPortfolioData(generateAdmin3PortfolioData())
+        } else if (adminUser) {
+          setPortfolioOwnerId(adminUser.id)
+          let invData = adminUser.investmentData || null
+          if (overrides[adminUser.id]?.investmentData) invData = overrides[adminUser.id].investmentData
+          if (invData) {
+            const sortedData = { ...invData, monthlyHistory: sortMonthlyHistory(invData.monthlyHistory || []) }
+            setPortfolioData(sortedData)
+          } else setPortfolioData(null)
         } else {
-          // Admin doesn't have portfolio yet
+          setPortfolioOwnerId(null)
           setPortfolioData(null)
         }
       } else {
-        // For full Admin, load their own portfolio data
+        setPortfolioOwnerId(user.uid)
         const userDoc = await getDoc(doc(db, 'users', user.uid))
-        
         if (userDoc.exists()) {
           const userData = userDoc.data()
           if (userData.investmentData) {
-            // Sort monthly history before setting
             const sortedData = {
               ...userData.investmentData,
               monthlyHistory: sortMonthlyHistory(userData.investmentData.monthlyHistory || [])
             }
             setPortfolioData(sortedData)
-          } else {
-            // Admin doesn't have portfolio yet - they can initialize it
-            setPortfolioData(null)
-          }
+          } else setPortfolioData(null)
         }
       }
     } catch (error) {
@@ -244,33 +344,28 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
   const handleSaveEdit = async (e) => {
     e.preventDefault()
-    
     if (!canAddPerformance) {
       setError('You do not have permission to edit monthly performance.')
       return
     }
-    
     if (!portfolioData || editingRecordIndex === null) {
       setError('Invalid edit operation.')
       return
     }
-
     setLoadingEdit(true)
     setError('')
     setSuccess('')
-
     try {
       const db = getFirestore()
-      const userDocRef = doc(db, 'users', user.uid)
+      const ownerId = portfolioOwnerId || user.uid
+      const userDocRef = doc(db, 'users', ownerId)
       const userDoc = await getDoc(userDocRef)
-      
       if (!userDoc.exists()) {
         setError('User document not found')
         return
       }
-
       const userData = userDoc.data()
-      const currentInvestmentData = userData.investmentData || {}
+      const currentInvestmentData = (isAdmin3 ? portfolioData : userData.investmentData) || {}
       // Sort the existing history first to ensure we're working with chronological order
       const existingHistory = sortMonthlyHistory(currentInvestmentData.monthlyHistory || [])
       
@@ -415,12 +510,15 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         lastUpdated: new Date().toISOString()
       }
 
-      await updateDoc(userDocRef, {
-        investmentData: updatedInvestmentData,
-        updatedAt: new Date().toISOString()
-      })
-
-      setSuccess(`Monthly record for ${editFormData.month} ${editFormData.year} updated successfully!`)
+      if (isAdmin3 && user?.uid) {
+        await saveAdmin3UserOverride(user.uid, ownerId, { investmentData: updatedInvestmentData })
+      } else {
+        await updateDoc(userDocRef, {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
+      setSuccess(isAdmin3 ? 'Saved to your sandbox (changes visible only to you)' : `Monthly record for ${editFormData.month} ${editFormData.year} updated successfully!`)
       setEditingRecordIndex(null)
       setEditFormData({
         month: '',
@@ -445,34 +543,28 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
   const handleAddPerformance = async (e) => {
     e.preventDefault()
-    
-    // Prevent Admin 2 from adding performance
     if (!canAddPerformance) {
       setError('You do not have permission to add monthly performance.')
       return
     }
-    
     if (!portfolioData) {
       setError('Portfolio data not found. Please initialize your portfolio first.')
       return
     }
-
     setLoadingMonthlyUpdate(true)
     setError('')
     setSuccess('')
-
     try {
       const db = getFirestore()
-      const userDocRef = doc(db, 'users', user.uid)
+      const ownerId = portfolioOwnerId || user.uid
+      const userDocRef = doc(db, 'users', ownerId)
       const userDoc = await getDoc(userDocRef)
-      
       if (!userDoc.exists()) {
         setError('User document not found')
         return
       }
-
       const userData = userDoc.data()
-      const currentInvestmentData = userData.investmentData || {}
+      const currentInvestmentData = (isAdmin3 ? portfolioData : userData.investmentData) || {}
       const currentBalance = currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
       const totalDeposits = currentInvestmentData.totalDeposits || currentInvestmentData.initialInvestment || 0
       const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
@@ -580,12 +672,15 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         lastUpdated: new Date().toISOString()
       }
 
-      await updateDoc(userDocRef, {
-        investmentData: updatedInvestmentData,
-        updatedAt: new Date().toISOString()
-      })
-
-      setSuccess(`Monthly update for ${monthlyUpdate.month} ${monthlyUpdate.year} saved successfully!`)
+      if (isAdmin3 && user?.uid) {
+        await saveAdmin3UserOverride(user.uid, ownerId, { investmentData: updatedInvestmentData })
+      } else {
+        await updateDoc(userDocRef, {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
+      setSuccess(isAdmin3 ? 'Saved to your sandbox (changes visible only to you)' : `Monthly update for ${monthlyUpdate.month} ${monthlyUpdate.year} saved successfully!`)
       setMonthlyUpdate({
         month: '',
         year: '',
@@ -683,10 +778,12 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     }
     
     if (monthlyHistory.length > 0) {
+      const firstYear = monthlyHistory[0]?.year || new Date().getFullYear()
       data.push({
         month: -monthlyHistory.length,
         balance: initialInvestment,
         label: 'Start',
+        year: firstYear,
         isHistorical: true
       })
       
@@ -695,6 +792,8 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           month: index - monthlyHistory.length + 1,
           balance: record.endingBalance,
           label: formatLabel(record.month, record.year),
+          year: record.year,
+          monthNum: getMonthNumber(record.month),
           isHistorical: true
         })
       })
@@ -703,6 +802,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         month: 0,
         balance: currentBalance,
         label: 'Now',
+        year: new Date().getFullYear().toString(),
         isHistorical: false
       })
     }
@@ -746,6 +846,8 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         month: monthlyHistory.length + month,
         balance: projectedBalance,
         label: formatLabel(projectionMonth, projectionYear),
+        year: projectionYear.toString(),
+        monthNum: projectionMonth,
         isHistorical: false
       })
     }
@@ -757,6 +859,12 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const maxBalance = Math.max(...projectionData.map(d => d.balance))
   const minBalance = Math.min(...projectionData.map(d => d.balance))
   const range = maxBalance - minBalance || 1
+
+  // First point of each year for x-axis labels (one label per year)
+  const yearLabelIndices = {}
+  projectionData.forEach((p, i) => {
+    if (p.year && yearLabelIndices[p.year] === undefined) yearLabelIndices[p.year] = i
+  })
 
   return (
     <div className="admin-portfolio-container">
@@ -1227,33 +1335,34 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                 const totalPoints = projectionData.length
                 const x = 50 + (index * (700 / (totalPoints - 1)))
                 const y = 350 - ((point.balance - minBalance) / range * 300)
+                const showAmount = index % 6 === 0
+                const showYearLabel = point.year && yearLabelIndices[point.year] === index
                 return (
                   <g key={index}>
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r="6"
-                      fill={point.isHistorical ? "#10b981" : "#3b82f6"}
-                    />
-                    <text
-                      x={x}
-                      y={y - 15}
-                      fill="#1f2937"
-                      fontSize="11"
-                      textAnchor="middle"
-                      fontWeight="600"
-                    >
-                      €{(point.balance / 1000).toFixed(1)}k
-                    </text>
-                    <text
-                      x={x}
-                      y={380}
-                      fill="#6b7280"
-                      fontSize="11"
-                      textAnchor="middle"
-                    >
-                      {point.label}
-                    </text>
+                    {showAmount && (
+                      <text
+                        x={x}
+                        y={y - 15}
+                        fill="#1f2937"
+                        fontSize="11"
+                        textAnchor="middle"
+                        fontWeight="600"
+                      >
+                        {formatCompact(point.balance)}
+                      </text>
+                    )}
+                    {showYearLabel && (
+                      <text
+                        x={x}
+                        y={380}
+                        fill="#6b7280"
+                        fontSize="12"
+                        textAnchor="middle"
+                        fontWeight="500"
+                      >
+                        {point.year}
+                      </text>
+                    )}
                   </g>
                 )
               })}
@@ -1294,7 +1403,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
             <div className="metric-content">
               <h4 className="metric-label">Current Balance</h4>
-              <p className="metric-value">€{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="metric-value">{formatCompact(currentBalance)}</p>
             </div>
           </div>
 
@@ -1308,7 +1417,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             <div className="metric-content">
               <h4 className="metric-label">Total Gain</h4>
               <p className={`metric-value ${totalGain >= 0 ? 'positive' : 'negative'}`}>
-                €{totalGain.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCompact(totalGain)}
               </p>
             </div>
           </div>
@@ -1322,7 +1431,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             <div className="metric-content">
               <h4 className="metric-label">Total Investor Accounts</h4>
               <p className="metric-value">
-                {loadingInvestorAccounts ? 'Loading...' : `€${totalInvestorAccounts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                {loadingInvestorAccounts ? 'Loading...' : formatCompact(isAdmin3 ? 1850000 : totalInvestorAccounts)}
               </p>
             </div>
           </div>
@@ -1335,7 +1444,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
             <div className="metric-content">
               <h4 className="metric-label">Average Monthly Input</h4>
-              <p className="metric-value">€{averageMonthlyInput.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="metric-value">{formatCompact(averageMonthlyInput)}</p>
             </div>
           </div>
 
@@ -1347,7 +1456,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
             <div className="metric-content">
               <h4 className="metric-label">Total Deposits</h4>
-              <p className="metric-value">€{totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="metric-value">{formatCompact(totalDeposits)}</p>
             </div>
           </div>
 
@@ -1359,7 +1468,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
             <div className="metric-content">
               <h4 className="metric-label">Total Withdrawals</h4>
-              <p className="metric-value">€{totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="metric-value">{formatCompact(totalWithdrawals)}</p>
             </div>
           </div>
 
@@ -1371,7 +1480,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
             <div className="metric-content">
               <h4 className="metric-label">Initial Investment</h4>
-              <p className="metric-value">€{initialInvestment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="metric-value">{formatCompact(initialInvestment)}</p>
             </div>
           </div>
 

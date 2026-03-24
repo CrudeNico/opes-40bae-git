@@ -20,27 +20,67 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [totalDailyPerformance, setTotalDailyPerformance] = useState(0)
   const [performanceOwnerId, setPerformanceOwnerId] = useState(null)
   const [isAdmin2, setIsAdmin2] = useState(false)
+  const [isAdmin3, setIsAdmin3] = useState(false)
   const dailyPerfUnsubscribeRef = useRef(null)
+
+  const ADMIN3_CURRENT_BALANCE = 7110000
+  const ADMIN3_TOTAL_INVESTOR_ACCOUNTS = 1850000
+  const ADMIN3_INVESTOR_PAYOUT_TARGET = 37500
+  const ADMIN3_MONTHLY_PROJECTION = 7110000 * 0.09
+  const ADMIN3_TRADE_DAYS = [2, 3, 4, 18, 19, 20]
+  const ADMIN3_FIXED_TRADES = {
+    2: { type: 'win', amount: 5051.30 },
+    3: { type: 'win', amount: 10460.32 },
+    4: { type: 'win', amount: 2744.82 },
+    18: { type: 'win', amount: 3641 },
+    19: { type: 'win', amount: 6178.15 },
+    20: { type: 'win', amount: 1647.99 }
+  }
+
+  function generateAdmin3DailyPerformances() {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const perf = {}
+    for (const day of ADMIN3_TRADE_DAYS) {
+      const d = new Date(year, month, day)
+      if (d.getDay() === 0 || d.getDay() === 6) continue
+      const trade = ADMIN3_FIXED_TRADES[day]
+      if (trade) perf[day] = { ...trade }
+    }
+    return perf
+  }
 
   useEffect(() => {
     loadOverviewData()
   }, [user])
 
-  // Load saved calendar month from localStorage
+  // Load saved calendar month from localStorage (skip for Admin 3 - always current month)
   useEffect(() => {
+    if (userStatuses?.includes('Admin 3')) return
     const savedMonth = localStorage.getItem('adminOverviewCalendarMonth')
     const savedYear = localStorage.getItem('adminOverviewCalendarYear')
     if (savedMonth !== null && savedYear !== null) {
       setCalendarMonth(parseInt(savedMonth))
       setCalendarYear(parseInt(savedYear))
     }
-  }, [])
+  }, [userStatuses])
 
-  // Save calendar month to localStorage when it changes
+  // Save calendar month to localStorage when it changes (skip for Admin 3)
   useEffect(() => {
+    if (userStatuses?.includes('Admin 3')) return
     localStorage.setItem('adminOverviewCalendarMonth', calendarMonth.toString())
     localStorage.setItem('adminOverviewCalendarYear', calendarYear.toString())
-  }, [calendarMonth, calendarYear])
+  }, [calendarMonth, calendarYear, userStatuses])
+
+  // Admin 3: force current month only
+  useEffect(() => {
+    if (isAdmin3 || userStatuses?.includes('Admin 3')) {
+      const now = new Date()
+      setCalendarMonth(now.getMonth())
+      setCalendarYear(now.getFullYear())
+    }
+  }, [userStatuses, isAdmin3])
 
   // Load daily performances when month/year or owner changes
   useEffect(() => {
@@ -51,7 +91,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         dailyPerfUnsubscribeRef.current = null
       }
     }
-  }, [user, calendarMonth, calendarYear, performanceOwnerId])
+  }, [user, calendarMonth, calendarYear, performanceOwnerId, isAdmin3, userStatuses])
 
   // Calculate total daily performance
   useEffect(() => {
@@ -82,15 +122,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           const userData = userDoc.data()
           const docStatuses = userData.statuses || []
           
-          // Check if user is Admin 2 (has limited permissions)
           const isAdmin2Local = docStatuses && (docStatuses.includes('Admin 2') || docStatuses.includes('Relations'))
+          const isAdmin3Local = docStatuses && docStatuses.includes('Admin 3')
           setIsAdmin2(isAdmin2Local)
-          
+          setIsAdmin3(isAdmin3Local)
           let portfolioData = null
           let ownerId = user.uid
-          
-          // If Admin 2, find and use the main Admin's data
-          if (isAdmin2Local) {
+          // If Admin 2 or Admin 3, find and use the main Admin's data
+          if (isAdmin2Local || isAdmin3Local) {
             const usersCollection = collection(db, 'users')
             const usersSnapshot = await getDocs(usersCollection)
             
@@ -110,7 +149,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               }
               
               // Find user with 'Admin' status but not 'Admin 2'
-              if (statuses.includes('Admin') && !statuses.includes('Admin 2') && !statuses.includes('Relations')) {
+              if (statuses.includes('Admin') && !statuses.includes('Admin 2') && !statuses.includes('Admin 3') && !statuses.includes('Relations')) {
                 adminUser = { id: docSnapshot.id, ...data }
               }
             })
@@ -130,8 +169,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           
           setPerformanceOwnerId(ownerId)
           
-          // Calculate current balance
-          if (portfolioData) {
+          if (isAdmin3Local) {
+            setCurrentBalance(ADMIN3_CURRENT_BALANCE)
+          } else if (portfolioData) {
             const initialInvestment = portfolioData.initialInvestment || 0
             const balance = portfolioData.currentBalance || initialInvestment
             setCurrentBalance(balance)
@@ -139,6 +179,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             setCurrentBalance(0)
           }
         }
+      }
+
+      if (userStatuses?.includes('Admin 3')) {
+        setIsAdmin3(true)
       }
 
       // Load total investor accounts
@@ -195,7 +239,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           }
         }
       })
-      setTotalInvestorAccounts(total)
+      if (userStatuses?.includes('Admin 3')) {
+        setTotalInvestorAccounts(ADMIN3_TOTAL_INVESTOR_ACCOUNTS)
+      } else {
+        setTotalInvestorAccounts(total)
+      }
 
       // Load pending consultations
       const consultationsQuery = query(
@@ -222,8 +270,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       })
       setUserMessageAlerts(unreadUserIds.size)
 
-      // Calculate investor payout target
-      await calculateInvestorPayoutTarget(db)
+      if (userStatuses?.includes('Admin 3')) {
+        setInvestorPayoutTarget(ADMIN3_INVESTOR_PAYOUT_TARGET)
+      } else {
+        await calculateInvestorPayoutTarget(db)
+      }
 
     } catch (error) {
       console.error('Error loading overview data:', error)
@@ -345,22 +396,33 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const loadDailyPerformances = () => {
+    const now = new Date()
+    const isCurrentMonth = calendarMonth === now.getMonth() && calendarYear === now.getFullYear()
+
+    if ((isAdmin3 || userStatuses?.includes('Admin 3')) && isCurrentMonth) {
+      if (dailyPerfUnsubscribeRef.current) {
+        dailyPerfUnsubscribeRef.current()
+        dailyPerfUnsubscribeRef.current = null
+      }
+      setDailyPerformances(generateAdmin3DailyPerformances())
+      return
+    }
+
     const ownerId = performanceOwnerId || user?.uid
     if (!ownerId) return
 
-    // Clean up any existing listener
     if (dailyPerfUnsubscribeRef.current) {
       dailyPerfUnsubscribeRef.current()
       dailyPerfUnsubscribeRef.current = null
     }
-    
+
     const db = getFirestore()
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                        'July', 'August', 'September', 'October', 'November', 'December']
     const monthName = monthNames[calendarMonth]
     const docId = `dailyPerformance_${ownerId}_${calendarYear}_${monthName}`
     const perfDocRef = doc(db, 'adminDailyPerformance', docId)
-    
+
     const unsubscribe = onSnapshot(perfDocRef, (perfDoc) => {
       if (perfDoc.exists()) {
         const data = perfDoc.data()
@@ -391,8 +453,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const handleSaveDayPerformance = async () => {
-    // Admin 2 cannot edit performance
-    if (isAdmin2) return
+    if (isAdmin2 || isAdmin3 || userStatuses?.includes('Admin 3')) return
 
     if (!selectedDay || !dayPerformanceForm.amount || parseFloat(dayPerformanceForm.amount) <= 0) {
       return
@@ -435,8 +496,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const handleDeleteDayPerformance = async () => {
-    // Admin 2 cannot edit performance
-    if (isAdmin2) return
+    if (isAdmin2 || isAdmin3 || userStatuses?.includes('Admin 3')) return
     if (!selectedDay) return
 
     try {
@@ -533,18 +593,19 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         <tr>
           <td>${dateLabel}</td>
           <td>${perf.type === 'win' ? 'Win' : 'Loss'}</td>
-          <td style="text-align:right;">${signedAmount >= 0 ? '+' : ''}${signedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td style="text-align:right;">€${signedAmount >= 0 ? '+' : ''}${signedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
       `
     }).join('')
 
-    const totalPnLPercent = currentBalance > 0 ? (totalPnL / currentBalance) * 100 : 0
+    const bal = (isAdmin3 || userStatuses?.includes('Admin 3')) ? ADMIN3_CURRENT_BALANCE : currentBalance
+    const totalPnLPercent = bal > 0 ? (totalPnL / bal) * 100 : 0
 
     const summaryHtml = `
       <h2>Summary</h2>
-      <p><strong>Total Net Result:</strong> ${totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+      <p><strong>Total Net Result:</strong> €${totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
       <p><strong>Total Net % vs Current Balance:</strong> ${totalPnLPercent.toFixed(2)}%</p>
-      <p><strong>Current Balance:</strong> ${currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+      <p><strong>Current Balance:</strong> €${bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
     `
 
     const html = `
@@ -638,13 +699,15 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     }
   }
 
-  // Calculate monthly projection (7% increase)
-  const monthlyProjection = currentBalance * 0.07
+  const displayBalance = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_CURRENT_BALANCE : currentBalance
+  const displayInvestorAccounts = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_TOTAL_INVESTOR_ACCOUNTS : totalInvestorAccounts
+  const displayPayoutTarget = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_INVESTOR_PAYOUT_TARGET : investorPayoutTarget
+  const displayMonthlyProjection = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_MONTHLY_PROJECTION : displayBalance * 0.07
+
+  const monthlyProjection = displayMonthlyProjection
   
-  // Progress bar configuration
-  // First target marker: fixed at 1/3 (33.33%) of the bar (investor payout target)
   const firstTargetPosition = 33.33
-  const secondTargetAmount = investorPayoutTarget
+  const secondTargetAmount = displayPayoutTarget
   
   // Calculate progress based on daily performance
   // We map daily performance to the bar in two segments:
@@ -654,28 +717,22 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   let progressPercentage = 0
   
   if (monthlyProjection > 0 && progressAmount !== 0) {
-    // Handle negative performance (losses) separately
     if (progressAmount < 0) {
-      // Negative progress: show red section proportional to magnitude vs monthlyProjection
       progressPercentage = -Math.min(Math.abs(progressAmount) / monthlyProjection * 100, 100)
     } else {
-      // Positive progress
-      if (secondTargetAmount > 0) {
+      const useAdmin3Bar = (userStatuses?.includes('Admin 3') || isAdmin3) && secondTargetAmount > monthlyProjection
+      if (useAdmin3Bar) {
+        progressPercentage = Math.min((progressAmount / monthlyProjection) * 100, 100)
+      } else if (secondTargetAmount > 0 && secondTargetAmount <= monthlyProjection) {
         if (progressAmount <= secondTargetAmount) {
-          // Before reaching investor payout target: fill within first 1/3
-          progressPercentage = Math.min(
-            (progressAmount / secondTargetAmount) * firstTargetPosition,
-            firstTargetPosition
-          )
+          progressPercentage = Math.min((progressAmount / secondTargetAmount) * firstTargetPosition, firstTargetPosition)
         } else {
-          // Beyond investor payout target: fill remaining 2/3 up to monthlyProjection
           const extra = Math.min(progressAmount, monthlyProjection) - secondTargetAmount
           const remainingNeeded = Math.max(monthlyProjection - secondTargetAmount, 0.0001)
           const extraRatio = Math.min(extra / remainingNeeded, 1)
           progressPercentage = firstTargetPosition + extraRatio * (100 - firstTargetPosition)
         }
       } else {
-        // Fallback: map directly to monthly projection
         progressPercentage = Math.min((progressAmount / monthlyProjection) * 100, 100)
       }
     }
@@ -709,7 +766,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           <div className="widget-header">
             <h3 className="widget-title">Current Balance</h3>
           </div>
-          <div className="widget-value">{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="widget-value">€{displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
         </div>
 
         {/* Total Investor Accounts Widget */}
@@ -717,7 +774,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           <div className="widget-header">
             <h3 className="widget-title">Total Investor Accounts</h3>
           </div>
-          <div className="widget-value">{totalInvestorAccounts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="widget-value">€{displayInvestorAccounts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
         </div>
 
         {/* Pending Consultations Widget */}
@@ -748,13 +805,13 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               className="target-label-amount target-1"
               style={{ right: '0%' }}
             >
-              {monthlyProjection.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              €{monthlyProjection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div 
               className="target-label-amount target-2"
               style={{ left: '33.33%' }}
             >
-              {secondTargetAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              €{secondTargetAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
             {/* Current progress amount label */}
             {progressAmount !== 0 && !hideCurrentProgressLabel && progressPercentage > 0 && progressPercentage <= 100 && (
@@ -762,7 +819,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 className="current-progress-label"
                 style={{ left: `${Math.min(Math.max(progressPercentage, 5), 95)}%` }}
               >
-                {progressAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                €{progressAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             )}
           </div>
@@ -799,10 +856,12 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         {/* Calendar Widget */}
         <div className="calendar-widget">
           <div className="calendar-header">
-            <button 
+            <button
               className="calendar-nav-button"
-              onClick={() => handleMonthNavigation('prev')}
+              onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && handleMonthNavigation('prev')}
               aria-label="Previous month"
+              disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
+              style={{ opacity: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 0.4 : 1, cursor: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 'not-allowed' : 'pointer' }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -811,10 +870,12 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             <h3 className="calendar-title">
               {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h3>
-            <button 
+            <button
               className="calendar-nav-button"
-              onClick={() => handleMonthNavigation('next')}
+              onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && handleMonthNavigation('next')}
               aria-label="Next month"
+              disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
+              style={{ opacity: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 0.4 : 1, cursor: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 'not-allowed' : 'pointer' }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -839,9 +900,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                   key={day}
                   className={`calendar-day ${isCurrent ? 'current-day' : ''} ${performance ? (performance.type === 'win' ? 'day-win' : 'day-loss') : ''}`}
                   onClick={() => {
-                    if (!isAdmin2) {
-                      handleDayClick(day)
-                    }
+                    if (!isAdmin2) handleDayClick(day)
                   }}
                 >
                   <span className="day-number">{day}</span>
@@ -883,13 +942,15 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                   <div className="performance-type-buttons">
                     <button
                       className={`type-button ${dayPerformanceForm.type === 'win' ? 'active' : ''}`}
-                      onClick={() => setDayPerformanceForm({ ...dayPerformanceForm, type: 'win' })}
+                      onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && setDayPerformanceForm({ ...dayPerformanceForm, type: 'win' })}
+                      disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
                     >
                       Win
                     </button>
                     <button
                       className={`type-button ${dayPerformanceForm.type === 'loss' ? 'active' : ''}`}
-                      onClick={() => setDayPerformanceForm({ ...dayPerformanceForm, type: 'loss' })}
+                      onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && setDayPerformanceForm({ ...dayPerformanceForm, type: 'loss' })}
+                      disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
                     >
                       Loss
                     </button>
@@ -902,28 +963,33 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                     step="0.01"
                     min="0"
                     value={dayPerformanceForm.amount}
-                    onChange={(e) => setDayPerformanceForm({ ...dayPerformanceForm, amount: e.target.value })}
+                    onChange={(e) => !(isAdmin3 || userStatuses?.includes('Admin 3')) && setDayPerformanceForm({ ...dayPerformanceForm, amount: e.target.value })}
                     placeholder="Enter amount"
                     className="form-input"
+                    readOnly={isAdmin3 || userStatuses?.includes('Admin 3')}
                   />
                 </div>
               </div>
               <div className="day-modal-footer">
                 <button className="btn-secondary" onClick={() => setShowDayModal(false)}>
-                  Cancel
+                  {(isAdmin3 || userStatuses?.includes('Admin 3')) ? 'Close' : 'Cancel'}
                 </button>
-                {dailyPerformances[selectedDay?.toString()] && (
-                  <button className="btn-delete" onClick={handleDeleteDayPerformance}>
-                    Delete
-                  </button>
+                {!(isAdmin3 || userStatuses?.includes('Admin 3')) && (
+                  <>
+                    {dailyPerformances[selectedDay?.toString()] && (
+                      <button className="btn-delete" onClick={handleDeleteDayPerformance}>
+                        Delete
+                      </button>
+                    )}
+                    <button 
+                      className="btn-primary" 
+                      onClick={handleSaveDayPerformance}
+                      disabled={!dayPerformanceForm.amount || parseFloat(dayPerformanceForm.amount) <= 0}
+                    >
+                      Save
+                    </button>
+                  </>
                 )}
-                <button 
-                  className="btn-primary" 
-                  onClick={handleSaveDayPerformance}
-                  disabled={!dayPerformanceForm.amount || parseFloat(dayPerformanceForm.amount) <= 0}
-                >
-                  Save
-                </button>
               </div>
             </div>
           </div>

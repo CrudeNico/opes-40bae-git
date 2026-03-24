@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
+import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
+import { generateAdmin3SampleUsers } from '../utils/admin3SampleUsers'
 import './AdminUsersManagement.css'
 
-const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
-  // Check if current user is Admin 2 (has limited permissions)
-  // Explicitly check for Admin 2 status - if found, restrict permissions
+const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) => {
   const isAdmin2 = currentUserStatuses && (currentUserStatuses.includes('Admin 2') || currentUserStatuses.includes('Relations'))
-  const canModifyStatuses = !isAdmin2
-  const canApproveInvestments = !isAdmin2
-  const canEditInvestments = !isAdmin2
+  const isAdmin3 = currentUserStatuses && currentUserStatuses.includes('Admin 3')
+  // Admin 3 can modify but saves to overrides only; Admin 2 cannot modify
+  const canModifyStatuses = !isAdmin2 || isAdmin3
+  const canApproveInvestments = !isAdmin2 || isAdmin3
+  const canEditInvestments = !isAdmin2 || isAdmin3
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [userStatuses, setUserStatuses] = useState({
     Admin: false,
     'Admin 2': false,
+    'Admin 3': false,
     Investor: false,
     Trader: false,
     Learner: false,
@@ -27,8 +30,22 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
   const [loadingApprove, setLoadingApprove] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [editedProfile, setEditedProfile] = useState({ displayName: '', email: '', profileImageUrl: '' })
   
-  const availableStatuses = ['Admin', 'Admin 2', 'Investor', 'Trader', 'Learner', 'Community']
+  const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Learner', 'Community']
+  const placeholderColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
+
+  const getProfilePlaceholder = (u) => {
+    if (u?.profilePlaceholder) return u.profilePlaceholder
+    const key = `${u?.id || ''}${u?.displayName || ''}${u?.email || ''}`
+    let hash = 0
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+    return {
+      letter: (u?.displayName || u?.email || 'U').charAt(0).toUpperCase(),
+      bgColor: placeholderColors[hash % placeholderColors.length]
+    }
+  }
 
   useEffect(() => {
     loadUsers()
@@ -51,7 +68,8 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
       // Initialize status checkboxes based on user's current statuses
       const statusMap = {
         Admin: currentStatuses.includes('Admin'),
-        'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'), // Support old Relations status
+        'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'),
+        'Admin 3': currentStatuses.includes('Admin 3'),
         Investor: currentStatuses.includes('Investor'),
         Trader: currentStatuses.includes('Trader'),
         Learner: currentStatuses.includes('Learner'),
@@ -69,6 +87,12 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
       }
       // Always reset edit mode when selecting a user - Admin 2 will never be able to enter edit mode
       setEditingInvestment(false)
+      setEditingProfile(false)
+      setEditedProfile({
+        displayName: selectedUser.displayName || '',
+        email: selectedUser.email || '',
+        profileImageUrl: selectedUser.profileImageUrl || ''
+      })
     }
   }, [selectedUser])
 
@@ -76,10 +100,10 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
     try {
       const db = getFirestore()
       const usersCollection = collection(db, 'users')
-      
-      // Use query to ensure we have proper permissions
+      const overrides = isAdmin3 && currentUser?.uid ? await getAdmin3Overrides(currentUser.uid) : {}
+
       const usersSnapshot = await getDocs(usersCollection)
-      
+
       const usersList = []
       usersSnapshot.forEach((docSnapshot) => {
         const userData = docSnapshot.data()
@@ -94,7 +118,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
           statuses = ['Admin']
         }
         
-        usersList.push({
+        const u = {
           id: docSnapshot.id,
           displayName: userData.displayName || '',
           email: userData.email || '',
@@ -102,8 +126,16 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
           statuses: statuses,
           investmentData: userData.investmentData || null,
           ...userData
-        })
+        }
+        usersList.push(mergeUserWithOverride(u, overrides[docSnapshot.id]))
       })
+
+      if (isAdmin3) {
+        const sampleUsers = generateAdmin3SampleUsers()
+        sampleUsers.forEach((su) => {
+          usersList.push(mergeUserWithOverride(su, overrides[su.id]))
+        })
+      }
 
       // Sort users: admins first, then pending investors, then by display name
       usersList.sort((a, b) => {
@@ -206,15 +238,21 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
         updatedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
       }
 
-      await updateDoc(doc(db, 'users', selectedUser.id), {
-        investmentData: updatedInvestmentData,
-        updatedAt: new Date().toISOString()
-      }, { merge: true })
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedUser.id, { investmentData: updatedInvestmentData })
+      } else {
+        await updateDoc(doc(db, 'users', selectedUser.id), {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        }, { merge: true })
+      }
 
       setSuccess(
-        requestedAccountType === 'Trader'
-          ? 'Tracking data updated successfully!'
-          : 'Investment data updated successfully!'
+        isAdmin3
+          ? 'Saved to your sandbox (changes visible only to you)'
+          : requestedAccountType === 'Trader'
+            ? 'Tracking data updated successfully!'
+            : 'Investment data updated successfully!'
       )
       setEditingInvestment(false)
       await loadUsers()
@@ -251,9 +289,11 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
       // Get current user document to read existing statuses
       const userDoc = await getDoc(userDocRef)
       
-      // Get current statuses
+      // Get current statuses (for Admin 3, use selectedUser which may have overrides)
       let currentStatuses = []
-      if (userDoc.exists()) {
+      if (isAdmin3 && selectedUser?.statuses) {
+        currentStatuses = [...selectedUser.statuses]
+      } else if (userDoc.exists()) {
         const userData = userDoc.data()
         currentStatuses = userData.statuses || []
         if (currentStatuses.length === 0 && Array.isArray(userData.isAdmin) && userData.isAdmin.length > 0) {
@@ -299,17 +339,25 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
         approvedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
       }
 
-      // Update user document with new status and approved investment data
-      await updateDoc(userDocRef, {
-        statuses: currentStatuses,
-        investmentData: approvedInvestmentData,
-        updatedAt: new Date().toISOString()
-      })
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedUser.id, {
+          statuses: currentStatuses,
+          investmentData: approvedInvestmentData
+        })
+      } else {
+        await updateDoc(userDocRef, {
+          statuses: currentStatuses,
+          investmentData: approvedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
 
       setSuccess(
-        requestedAccountType === 'Trader'
-          ? 'Tracking account approved! User is now a trader.'
-          : 'Investment approved! User is now an investor.'
+        isAdmin3
+          ? 'Saved to your sandbox (changes visible only to you)'
+          : requestedAccountType === 'Trader'
+            ? 'Tracking account approved! User is now a trader.'
+            : 'Investment approved! User is now an investor.'
       )
       setEditingInvestment(false)
       
@@ -329,7 +377,8 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
       // Update status checkboxes
       const statusMap = {
         Admin: currentStatuses.includes('Admin'),
-        'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'), // Support old Relations status
+        'Admin 2': currentStatuses.includes('Admin 2') || currentStatuses.includes('Relations'),
+        'Admin 3': currentStatuses.includes('Admin 3'),
         Investor: currentStatuses.includes('Investor'),
         Trader: currentStatuses.includes('Trader'),
         Learner: currentStatuses.includes('Learner'),
@@ -348,10 +397,48 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
     }
   }
 
+  const handleSaveProfile = async () => {
+    if (!selectedUser) return
+
+    setLoadingSave(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const profileOverride = {
+        displayName: editedProfile.displayName.trim() || selectedUser.displayName,
+        email: editedProfile.email.trim() || selectedUser.email,
+        profileImageUrl: editedProfile.profileImageUrl.trim() || selectedUser.profileImageUrl || ''
+      }
+
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedUser.id, profileOverride)
+        setSuccess('Profile saved to your sandbox (changes visible only to you)')
+      } else if (!selectedUser._isSample) {
+        const db = getFirestore()
+        await updateDoc(doc(db, 'users', selectedUser.id), {
+          displayName: profileOverride.displayName,
+          email: profileOverride.email,
+          profileImageUrl: profileOverride.profileImageUrl || null,
+          updatedAt: new Date().toISOString()
+        })
+        setSuccess('Profile updated successfully!')
+      }
+
+      setSelectedUser({ ...selectedUser, ...profileOverride })
+      setEditingProfile(false)
+      await loadUsers()
+    } catch (err) {
+      console.error('Error saving profile:', err)
+      setError(err?.message || 'Failed to save profile.')
+    } finally {
+      setLoadingSave(false)
+    }
+  }
+
   const handleSaveChanges = async () => {
     if (!selectedUser) return
-    
-    // Prevent Admin 2 from modifying statuses
+
     if (!canModifyStatuses) {
       setError('You do not have permission to modify user statuses.')
       return
@@ -362,44 +449,30 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
     setSuccess('')
 
     try {
-      // Build array of selected statuses
-      const selectedStatuses = availableStatuses.filter(status => userStatuses[status])
-      
-      console.log('Saving statuses:', selectedStatuses, 'for user:', selectedUser.id)
-      
-      const db = getFirestore()
-      const updates = {
-        statuses: selectedStatuses,
-        updatedAt: new Date().toISOString()
+      let selectedStatuses = availableStatuses.filter(status => userStatuses[status])
+      if (selectedStatuses.includes('Admin 3') && !selectedStatuses.includes('Community')) {
+        selectedStatuses = [...selectedStatuses, 'Community']
       }
 
-      // Update Firestore with new statuses
-      // Note: We keep the old isAdmin field for backward compatibility, but statuses takes precedence
-      const userDocRef = doc(db, 'users', selectedUser.id)
-      await updateDoc(userDocRef, updates)
-      
-      console.log('Statuses saved successfully to Firestore')
-
-      // Verify the update was successful by reading the document back
-      const updatedDoc = await getDoc(userDocRef)
-      if (!updatedDoc.exists()) {
-        throw new Error('User document not found after update')
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedUser.id, { statuses: selectedStatuses })
+      } else {
+        const db = getFirestore()
+        const userDocRef = doc(db, 'users', selectedUser.id)
+        await updateDoc(userDocRef, {
+          statuses: selectedStatuses,
+          updatedAt: new Date().toISOString()
+        })
       }
       
-      const updatedUserData = updatedDoc.data()
-      const savedStatuses = updatedUserData.statuses || []
-      
-      console.log('Verified saved statuses from Firestore:', savedStatuses)
-      
-      setSuccess('User statuses updated successfully!')
-      
-      // Reload users to update the list
+      const savedStatuses = isAdmin3 ? selectedStatuses : (await getDoc(doc(getFirestore(), 'users', selectedUser.id))).data()?.statuses || []
+
+      setSuccess(isAdmin3 ? 'Saved to your sandbox (changes visible only to you)' : 'User statuses updated successfully!')
+
       await loadUsers()
-      
-      // Update selected user with fresh data from Firestore
+
       const updatedUser = {
         ...selectedUser,
-        ...updatedUserData,
         id: selectedUser.id,
         statuses: savedStatuses
       }
@@ -409,6 +482,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
       const statusMap = {
         Admin: savedStatuses.includes('Admin'),
         'Admin 2': savedStatuses.includes('Admin 2') || savedStatuses.includes('Relations'),
+        'Admin 3': savedStatuses.includes('Admin 3'),
         Investor: savedStatuses.includes('Investor'),
         Learner: savedStatuses.includes('Learner'),
         Community: savedStatuses.includes('Community')
@@ -451,11 +525,14 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                   onClick={() => handleUserSelect(user)}
                 >
                   <div className="user-card-image">
-                    {user.profileImageUrl ? (
+                    {!isAdmin3 && user.profileImageUrl ? (
                       <img src={user.profileImageUrl} alt={user.displayName || user.email} />
                     ) : (
-                      <div className="user-card-placeholder">
-                        {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                      <div
+                        className="user-card-placeholder"
+                        style={{ background: getProfilePlaceholder(user).bgColor }}
+                      >
+                        {getProfilePlaceholder(user).letter}
                       </div>
                     )}
                   </div>
@@ -463,8 +540,7 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
                     <h3 className="user-card-name">{user.displayName || 'No name'}</h3>
                     <p className="user-card-email">{user.email}</p>
                     <div className="user-status-badges">
-                      {(user.statuses || []).map((status) => {
-                        // Convert status to valid CSS class name (replace spaces with hyphens, handle special cases)
+                      {[...new Set(user.statuses || [])].map((status) => {
                         const statusClass = status.toLowerCase().replace(/\s+/g, '-')
                         return (
                           <span key={status} className={`user-status-badge status-${statusClass}`}>
@@ -494,19 +570,77 @@ const AdminUsersManagement = ({ currentUserStatuses = [] }) => {
               {error && <div className="alert alert-error">{error}</div>}
               {success && <div className="alert alert-success">{success}</div>}
 
-              {/* User Info Display (Read-only) */}
+              {/* User Info - editable */}
               <div className="user-detail-section">
                 <h3 className="section-title">User Information</h3>
-                <div className="user-info-display">
-                  <div className="info-row">
-                    <span className="info-label">Name:</span>
-                    <span className="info-value">{selectedUser.displayName || 'No name'}</span>
+                {!editingProfile ? (
+                  <div className="user-info-display">
+                    <div className="user-info-avatar">
+                      {!isAdmin3 && selectedUser.profileImageUrl ? (
+                        <img src={selectedUser.profileImageUrl} alt={selectedUser.displayName || selectedUser.email} />
+                      ) : (
+                        <div
+                          className="user-info-avatar-placeholder"
+                          style={{ backgroundColor: getProfilePlaceholder(selectedUser).bgColor }}
+                        >
+                          {getProfilePlaceholder(selectedUser).letter}
+                        </div>
+                      )}
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Name:</span>
+                      <span className="info-value">{selectedUser.displayName || 'No name'}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Email:</span>
+                      <span className="info-value">{selectedUser.email}</span>
+                    </div>
+                    {(canModifyStatuses || isAdmin3) && (
+                      <button type="button" onClick={() => setEditingProfile(true)} className="btn-edit">
+                        Edit Profile
+                      </button>
+                    )}
                   </div>
-                  <div className="info-row">
-                    <span className="info-label">Email:</span>
-                    <span className="info-value">{selectedUser.email}</span>
+                ) : (
+                  <div className="user-info-edit">
+                    <div className="form-group">
+                      <label className="form-label">Profile Image URL</label>
+                      <input
+                        type="url"
+                        className="form-input"
+                        value={editedProfile.profileImageUrl}
+                        onChange={(e) => setEditedProfile(p => ({ ...p, profileImageUrl: e.target.value }))}
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Name</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editedProfile.displayName}
+                        onChange={(e) => setEditedProfile(p => ({ ...p, displayName: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={editedProfile.email}
+                        onChange={(e) => setEditedProfile(p => ({ ...p, email: e.target.value }))}
+                      />
+                    </div>
+                    <div className="investment-edit-actions">
+                      <button type="button" onClick={() => { setEditingProfile(false); setEditedProfile({ displayName: selectedUser.displayName || '', email: selectedUser.email || '', profileImageUrl: selectedUser.profileImageUrl || '' }); }} className="btn-cancel" disabled={loadingSave}>
+                        Cancel
+                      </button>
+                      <button type="button" onClick={handleSaveProfile} className="btn-save" disabled={loadingSave}>
+                        {loadingSave ? 'Saving...' : 'Save Profile'}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Investment / Tracking Data Section */}

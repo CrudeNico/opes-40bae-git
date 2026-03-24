@@ -10,7 +10,8 @@
     "deploy": "npm run build && firebase deploy",
     "chat:login": "node manual-login.mjs",
     "chat:upload-session": "node upload-session.mjs",
-    "chat:fetch-last-5": "node fetch-last-5-and-save.mjs"
+    "chat:fetch-last-5": "node fetch-last-5-and-save.mjs",
+    "create-user": "node create-user.mjs"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",

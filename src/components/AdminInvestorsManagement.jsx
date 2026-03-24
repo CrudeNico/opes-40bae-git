@@ -1,13 +1,28 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
+import { getAdmin3SampleInvestors } from '../utils/admin3SampleUsers'
 import './AdminInvestorsManagement.css'
 
-const AdminInvestorsManagement = ({ userStatuses = [] }) => {
-  // Check if user is Admin 2 (has limited permissions)
+const PLACEHOLDER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
+
+const getProfilePlaceholder = (inv) => {
+  if (inv?.profilePlaceholder) return inv.profilePlaceholder
+  const key = `${inv?.id || ''}${inv?.displayName || ''}${inv?.email || ''}`
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  return {
+    letter: (inv?.displayName || inv?.email || 'I').charAt(0).toUpperCase(),
+    bgColor: PLACEHOLDER_COLORS[hash % PLACEHOLDER_COLORS.length]
+  }
+}
+
+const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
   const isAdmin2 = userStatuses.includes('Admin 2') || userStatuses.includes('Relations')
-  const canAddPerformance = !isAdmin2
-  const canEditPerformance = !isAdmin2
-  const canModifyStatuses = !isAdmin2
+  const isAdmin3 = userStatuses.includes('Admin 3')
+  const canAddPerformance = !isAdmin2 || isAdmin3
+  const canEditPerformance = !isAdmin2 || isAdmin3
+  const canModifyStatuses = !isAdmin2 || isAdmin3
   const [investors, setInvestors] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedInvestor, setSelectedInvestor] = useState(null)
@@ -45,27 +60,32 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
   const loadInvestors = async () => {
     try {
       const db = getFirestore()
+      const overrides = isAdmin3 && currentUser?.uid ? await getAdmin3Overrides(currentUser.uid) : {}
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
-      
+
       const investorsList = []
       usersSnapshot.forEach((docSnapshot) => {
         const userData = docSnapshot.data()
-        const statuses = userData.statuses || []
-        
-        // Include users who are investors or traders with approved investment accounts
-        if ((statuses.includes('Investor') || statuses.includes('Trader')) && userData.investmentData && userData.investmentData.status === 'approved') {
-          investorsList.push({
-            id: docSnapshot.id,
-            displayName: userData.displayName || '',
-            email: userData.email || '',
-            profileImageUrl: userData.profileImageUrl || '',
-            investmentData: userData.investmentData || null,
-            statuses: statuses,
-            ...userData
-          })
+        let statuses = userData.statuses || []
+        let investmentData = userData.investmentData || null
+        const ov = overrides[docSnapshot.id]
+        if (ov) {
+          if (ov.statuses !== undefined) statuses = ov.statuses
+          if (ov.investmentData !== undefined) investmentData = ov.investmentData
+        }
+        const merged = { ...userData, statuses, investmentData, id: docSnapshot.id }
+        if ((statuses.includes('Investor') || statuses.includes('Trader')) && investmentData && investmentData.status === 'approved') {
+          investorsList.push(mergeUserWithOverride(merged, overrides[docSnapshot.id]))
         }
       })
+
+      if (isAdmin3) {
+        const sampleInvestors = getAdmin3SampleInvestors()
+        sampleInvestors.forEach((si) => {
+          investorsList.push(mergeUserWithOverride(si, overrides[si.id]))
+        })
+      }
 
       // Sort by display name
       investorsList.sort((a, b) => {
@@ -125,7 +145,7 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
       }
 
       const userData = userDoc.data()
-      const currentInvestmentData = userData.investmentData || {}
+      const currentInvestmentData = (isAdmin3 ? selectedInvestor.investmentData : userData.investmentData) || {}
       const monthlyHistory = currentInvestmentData.monthlyHistory || []
 
       // Get the record at the index we're editing
@@ -278,12 +298,16 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
         lastUpdated: new Date().toISOString()
       }
 
-      await updateDoc(userDocRef, {
-        investmentData: updatedInvestmentData,
-        updatedAt: new Date().toISOString()
-      })
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedInvestor.id, { investmentData: updatedInvestmentData })
+      } else {
+        await updateDoc(userDocRef, {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
 
-      setSuccess(`Monthly record for ${editedRecordData.month} ${editedRecordData.year} updated successfully!`)
+      setSuccess(isAdmin3 ? 'Saved to your sandbox (changes visible only to you)' : `Monthly record for ${editedRecordData.month} ${editedRecordData.year} updated successfully!`)
       setEditingRecord(null)
       setEditedRecordData({})
 
@@ -320,7 +344,7 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
       }
 
       const userData = userDoc.data()
-      const currentInvestmentData = userData.investmentData || {}
+      const currentInvestmentData = (isAdmin3 ? selectedInvestor.investmentData : userData.investmentData) || {}
       const currentBalance = currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
       const totalDeposits = currentInvestmentData.totalDeposits || currentInvestmentData.initialInvestment || 0
       const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
@@ -444,12 +468,16 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
         lastUpdated: new Date().toISOString()
       }
 
-      await updateDoc(userDocRef, {
-        investmentData: updatedInvestmentData,
-        updatedAt: new Date().toISOString()
-      })
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedInvestor.id, { investmentData: updatedInvestmentData })
+      } else {
+        await updateDoc(userDocRef, {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
 
-      setSuccess(`Monthly update for ${monthlyUpdate.month} ${monthlyUpdate.year} saved successfully!`)
+      setSuccess(isAdmin3 ? 'Saved to your sandbox (changes visible only to you)' : `Monthly update for ${monthlyUpdate.month} ${monthlyUpdate.year} saved successfully!`)
       setMonthlyUpdate({
         month: '',
         year: '',
@@ -501,11 +529,14 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
                   onClick={() => handleInvestorSelect(investor)}
                 >
                   <div className="investor-card-image">
-                    {investor.profileImageUrl ? (
+                    {!isAdmin3 && investor.profileImageUrl ? (
                       <img src={investor.profileImageUrl} alt={investor.displayName || investor.email} />
                     ) : (
-                      <div className="investor-card-placeholder">
-                        {(investor.displayName || investor.email || 'I').charAt(0).toUpperCase()}
+                      <div
+                        className="investor-card-placeholder"
+                        style={{ background: getProfilePlaceholder(investor).bgColor }}
+                      >
+                        {getProfilePlaceholder(investor).letter}
                       </div>
                     )}
                   </div>
@@ -561,7 +592,8 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
                 </div>
               )}
 
-              {/* Action Buttons */}
+              {/* Action Buttons - hide for sample investors */}
+              {!selectedInvestor._isSample && (
               <div className="action-buttons">
                 <button
                   onClick={() => {
@@ -589,6 +621,7 @@ const AdminInvestorsManagement = ({ userStatuses = [] }) => {
                   </p>
                 )}
               </div>
+              )}
 
               {/* View Performance Table */}
               {showViewPerformance && selectedInvestor.investmentData && (

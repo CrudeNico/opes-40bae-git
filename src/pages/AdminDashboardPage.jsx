@@ -75,8 +75,8 @@ const AdminDashboardPage = () => {
               statuses = ['Admin']
             }
             
-            // Allow both Admin and Admin 2 (previously Relations) to access admin dashboard
-            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Relations')) {
+            // Allow Admin, Admin 2, Admin 3, Relations to access admin dashboard
+            if (statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Admin 3') || statuses.includes('Relations')) {
               setUser({ ...currentUser, userStatuses: statuses }) // Store statuses in user object
               
               // Load and apply dark mode preference immediately after login
@@ -229,9 +229,9 @@ const AdminDashboardPage = () => {
           ) : activeSection === 'portfolio' ? (
             <AdminPortfolio user={user} userStatuses={user?.userStatuses || []} />
           ) : activeSection === 'users' ? (
-            <AdminUsersManagement currentUserStatuses={user?.userStatuses || []} />
+            <AdminUsersManagement user={user} currentUserStatuses={user?.userStatuses || []} />
           ) : activeSection === 'investors' ? (
-            <AdminInvestorsManagement userStatuses={user?.userStatuses || []} />
+            <AdminInvestorsManagement user={user} userStatuses={user?.userStatuses || []} />
           ) : activeSection === 'news' ? (
             <AdminNewsManagement />
           ) : activeSection === 'learning' ? (
