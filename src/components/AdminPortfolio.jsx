@@ -24,91 +24,249 @@ function createSeededRandom(seed) {
 function generateAdmin3PortfolioData() {
   const rand = createSeededRandom(42)
   const initialBalance = 100000
-  const targetFinal = 4600000
-  const targetTotalDeposits = 2150000
-  const targetTotalWithdrawals = 890000
   const numMonths = 60
+
+  // Preserve the Admin 3 UI totals exactly (these are what the user sees).
+  const targetCurrentBalance = 7110000
+  const targetTotalGain = 5830000
+  const targetTotalDeposits = 2150000 // includes the initial investment
+  const targetTotalWithdrawals = 890000
+
+  // Base return series (we'll rescale it to hit the target totals).
   const rnd = () => -5 + rand() * 15
   const rawPcts = Array.from({ length: numMonths }, () => rnd())
   let product = 1
   rawPcts.forEach((p) => { product *= 1 + p / 100 })
-  const scale = Math.pow(targetFinal / initialBalance / product, 1 / numMonths)
-  const pcts = rawPcts.map((p) => {
-    const r = (1 + p / 100) * scale - 1
-    return r * 100
+
+  const fixedGrowthRates = {
+    'February_2024': -6.30,
+    'February_2025': -3,
+    'March_2026': 0.42
+  }
+
+  const now = new Date()
+  const monthMeta = Array.from({ length: numMonths }, (_, i) => {
+    const monthsAgo = numMonths - 1 - i
+    const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
+    const month = MONTH_NAMES[d.getMonth()]
+    const year = d.getFullYear()
+    const key = `${month}_${year}`
+    return { month, year, key, monthIndex: d.getMonth() }
   })
+
+  // Decide which months have deposits/withdrawals.
   const depositMonths = []
   const withdrawalMonths = []
   for (let i = 0; i < numMonths; i++) {
     if (rand() < 0.35) depositMonths.push(i)
     if (rand() < 0.2) withdrawalMonths.push(i)
   }
+
+  // Cashflows: totals must remain exact.
   const depositsToAlloc = targetTotalDeposits - initialBalance
+  const withdrawalToAlloc = targetTotalWithdrawals
+
+  // Randomize deposit/withdraw amounts but keep their sums exact.
+  // Your request "20000 to 10000" is interpreted as variability magnitude around the base
+  // amounts (base +/- [10k..20k] with random sign), then rescaled to exact totals.
+  const randDeltaMagnitude = () => 10000 + rand() * 10000 // [10k..20k]
+  const randSigned = () => (rand() < 0.5 ? -1 : 1)
+
   const depositAmounts = new Array(numMonths).fill(0)
-  if (depositMonths.length > 0) {
-    const perDeposit = depositsToAlloc / depositMonths.length
-    depositMonths.forEach((i) => { depositAmounts[i] = Math.round(perDeposit * 100) / 100 })
-  }
-  const perWithdrawal = withdrawalMonths.length > 0 ? targetTotalWithdrawals / withdrawalMonths.length : 0
   const withdrawalAmounts = new Array(numMonths).fill(0)
-  withdrawalMonths.forEach((i) => { withdrawalAmounts[i] = Math.round(perWithdrawal * 100) / 100 })
-  const fixedGrowthRates = {
-    'February_2024': -6.30,
-    'February_2025': -3,
-    'March_2026': 0.42
-  }
-  const now = new Date()
-  const monthlyHistory = []
-  let balance = initialBalance
-  let totalDeposits = initialBalance
-  let totalWithdrawals = 0
-  for (let i = 0; i < numMonths; i++) {
-    const monthsAgo = numMonths - 1 - i
-    const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
-    const month = MONTH_NAMES[d.getMonth()]
-    const year = d.getFullYear()
-    const key = `${month}_${year}`
-    let pct = fixedGrowthRates[key] !== undefined ? fixedGrowthRates[key] : Math.min(pcts[i], 10)
-    if (fixedGrowthRates[key] === undefined && rand() < 0.8) {
-      pct -= 0.5 + rand() * 1.5
-    }
-    const growthAmount = balance * (pct / 100)
-    const startingBalance = balance
-    balance = balance + growthAmount
-    const depositAmount = depositAmounts[i] || 0
-    const withdrawalAmount = withdrawalAmounts[i] || 0
-    const depositDate = depositAmount ? `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(rand() * 28) + 1).padStart(2, '0')}` : null
-    const withdrawalDate = withdrawalAmount ? `${year}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(rand() * 28) + 1).padStart(2, '0')}` : null
-    const daysInMonth = new Date(year, d.getMonth() + 1, 0).getDate()
-    const depositDay = depositDate ? parseInt(depositDate.slice(-2), 10) : 1
-    const withdrawalDay = withdrawalDate ? parseInt(withdrawalDate.slice(-2), 10) : 1
-    const depositGrowth = depositAmount ? depositAmount * (pct / 100) * Math.max(0, (daysInMonth - depositDay + 1) / daysInMonth) : 0
-    const withdrawalGrowth = withdrawalAmount ? withdrawalAmount * (pct / 100) * (daysInMonth - withdrawalDay) / daysInMonth : 0
-    balance += depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
-    totalDeposits += depositAmount
-    totalWithdrawals += withdrawalAmount
-    monthlyHistory.push({
-      month,
-      year: year.toString(),
-      percentageGrowth: Math.round(pct * 100) / 100,
-      growthAmount: Math.round(growthAmount * 100) / 100,
-      depositAmount,
-      depositDate,
-      withdrawalAmount,
-      withdrawalDate,
-      startingBalance: Math.round(startingBalance * 100) / 100,
-      endingBalance: Math.round(balance * 100) / 100,
-      depositGrowth: Math.round(depositGrowth * 100) / 100,
-      withdrawalGrowth: Math.round(withdrawalGrowth * 100) / 100,
-      updatedAt: new Date().toISOString()
+  const depositDayOfMonth = new Array(numMonths).fill(null)
+  const withdrawalDayOfMonth = new Array(numMonths).fill(null)
+
+  const depositBase = depositMonths.length > 0 ? depositsToAlloc / depositMonths.length : 0
+  const withdrawalBase = withdrawalMonths.length > 0 ? withdrawalToAlloc / withdrawalMonths.length : 0
+
+  if (depositMonths.length > 0) {
+    const raw = depositMonths.map((i) => {
+      const v = depositBase + randSigned() * randDeltaMagnitude()
+      return Math.max(1000, v)
+    })
+    const rawSum = raw.reduce((a, b) => a + b, 0) || 1
+    let scaled = raw.map((v) => (v / rawSum) * depositsToAlloc)
+    scaled = scaled.map((v) => Math.round(v * 100) / 100)
+
+    let scaledSum = scaled.reduce((a, b) => a + b, 0)
+    const residual = Math.round((depositsToAlloc - scaledSum) * 100) / 100
+    scaled[0] = Math.round((scaled[0] + residual) * 100) / 100
+
+    depositMonths.forEach((monthIdx, idx) => {
+      depositAmounts[monthIdx] = scaled[idx]
+      depositDayOfMonth[monthIdx] = Math.floor(rand() * 28) + 1 // 1..28
     })
   }
+
+  if (withdrawalMonths.length > 0) {
+    const raw = withdrawalMonths.map((i) => {
+      const v = withdrawalBase + randSigned() * randDeltaMagnitude()
+      return Math.max(0, v)
+    })
+    const rawSum = raw.reduce((a, b) => a + b, 0) || 1
+    let scaled = raw.map((v) => (v / rawSum) * withdrawalToAlloc)
+    scaled = scaled.map((v) => Math.round(v * 100) / 100)
+
+    let scaledSum = scaled.reduce((a, b) => a + b, 0)
+    const residual = Math.round((withdrawalToAlloc - scaledSum) * 100) / 100
+    scaled[0] = Math.round((scaled[0] + residual) * 100) / 100
+
+    withdrawalMonths.forEach((monthIdx, idx) => {
+      withdrawalAmounts[monthIdx] = scaled[idx]
+      withdrawalDayOfMonth[monthIdx] = Math.floor(rand() * 28) + 1 // 1..28
+    })
+  }
+
+  // Precompute the random reductions so the solver doesn't consume RNG.
+  const pctReductions = new Array(numMonths).fill(0)
+  for (let i = 0; i < numMonths; i++) {
+    if (fixedGrowthRates[monthMeta[i].key] !== undefined) continue
+    if (rand() < 0.8) pctReductions[i] = 0.5 + rand() * 1.5
+  }
+
+  function simulateWithTargetFinal(targetFinal) {
+    const scale = Math.pow(targetFinal / initialBalance / product, 1 / numMonths)
+    const pcts = rawPcts.map((p) => {
+      const r = (1 + p / 100) * scale - 1
+      return r * 100
+    })
+
+    let balance = initialBalance
+    let totalDeposits = initialBalance
+    let totalWithdrawals = 0
+    let totalGain = 0
+    const monthlyHistory = []
+
+    for (let i = 0; i < numMonths; i++) {
+      const meta = monthMeta[i]
+      const daysInMonth = new Date(meta.year, meta.monthIndex + 1, 0).getDate()
+
+      let pctBase = fixedGrowthRates[meta.key] !== undefined ? fixedGrowthRates[meta.key] : Math.min(pcts[i], 10)
+      if (fixedGrowthRates[meta.key] === undefined) pctBase -= pctReductions[i]
+      const pct = pctBase
+
+      const startingBalance = balance
+      const growthAmount = balance * (pct / 100)
+      totalGain += Math.round(growthAmount * 100) / 100
+      balance = balance + growthAmount
+
+      const depositAmount = depositAmounts[i] || 0
+      const withdrawalAmount = withdrawalAmounts[i] || 0
+
+      const depositDay = depositDayOfMonth[i] ?? 1
+      const withdrawalDay = withdrawalDayOfMonth[i] ?? 1
+
+      const depositDate = depositAmount
+        ? `${meta.year}-${String(meta.monthIndex + 1).padStart(2, '0')}-${String(depositDay).padStart(2, '0')}`
+        : null
+      const withdrawalDate = withdrawalAmount
+        ? `${meta.year}-${String(meta.monthIndex + 1).padStart(2, '0')}-${String(withdrawalDay).padStart(2, '0')}`
+        : null
+
+      const depositGrowth = depositAmount
+        ? depositAmount * (pct / 100) * Math.max(0, (daysInMonth - depositDay + 1) / daysInMonth)
+        : 0
+      const withdrawalGrowth = withdrawalAmount
+        ? withdrawalAmount * (pct / 100) * (daysInMonth - withdrawalDay) / daysInMonth
+        : 0
+
+      balance += depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+
+      totalDeposits += depositAmount
+      totalWithdrawals += withdrawalAmount
+
+      monthlyHistory.push({
+        month: meta.month,
+        year: meta.year.toString(),
+        percentageGrowth: Math.round(pct * 100) / 100,
+        growthAmount: Math.round(growthAmount * 100) / 100,
+        depositAmount,
+        depositDate,
+        withdrawalAmount,
+        withdrawalDate,
+        startingBalance: Math.round(startingBalance * 100) / 100,
+        endingBalance: Math.round(balance * 100) / 100,
+        depositGrowth: Math.round(depositGrowth * 100) / 100,
+        withdrawalGrowth: Math.round(withdrawalGrowth * 100) / 100,
+        updatedAt: new Date().toISOString()
+      })
+    }
+
+    return {
+      endingBalance: Math.round(balance * 100) / 100,
+      totalDeposits,
+      totalWithdrawals,
+      totalGain: Math.round(totalGain * 100) / 100,
+      monthlyHistory
+    }
+  }
+
+  // Find a good bracket for ending balance, then scan for the best match of BOTH totals.
+  // This avoids cases where ending balance is close but Total Gain is off.
+  let low = 1000000
+  let high = 20000000
+  for (let iter = 0; iter < 18; iter++) {
+    const mid = (low + high) / 2
+    const sim = simulateWithTargetFinal(mid)
+    if (sim.endingBalance > targetCurrentBalance) {
+      high = mid
+    } else {
+      low = mid
+    }
+  }
+
+  const scanSteps = 61
+  let bestFinal = null
+  for (let s = 0; s <= scanSteps; s++) {
+    const candidate = low + ((high - low) * s) / scanSteps
+    const sim = simulateWithTargetFinal(candidate)
+    const endErrAbs = Math.abs(sim.endingBalance - targetCurrentBalance)
+    const gainErrAbs = Math.abs(sim.totalGain - targetTotalGain)
+    // Normalize to keep the two targets comparable.
+    const score = endErrAbs / 1000 + gainErrAbs / 1000
+    if (!bestFinal || score < bestFinal.score) {
+      bestFinal = { ...sim, score }
+    }
+  }
+
+  // Final deterministic tuning (so the visible UI totals match exactly).
+  // We only adjust the last month:
+  // - `Total Gain` is based on sum(growthAmount), so we shift the last `growthAmount`.
+  // - `Current Balance` depends on growthAmount + depositGrowth/withdrawalGrowth, so we
+  //   compensate by shifting the last `depositGrowth` to preserve the final balance.
+  const round2 = (n) => Math.round(n * 100) / 100
+  if (bestFinal?.monthlyHistory?.length) {
+    const history = bestFinal.monthlyHistory
+    const lastIdx = history.length - 1
+    const actualTotalGain = history.reduce((sum, r) => sum + (r.growthAmount || 0), 0)
+    const actualCurrentBalance = history[lastIdx].endingBalance
+    const gainDelta = targetTotalGain - actualTotalGain
+    const endDelta = targetCurrentBalance - actualCurrentBalance
+
+    if (Math.abs(gainDelta) > 0.01 || Math.abs(endDelta) > 0.01) {
+      const newGrowthAmount = round2((history[lastIdx].growthAmount || 0) + gainDelta)
+      const newDepositGrowth = round2((history[lastIdx].depositGrowth || 0) + (endDelta - gainDelta))
+
+      history[lastIdx].growthAmount = newGrowthAmount
+      history[lastIdx].depositGrowth = newDepositGrowth
+      history[lastIdx].endingBalance = round2(history[lastIdx].endingBalance + endDelta)
+
+      const sb = history[lastIdx].startingBalance || 0
+      if (sb > 0) {
+        history[lastIdx].percentageGrowth = round2((newGrowthAmount / sb) * 100)
+      }
+
+      bestFinal.endingBalance = history[lastIdx].endingBalance
+    }
+  }
+
   return {
     initialInvestment: initialBalance,
-    currentBalance: Math.round(balance * 100) / 100,
-    totalDeposits,
-    totalWithdrawals,
-    monthlyHistory,
+    currentBalance: bestFinal.endingBalance,
+    totalDeposits: Math.round(bestFinal.totalDeposits * 100) / 100,
+    totalWithdrawals: Math.round(bestFinal.totalWithdrawals * 100) / 100,
+    monthlyHistory: bestFinal.monthlyHistory,
     monthlyReturnRate: 0.03,
     monthlyAdditions: 0
   }
