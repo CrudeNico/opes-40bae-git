@@ -197,6 +197,34 @@
   text-decoration: none !important;
 }
 
+/* Floating WhatsApp button (Contact page only) */
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  background-color: #4dbd7a;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.whatsapp-float-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .nav-container {
@@ -251,5 +279,10 @@
   .contact-info-subtitle,
   .schedule-subtitle {
     font-size: 1rem;
+  }
+
+  .whatsapp-float {
+    bottom: 16px;
+    right: 16px;
   }
 }
