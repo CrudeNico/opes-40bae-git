@@ -195,6 +195,18 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
     })
   }
 
+  const handleSecondaryInvestmentFieldChange = (field, value) => {
+    setEditedInvestmentData(prev => ({
+      ...prev,
+      secondaryInvestment: {
+        riskTolerance: 'moderate',
+        monthlyReturnRate: 0.04,
+        ...(prev.secondaryInvestment || {}),
+        [field]: value
+      }
+    }))
+  }
+
   const handleSaveInvestment = async () => {
     if (!selectedUser || !investmentData) return
     
@@ -233,6 +245,27 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
           editedInvestmentData.monthlyReturnRate ||
           investmentData.monthlyReturnRate ||
           (updatedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+        if (
+          investmentData.secondaryInvestment ||
+          editedInvestmentData.secondaryInvestment?.initialInvestment != null
+        ) {
+          updatedInvestmentData.secondaryInvestment = {
+            initialInvestment:
+              editedInvestmentData.secondaryInvestment?.initialInvestment ??
+              investmentData.secondaryInvestment?.initialInvestment ??
+              0,
+            startingDate:
+              editedInvestmentData.secondaryInvestment?.startingDate ??
+              investmentData.secondaryInvestment?.startingDate ??
+              '',
+            monthlyAdditions:
+              editedInvestmentData.secondaryInvestment?.monthlyAdditions ??
+              investmentData.secondaryInvestment?.monthlyAdditions ??
+              0,
+            riskTolerance: 'moderate',
+            monthlyReturnRate: 0.04
+          }
+        }
       } else {
         // Trader: ensure no undefined fields
         updatedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
@@ -335,6 +368,27 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
           editedInvestmentData.monthlyReturnRate ||
           investmentData.monthlyReturnRate ||
           (approvedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+        if (
+          investmentData.secondaryInvestment ||
+          editedInvestmentData.secondaryInvestment?.initialInvestment != null
+        ) {
+          approvedInvestmentData.secondaryInvestment = {
+            initialInvestment:
+              editedInvestmentData.secondaryInvestment?.initialInvestment ??
+              investmentData.secondaryInvestment?.initialInvestment ??
+              0,
+            startingDate:
+              editedInvestmentData.secondaryInvestment?.startingDate ??
+              investmentData.secondaryInvestment?.startingDate ??
+              '',
+            monthlyAdditions:
+              editedInvestmentData.secondaryInvestment?.monthlyAdditions ??
+              investmentData.secondaryInvestment?.monthlyAdditions ??
+              0,
+            riskTolerance: 'moderate',
+            monthlyReturnRate: 0.04
+          }
+        }
       } else {
         approvedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
       }
@@ -683,6 +737,26 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                             </span>
                           </div>
                         )}
+                        {investmentData.accountType !== 'Trader' && investmentData.secondaryInvestment && (
+                          <>
+                            <div className="info-item">
+                              <span className="info-label">Second tranche (Moderate 4%):</span>
+                              <span className="info-value">
+                                ${investmentData.secondaryInvestment.initialInvestment?.toLocaleString() || 'N/A'}
+                              </span>
+                            </div>
+                            <div className="info-item">
+                              <span className="info-label">Second tranche start date:</span>
+                              <span className="info-value">{investmentData.secondaryInvestment.startingDate || 'N/A'}</span>
+                            </div>
+                            <div className="info-item">
+                              <span className="info-label">Second tranche monthly additions:</span>
+                              <span className="info-value">
+                                ${investmentData.secondaryInvestment.monthlyAdditions?.toLocaleString() || '0'}
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
                       {/* Completely hide action buttons for Admin 2 - only show if user has permissions */}
                       {!isAdmin2 && (
@@ -782,6 +856,59 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                           </div>
                         )}
                       </div>
+                      {investmentData.accountType !== 'Trader' && investmentData.secondaryInvestment && (
+                        <div className="investment-secondary-edit-block">
+                          <h4 className="subsection-title">Second tranche (Moderate 4%)</h4>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label className="form-label">Initial amount</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                value={editedInvestmentData.secondaryInvestment?.initialInvestment ?? ''}
+                                onChange={(e) =>
+                                  handleSecondaryInvestmentFieldChange(
+                                    'initialInvestment',
+                                    parseFloat(e.target.value)
+                                  )
+                                }
+                                min="0"
+                                step="0.01"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Starting date</label>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={editedInvestmentData.secondaryInvestment?.startingDate || ''}
+                                onChange={(e) =>
+                                  handleSecondaryInvestmentFieldChange('startingDate', e.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label className="form-label">Monthly additions</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                value={editedInvestmentData.secondaryInvestment?.monthlyAdditions ?? ''}
+                                onChange={(e) =>
+                                  handleSecondaryInvestmentFieldChange(
+                                    'monthlyAdditions',
+                                    parseFloat(e.target.value)
+                                  )
+                                }
+                                min="0"
+                                max="20000"
+                                step="0.01"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="investment-edit-actions">
                         <button
                           onClick={() => {

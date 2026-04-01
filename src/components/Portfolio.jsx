@@ -2,6 +2,186 @@ import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore'
 import './Portfolio.css'
 
+/** Combined initial, weighted monthly return rate, and total planned monthly additions when a secondary tranche exists. */
+function getInvestorProjectionInputs(investmentData) {
+  const primaryInitial = investmentData.initialInvestment || 0
+  const primaryRate =
+    investmentData.monthlyReturnRate ??
+    (investmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+  const sec = investmentData.secondaryInvestment
+  if (!sec) {
+    return {
+      totalInitial: primaryInitial,
+      monthlyReturnRate: primaryRate,
+      monthlyAdditions: investmentData.monthlyAdditions || 0
+    }
+  }
+  const secInitial = sec.initialInvestment || 0
+  const secRate = sec.monthlyReturnRate ?? 0.04
+  const total = primaryInitial + secInitial
+  const weightedRate =
+    total > 0 ? (primaryInitial * primaryRate + secInitial * secRate) / total : primaryRate
+  return {
+    totalInitial: total,
+    monthlyReturnRate: weightedRate,
+    monthlyAdditions:
+      (investmentData.monthlyAdditions || 0) + (sec.monthlyAdditions || 0)
+  }
+}
+
+const TRANCHE_PRIMARY = 'primary'
+const TRANCHE_SECONDARY = 'secondary'
+
+function sortMonthlyHistoryStatic(history) {
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+  return [...(history || [])].sort((a, b) => {
+    if (a.year !== b.year) return parseInt(a.year, 10) - parseInt(b.year, 10)
+    return monthNames.indexOf(a.month) - monthNames.indexOf(b.month)
+  })
+}
+
+/** Total view: legacy untagged rows, or merged primary+secondary by month when only tagged rows exist */
+function getTotalMergedHistory(fullHistory, primaryInitial, secondaryInitial) {
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+  const sorted = sortMonthlyHistoryStatic(fullHistory)
+  const untagged = sorted.filter((r) => !r.tranche)
+  if (untagged.length > 0) return untagged
+
+  const primary = sorted.filter((r) => r.tranche === TRANCHE_PRIMARY)
+  const secondary = sorted.filter((r) => r.tranche === TRANCHE_SECONDARY)
+  if (primary.length === 0 && secondary.length === 0) return sorted
+
+  const keys = new Set()
+  primary.forEach((r) => keys.add(`${r.month}|${r.year}`))
+  secondary.forEach((r) => keys.add(`${r.month}|${r.year}`))
+  const sortedKeys = [...keys].sort((ka, kb) => {
+    const [ma, ya] = ka.split('|')
+    const [mb, yb] = kb.split('|')
+    if (parseInt(ya, 10) !== parseInt(yb, 10)) return parseInt(ya, 10) - parseInt(yb, 10)
+    return monthNames.indexOf(ma) - monthNames.indexOf(mb)
+  })
+
+  let lastP = primaryInitial
+  let lastS = secondaryInitial
+  const combined = []
+  for (const key of sortedKeys) {
+    const [m, y] = key.split('|')
+    const pr = primary.find((r) => r.month === m && String(r.year) === String(y))
+    const sr = secondary.find((r) => r.month === m && String(r.year) === String(y))
+    if (pr) lastP = pr.endingBalance
+    if (sr) lastS = sr.endingBalance
+    combined.push({
+      month: m,
+      year: y,
+      growthAmount: (pr?.growthAmount || 0) + (sr?.growthAmount || 0),
+      percentageGrowth: (pr?.percentageGrowth || 0) + (sr?.percentageGrowth || 0),
+      endingBalance: lastP + lastS,
+      depositAmount: (pr?.depositAmount || 0) + (sr?.depositAmount || 0),
+      withdrawalAmount: (pr?.withdrawalAmount || 0) + (sr?.withdrawalAmount || 0),
+      isCombinedMerge: true
+    })
+  }
+  return combined
+}
+
+function buildGraphProjectionData({
+  monthlyHistory,
+  initialBalance,
+  currentBalance,
+  monthlyReturnRate,
+  monthlyAdditions
+}) {
+  const data = []
+  const sortedHistory = sortMonthlyHistoryStatic(monthlyHistory)
+
+  const getMonthNumber = (monthName) => {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    return monthNames.indexOf(monthName) + 1
+  }
+
+  const formatLabel = (month, year) => {
+    const monthNum = typeof month === 'string' ? getMonthNumber(month) : month
+    const yearStr = year.toString()
+    const yearShort = yearStr.length >= 2 ? yearStr.slice(-2) : yearStr
+    return `${monthNum}/${yearShort}`
+  }
+
+  if (sortedHistory.length > 0) {
+    data.push({
+      month: -sortedHistory.length,
+      balance: initialBalance,
+      label: 'Start',
+      isHistorical: true
+    })
+    sortedHistory.forEach((record, index) => {
+      data.push({
+        month: index - sortedHistory.length + 1,
+        balance: record.endingBalance,
+        label: formatLabel(record.month, record.year),
+        isHistorical: true
+      })
+    })
+  } else {
+    data.push({
+      month: 0,
+      balance: currentBalance,
+      label: 'Now',
+      isHistorical: false
+    })
+  }
+
+  let projectionStartingBalance = currentBalance
+  let lastMonthRecord = null
+  if (sortedHistory.length > 0) {
+    lastMonthRecord = sortedHistory[sortedHistory.length - 1]
+    projectionStartingBalance = lastMonthRecord.endingBalance || currentBalance
+  }
+
+  let projectedBalance = projectionStartingBalance
+  for (let month = 1; month <= 5; month++) {
+    projectedBalance = projectedBalance * (1 + monthlyReturnRate) + monthlyAdditions
+
+    let projectionMonth = 0
+    let projectionYear = 0
+    if (lastMonthRecord) {
+      const lastMonthNum = getMonthNumber(lastMonthRecord.month)
+      const lastYear = parseInt(lastMonthRecord.year, 10)
+      projectionMonth = lastMonthNum + month
+      projectionYear = lastYear
+      while (projectionMonth > 12) {
+        projectionMonth -= 12
+        projectionYear += 1
+      }
+    } else {
+      const now = new Date()
+      projectionMonth = now.getMonth() + 1 + month
+      projectionYear = now.getFullYear()
+      while (projectionMonth > 12) {
+        projectionMonth -= 12
+        projectionYear += 1
+      }
+    }
+
+    data.push({
+      month: sortedHistory.length + month,
+      balance: projectedBalance,
+      label: formatLabel(projectionMonth, projectionYear),
+      isHistorical: false
+    })
+  }
+
+  return data.sort((a, b) => a.month - b.month)
+}
+
 const Portfolio = ({ user, onStatusUpdate }) => {
   const [isInvestor, setIsInvestor] = useState(false)
   const [isTrader, setIsTrader] = useState(false)
@@ -17,7 +197,11 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     country: '',
     phoneNumber: '',
     monthlyAdditions: '0',
-    riskTolerance: ''
+    riskTolerance: '',
+    includeSecondInvestment: false,
+    secondaryInitialInvestment: '',
+    secondaryStartingDate: '',
+    secondaryMonthlyAdditions: '0'
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -45,6 +229,8 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     withdrawalDate: ''
   })
   const [loadingEdit, setLoadingEdit] = useState(false)
+  /** 'total' | 'conservative' | 'moderate' — dual-tranche investors only */
+  const [portfolioTrancheView, setPortfolioTrancheView] = useState('total')
 
   useEffect(() => {
     checkInvestorStatus()
@@ -755,6 +941,12 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       return
     }
 
+    if (formMode === 'investor' && formData.includeSecondInvestment && formData.riskTolerance !== 'conservative') {
+      setError('When adding a second investment, the first tranche must be Conservative (2% per month).')
+      setSubmitting(false)
+      return
+    }
+
     if (isNaN(formData.initialInvestment) || parseFloat(formData.initialInvestment) <= 0) {
       setError('Please enter a valid investment amount.')
       setSubmitting(false)
@@ -768,15 +960,42 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       return
     }
 
+    if (formMode === 'investor' && formData.includeSecondInvestment) {
+      if (!formData.secondaryInitialInvestment || !formData.secondaryStartingDate) {
+        setError('Please complete all fields for the second investment.')
+        setSubmitting(false)
+        return
+      }
+      if (isNaN(formData.secondaryInitialInvestment) || parseFloat(formData.secondaryInitialInvestment) <= 0) {
+        setError('Please enter a valid amount for the second investment.')
+        setSubmitting(false)
+        return
+      }
+      const secMonthly = parseFloat(formData.secondaryMonthlyAdditions)
+      if (isNaN(secMonthly) || secMonthly < 0 || secMonthly > 20000) {
+        setError('Second investment monthly additions must be between 0 and 20,000.')
+        setSubmitting(false)
+        return
+      }
+    }
+
     try {
       const db = getFirestore()
       const userDocRef = doc(db, 'users', user.uid)
       const userDoc = await getDoc(userDocRef)
       
+      const primaryRisk =
+        formMode === 'investor' && formData.includeSecondInvestment
+          ? 'conservative'
+          : formData.riskTolerance
+
       // Calculate monthly return rate based on risk tolerance (Investor only)
-      const monthlyReturnRate = formMode === 'investor'
-        ? (formData.riskTolerance === 'conservative' ? 0.02 : 0.04)
-        : 0
+      const monthlyReturnRate =
+        formMode === 'investor'
+          ? primaryRisk === 'conservative'
+            ? 0.02
+            : 0.04
+          : 0
 
       // Update user document with investment data (status: pending)
       const baseInvestmentData = {
@@ -790,11 +1009,25 @@ const Portfolio = ({ user, onStatusUpdate }) => {
         accountType: formMode === 'trader' ? 'Trader' : 'Investor'
       }
 
+      const secondaryPayload =
+        formMode === 'investor' && formData.includeSecondInvestment
+          ? {
+              secondaryInvestment: {
+                initialInvestment: parseFloat(formData.secondaryInitialInvestment),
+                startingDate: formData.secondaryStartingDate,
+                monthlyAdditions: parseFloat(formData.secondaryMonthlyAdditions) || 0,
+                riskTolerance: 'moderate',
+                monthlyReturnRate: 0.04
+              }
+            }
+          : {}
+
       const investmentDataToSave =
         formMode === 'investor'
           ? {
               ...baseInvestmentData,
-              riskTolerance: formData.riskTolerance,
+              ...secondaryPayload,
+              riskTolerance: primaryRisk,
               monthlyReturnRate: monthlyReturnRate
             }
           : {
@@ -826,7 +1059,11 @@ const Portfolio = ({ user, onStatusUpdate }) => {
         country: '',
         phoneNumber: '',
         monthlyAdditions: '0',
-        riskTolerance: ''
+        riskTolerance: '',
+        includeSecondInvestment: false,
+        secondaryInitialInvestment: '',
+        secondaryStartingDate: '',
+        secondaryMonthlyAdditions: '0'
       })
       setShowForm(false)
       setFormMode(null)
@@ -858,10 +1095,24 @@ const Portfolio = ({ user, onStatusUpdate }) => {
   }
 
   if ((isInvestor || isTrader) && investmentDataState) {
-    // Calculate portfolio data
-    const initialInvestment = investmentDataState.initialInvestment || 0
-    const monthlyReturnRate = investmentDataState.monthlyReturnRate || (investmentDataState.riskTolerance === 'conservative' ? 0.02 : 0.04)
-    const monthlyAdditions = investmentDataState.monthlyAdditions || 0
+    // Calculate portfolio data (weighted rate + combined additions when two tranches exist)
+    const projectionInputs =
+      investmentDataState.accountType === 'Investor'
+        ? getInvestorProjectionInputs(investmentDataState)
+        : {
+            totalInitial: investmentDataState.initialInvestment || 0,
+            monthlyReturnRate:
+              investmentDataState.monthlyReturnRate ||
+              (investmentDataState.riskTolerance === 'conservative' ? 0.02 : 0.04),
+            monthlyAdditions: investmentDataState.monthlyAdditions || 0
+          }
+    const initialInvestment = projectionInputs.totalInitial
+    const monthlyReturnRate = projectionInputs.monthlyReturnRate
+    const monthlyAdditions = projectionInputs.monthlyAdditions
+    const secondaryInv =
+      investmentDataState.accountType === 'Investor' && investmentDataState.secondaryInvestment
+        ? investmentDataState.secondaryInvestment
+        : null
     const startingDate = investmentDataState.startingDate ? new Date(investmentDataState.startingDate) : new Date()
     
     // Get current balance from investment data (will be updated by admin monthly)
@@ -869,159 +1120,127 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     const totalDeposits = investmentDataState.totalDeposits || initialInvestment
     const totalWithdrawals = investmentDataState.totalWithdrawals || 0
     
-    // Helper function to sort monthly history by year and month
-    const sortMonthlyHistory = (history) => {
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                          'July', 'August', 'September', 'October', 'November', 'December']
-      return [...history].sort((a, b) => {
-        // First sort by year
-        if (a.year !== b.year) {
-          return a.year - b.year
-        }
-        // Then sort by month
-        const monthA = monthNames.indexOf(a.month)
-        const monthB = monthNames.indexOf(b.month)
-        return monthA - monthB
-      })
-    }
+    const sortMonthlyHistory = sortMonthlyHistoryStatic
 
-    // Calculate graph data from monthly history + projection
-    const calculateGraphData = () => {
-      const data = []
-      const monthlyHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
-      
-      // Helper function to convert month name to number
-      const getMonthNumber = (monthName) => {
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December']
-        return monthNames.indexOf(monthName) + 1
-      }
-      
-      // Helper function to format label as MM/YY
-      const formatLabel = (month, year) => {
-        const monthNum = typeof month === 'string' ? getMonthNumber(month) : month
-        const yearStr = year.toString()
-        const yearShort = yearStr.length >= 2 ? yearStr.slice(-2) : yearStr
-        return `${monthNum}/${yearShort}`
-      }
-      
-      // If we have monthly history, use it for historical data
-      if (monthlyHistory.length > 0) {
-        // Add initial investment as starting point
-        data.push({
-          month: -monthlyHistory.length,
-          balance: initialInvestment,
-          label: 'Start',
-          isHistorical: true
-        })
-        
-        // Add each historical month
-        monthlyHistory.forEach((record, index) => {
-          data.push({
-            month: index - monthlyHistory.length + 1,
-            balance: record.endingBalance,
-            label: formatLabel(record.month, record.year),
-            isHistorical: true
-          })
-        })
+    const primaryInit = investmentDataState.initialInvestment || 0
+    const secondaryInit = secondaryInv?.initialInvestment || 0
+    const isDualInvestor =
+      investmentDataState.accountType === 'Investor' && secondaryInv && !isTrader
+
+    let graphHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
+    let viewInitial = initialInvestment
+    let viewCurrentBalance = currentBalance
+    let viewMonthlyRate = monthlyReturnRate
+    let viewMonthlyAdditions = monthlyAdditions
+    let viewTotalDeposits = totalDeposits
+    let viewTotalWithdrawals = totalWithdrawals
+
+    if (isDualInvestor) {
+      const fullH = investmentDataState.monthlyHistory || []
+      if (portfolioTrancheView === 'total') {
+        graphHistory = getTotalMergedHistory(fullH, primaryInit, secondaryInit)
+        viewInitial = primaryInit + secondaryInit
+        viewCurrentBalance = currentBalance
+        viewMonthlyRate = monthlyReturnRate
+        viewMonthlyAdditions = monthlyAdditions
+        viewTotalDeposits = totalDeposits
+        viewTotalWithdrawals = totalWithdrawals
+        if (graphHistory.length === 0) {
+          viewMonthlyRate = (0.02 + 0.04) / 2
+        }
+      } else if (portfolioTrancheView === 'conservative') {
+        graphHistory = fullH.filter((r) => r.tranche === TRANCHE_PRIMARY)
+        viewInitial = primaryInit
+        viewMonthlyRate = 0.02
+        viewMonthlyAdditions = investmentDataState.monthlyAdditions || 0
+        const sortedG = sortMonthlyHistory(graphHistory)
+        const last = sortedG[sortedG.length - 1]
+        viewCurrentBalance = last ? last.endingBalance : primaryInit
+        viewTotalDeposits =
+          primaryInit + sortedG.reduce((s, r) => s + (r.depositAmount || 0), 0)
+        viewTotalWithdrawals = sortedG.reduce((s, r) => s + (r.withdrawalAmount || 0), 0)
       } else {
-        // No history, start from current balance
-        data.push({
-          month: 0,
-          balance: currentBalance,
-          label: 'Now',
-          isHistorical: false
-        })
+        graphHistory = fullH.filter((r) => r.tranche === TRANCHE_SECONDARY)
+        viewInitial = secondaryInit
+        viewMonthlyRate = 0.04
+        viewMonthlyAdditions = secondaryInv.monthlyAdditions || 0
+        const sortedG = sortMonthlyHistory(graphHistory)
+        const last = sortedG[sortedG.length - 1]
+        viewCurrentBalance = last ? last.endingBalance : secondaryInit
+        viewTotalDeposits =
+          secondaryInit + sortedG.reduce((s, r) => s + (r.depositAmount || 0), 0)
+        viewTotalWithdrawals = sortedG.reduce((s, r) => s + (r.withdrawalAmount || 0), 0)
       }
-      
-      // Add projection for next 5 months from the most recent data point
-      // If we have monthly history, use the last month's ending balance
-      // Otherwise, use current balance
-      let projectionStartingBalance = currentBalance
-      let lastMonthRecord = null
-      if (monthlyHistory.length > 0) {
-        lastMonthRecord = monthlyHistory[monthlyHistory.length - 1]
-        projectionStartingBalance = lastMonthRecord.endingBalance || currentBalance
-      }
-      
-      let projectedBalance = projectionStartingBalance
-      for (let month = 1; month <= 5; month++) {
-        projectedBalance = projectedBalance * (1 + monthlyReturnRate) + monthlyAdditions
-        
-        // Calculate the actual month/year for projection
-        let projectionMonth = 0
-        let projectionYear = 0
-        if (lastMonthRecord) {
-          const lastMonthNum = getMonthNumber(lastMonthRecord.month)
-          const lastYear = parseInt(lastMonthRecord.year)
-          projectionMonth = lastMonthNum + month
-          projectionYear = lastYear
-          // Handle year rollover
-          while (projectionMonth > 12) {
-            projectionMonth -= 12
-            projectionYear += 1
-          }
-        } else {
-          // If no history, use current date + projection months
-          const now = new Date()
-          projectionMonth = now.getMonth() + 1 + month
-          projectionYear = now.getFullYear()
-          while (projectionMonth > 12) {
-            projectionMonth -= 12
-            projectionYear += 1
-          }
-        }
-        
-        data.push({
-          month: monthlyHistory.length + month,
-          balance: projectedBalance,
-          label: formatLabel(projectionMonth, projectionYear),
-          isHistorical: false
-        })
-      }
-      
-      // Ensure data is sorted chronologically by month
-      return data.sort((a, b) => a.month - b.month)
     }
 
-    const projectionData = calculateGraphData()
-    const maxBalance = Math.max(...projectionData.map(d => d.balance))
-    const minBalance = Math.min(...projectionData.map(d => d.balance))
+    const projectionData = buildGraphProjectionData({
+      monthlyHistory: graphHistory,
+      initialBalance: viewInitial,
+      currentBalance: viewCurrentBalance,
+      monthlyReturnRate: viewMonthlyRate,
+      monthlyAdditions: viewMonthlyAdditions
+    })
+    const maxBalance = Math.max(...projectionData.map((d) => d.balance))
+    const minBalance = Math.min(...projectionData.map((d) => d.balance))
     const range = maxBalance - minBalance || 1
 
-    // Calculate metrics
-    const monthlyHistory = sortMonthlyHistory(investmentDataState.monthlyHistory || [])
-    
-    // Total Gain = sum of all growth amounts from monthly history
-    const totalGain = monthlyHistory.reduce((sum, record) => {
-      return sum + (record.growthAmount || 0)
-    }, 0)
-    
-    // Average Monthly Input = total deposits divided by number of deposits made
-    // Count deposits: initial investment counts as 1, plus each monthly deposit
-    const depositCount = 1 + monthlyHistory.filter(record => (record.depositAmount || 0) > 0).length
-    const averageMonthlyInput = depositCount > 0 ? totalDeposits / depositCount : 0
-    
-    // Calculate total percentage gain by summing all monthly growth percentages
-    const totalPercentageGain = monthlyHistory.reduce((sum, record) => {
-      return sum + (record.percentageGrowth || 0)
-    }, 0)
-    
-    // Calculate 5-month projection from the most recent data point
-    // If we have monthly history, use the last month's ending balance as starting point
-    // Otherwise, use current balance
-    let projectionStartingBalance = currentBalance
-    if (monthlyHistory.length > 0) {
-      const lastMonth = monthlyHistory[monthlyHistory.length - 1]
-      projectionStartingBalance = lastMonth.endingBalance || currentBalance
+    const monthlyHistoryForMetrics = sortMonthlyHistory(graphHistory)
+
+    const totalGain = monthlyHistoryForMetrics.reduce(
+      (sum, record) => sum + (record.growthAmount || 0),
+      0
+    )
+    const depositCount =
+      1 + monthlyHistoryForMetrics.filter((record) => (record.depositAmount || 0) > 0).length
+    const averageMonthlyInput =
+      depositCount > 0 ? viewTotalDeposits / depositCount : 0
+    let totalPercentageGain = monthlyHistoryForMetrics.reduce(
+      (sum, record) => sum + (record.percentageGrowth || 0),
+      0
+    )
+    if (
+      isDualInvestor &&
+      portfolioTrancheView === 'total' &&
+      monthlyHistoryForMetrics.length === 0
+    ) {
+      totalPercentageGain = (2 + 4) / 2
     }
-    
-    // Calculate projection for next 5 months from the starting balance
+
+    let projectionStartingBalance = viewCurrentBalance
+    if (monthlyHistoryForMetrics.length > 0) {
+      const lastMonth = monthlyHistoryForMetrics[monthlyHistoryForMetrics.length - 1]
+      projectionStartingBalance = lastMonth.endingBalance || viewCurrentBalance
+    }
     let projectedBalance = projectionStartingBalance
     for (let month = 1; month <= 5; month++) {
-      projectedBalance = projectedBalance * (1 + monthlyReturnRate) + monthlyAdditions
+      projectedBalance = projectedBalance * (1 + viewMonthlyRate) + viewMonthlyAdditions
     }
     const projection5Months = projectedBalance
+
+    const displayCurrentBalance =
+      isDualInvestor && (portfolioTrancheView === 'conservative' || portfolioTrancheView === 'moderate')
+        ? viewCurrentBalance
+        : currentBalance
+    const displayDeposits = isDualInvestor ? viewTotalDeposits : totalDeposits
+    const displayWithdrawals = isDualInvestor ? viewTotalWithdrawals : totalWithdrawals
+    const displayInitialForMetric =
+      isDualInvestor && portfolioTrancheView === 'conservative'
+        ? primaryInit
+        : isDualInvestor && portfolioTrancheView === 'moderate'
+          ? secondaryInit
+          : initialInvestment
+
+    const trancheFilteredHistory = isDualInvestor
+      ? portfolioTrancheView === 'conservative'
+        ? sortMonthlyHistory(
+            (investmentDataState.monthlyHistory || []).filter((r) => r.tranche === TRANCHE_PRIMARY)
+          )
+        : portfolioTrancheView === 'moderate'
+          ? sortMonthlyHistory(
+              (investmentDataState.monthlyHistory || []).filter((r) => r.tranche === TRANCHE_SECONDARY)
+            )
+          : []
+      : []
 
     return (
       <div className="portfolio-container">
@@ -1357,7 +1576,51 @@ const Portfolio = ({ user, onStatusUpdate }) => {
           
           {/* Investment Graph */}
           <div className="portfolio-graph-section">
-            <h3 className="section-subtitle">Investment Growth & Projection</h3>
+            <div className="portfolio-graph-section-header">
+              <div>
+                <h3 className="section-subtitle">Investment Growth & Projection</h3>
+                {isDualInvestor && portfolioTrancheView === 'conservative' && (
+                  <p className="portfolio-view-hint">Conservative tranche — 2% per month</p>
+                )}
+                {isDualInvestor && portfolioTrancheView === 'moderate' && (
+                  <p className="portfolio-view-hint">Moderate tranche — 4% per month</p>
+                )}
+                {isDualInvestor && portfolioTrancheView === 'total' && (
+                  <p className="portfolio-view-hint">Combined view — metrics reflect total net worth</p>
+                )}
+              </div>
+              {isDualInvestor && (
+                <div className="portfolio-tranche-toggle" role="tablist" aria-label="Portfolio tranche view">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={portfolioTrancheView === 'total'}
+                    className={portfolioTrancheView === 'total' ? 'active' : ''}
+                    onClick={() => setPortfolioTrancheView('total')}
+                  >
+                    Total net worth
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={portfolioTrancheView === 'conservative'}
+                    className={portfolioTrancheView === 'conservative' ? 'active' : ''}
+                    onClick={() => setPortfolioTrancheView('conservative')}
+                  >
+                    2% (Conservative)
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={portfolioTrancheView === 'moderate'}
+                    className={portfolioTrancheView === 'moderate' ? 'active' : ''}
+                    onClick={() => setPortfolioTrancheView('moderate')}
+                  >
+                    4% (Moderate)
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="graph-container">
               <div className="graph-legend">
                 {projectionData.some(p => p.isHistorical) && (
@@ -1505,7 +1768,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
               </div>
               <div className="metric-content">
                 <h4 className="metric-label">Current Balance</h4>
-                <p className="metric-value">€{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="metric-value">€{displayCurrentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
 
@@ -1557,7 +1820,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
               </div>
               <div className="metric-content">
                 <h4 className="metric-label">Deposits</h4>
-                <p className="metric-value">€{totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="metric-value">€{displayDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
 
@@ -1569,7 +1832,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
               </div>
               <div className="metric-content">
                 <h4 className="metric-label">Withdrawals</h4>
-                <p className="metric-value">€{totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="metric-value">€{displayWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
 
@@ -1581,7 +1844,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
               </div>
               <div className="metric-content">
                 <h4 className="metric-label">Initial Investment</h4>
-                <p className="metric-value">€{initialInvestment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="metric-value">€{displayInitialForMetric.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
 
@@ -1592,23 +1855,165 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                 </svg>
               </div>
               <div className="metric-content">
-                <h4 className="metric-label">Total % Gain</h4>
+                <h4 className="metric-label">
+                  {isDualInvestor &&
+                  portfolioTrancheView === 'total' &&
+                  monthlyHistoryForMetrics.length === 0
+                    ? 'Blended monthly target (avg.)'
+                    : 'Total % Gain'}
+                </h4>
                 <p className={`metric-value ${totalPercentageGain >= 0 ? 'positive' : 'negative'}`}>
                   {totalPercentageGain.toFixed(2)}%
                 </p>
+                {isDualInvestor &&
+                  portfolioTrancheView === 'total' &&
+                  monthlyHistoryForMetrics.length === 0 && (
+                  <p className="metric-subline">Average of 2% and 4% monthly targets (no combined history yet)</p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Monthly History Section */}
-          {investmentDataState.monthlyHistory && investmentDataState.monthlyHistory.length > 0 && (
-            <div className="portfolio-history-section">
-              <h3 className="section-subtitle">Monthly Performance History</h3>
-              {isTrader && (
+          {/* Monthly History Section — full ledger for traders & single-tranche investors; per-tranche when dual investor selects 2% / 4%; hidden on Total for dual */}
+          {isTrader &&
+            investmentDataState.monthlyHistory &&
+            investmentDataState.monthlyHistory.length > 0 && (
+              <div className="portfolio-history-section">
+                <h3 className="section-subtitle">Monthly Performance History</h3>
                 <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '1rem' }}>
                   Click on any row to edit the monthly performance record.
                 </p>
+                <div className="history-container">
+                  <div className="history-table">
+                    <div className="history-header">
+                      <div>Month/Year</div>
+                      <div>Growth %</div>
+                      <div>Growth Amount</div>
+                      <div>Deposit</div>
+                      <div>Withdrawal</div>
+                      <div>Ending Balance</div>
+                    </div>
+                    {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => {
+                      const originalIndex = investmentDataState.monthlyHistory.findIndex(
+                        (r) => r.month === record.month && r.year === record.year
+                      )
+                      const recordIndex = originalIndex >= 0 ? originalIndex : index
+                      return (
+                        <div
+                          key={index}
+                          className="history-row clickable"
+                          onClick={() => handleRecordClick(record, recordIndex)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div>
+                            {record.month} {record.year}
+                          </div>
+                          <div>{record.percentageGrowth}%</div>
+                          <div>
+                            €
+                            {(record.growthAmount || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </div>
+                          <div>
+                            {record.depositAmount > 0
+                              ? `€${record.depositAmount.toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}`
+                              : '-'}
+                          </div>
+                          <div>
+                            {record.withdrawalAmount > 0
+                              ? `€${record.withdrawalAmount.toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}`
+                              : '-'}
+                          </div>
+                          <div>
+                            €
+                            {record.endingBalance.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          {!isTrader && isDualInvestor && (portfolioTrancheView === 'conservative' || portfolioTrancheView === 'moderate') && (
+            <div className="portfolio-history-section">
+              <h3 className="section-subtitle">Monthly Performance History</h3>
+              {trancheFilteredHistory.length > 0 ? (
+                <div className="history-container">
+                  <div className="history-table">
+                    <div className="history-header">
+                      <div>Month/Year</div>
+                      <div>Growth %</div>
+                      <div>Growth Amount</div>
+                      <div>Deposit</div>
+                      <div>Withdrawal</div>
+                      <div>Ending Balance</div>
+                    </div>
+                    {trancheFilteredHistory.map((record, index) => (
+                      <div key={`${record.month}-${record.year}-${index}`} className="history-row">
+                        <div>
+                          {record.month} {record.year}
+                        </div>
+                        <div>{record.percentageGrowth != null ? `${record.percentageGrowth}%` : '—'}</div>
+                        <div>
+                          €
+                          {(record.growthAmount || 0).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </div>
+                        <div>
+                          {record.depositAmount > 0
+                            ? `€${record.depositAmount.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}`
+                            : '-'}
+                        </div>
+                        <div>
+                          {record.withdrawalAmount > 0
+                            ? `€${record.withdrawalAmount.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}`
+                            : '-'}
+                        </div>
+                        <div>
+                          €
+                          {record.endingBalance.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="portfolio-history-empty">
+                  No monthly entries for this tranche yet. When your administrator logs performance for the{' '}
+                  {portfolioTrancheView === 'conservative' ? 'conservative (2%)' : 'moderate (4%)'} tranche, they will
+                  appear here.
+                </p>
               )}
+            </div>
+          )}
+
+          {!isTrader && !isDualInvestor && investmentDataState.monthlyHistory && investmentDataState.monthlyHistory.length > 0 && (
+            <div className="portfolio-history-section">
+              <h3 className="section-subtitle">Monthly Performance History</h3>
               <div className="history-container">
                 <div className="history-table">
                   <div className="history-header">
@@ -1619,29 +2024,44 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     <div>Withdrawal</div>
                     <div>Ending Balance</div>
                   </div>
-                  {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => {
-                    // Find original index for editing
-                    const originalIndex = investmentDataState.monthlyHistory.findIndex(r => 
-                      r.month === record.month && r.year === record.year
-                    )
-                    const recordIndex = originalIndex >= 0 ? originalIndex : index
-                    
-                    return (
-                      <div 
-                        key={index} 
-                        className={`history-row ${isTrader ? 'clickable' : ''}`}
-                        onClick={isTrader ? () => handleRecordClick(record, recordIndex) : undefined}
-                        style={isTrader ? { cursor: 'pointer' } : {}}
-                      >
-                        <div>{record.month} {record.year}</div>
-                        <div>{record.percentageGrowth}%</div>
-                        <div>€{record.growthAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        <div>{record.depositAmount > 0 ? `€${record.depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
-                        <div>{record.withdrawalAmount > 0 ? `€${record.withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
-                        <div>€{record.endingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => (
+                    <div key={index} className="history-row">
+                      <div>
+                        {record.month} {record.year}
                       </div>
-                    )
-                  })}
+                      <div>{record.percentageGrowth}%</div>
+                      <div>
+                        €
+                        {(record.growthAmount || 0).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </div>
+                      <div>
+                        {record.depositAmount > 0
+                          ? `€${record.depositAmount.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}`
+                          : '-'}
+                      </div>
+                      <div>
+                        {record.withdrawalAmount > 0
+                          ? `€${record.withdrawalAmount.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}`
+                          : '-'}
+                      </div>
+                      <div>
+                        €
+                        {record.endingBalance.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1970,6 +2390,20 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                 onClick={() => {
                   setFormMode('investor')
                   setShowForm(true)
+                  setFormData({
+                    initialInvestment: '',
+                    startingDate: '',
+                    country: '',
+                    phoneNumber: '',
+                    monthlyAdditions: '0',
+                    riskTolerance: '',
+                    includeSecondInvestment: false,
+                    secondaryInitialInvestment: '',
+                    secondaryStartingDate: '',
+                    secondaryMonthlyAdditions: '0'
+                  })
+                  setError('')
+                  setSuccess('')
                 }}
                 className="widget-button"
               >
@@ -2151,16 +2585,18 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                             >
                               Conservative (2% per month)
                             </button>
-                            <button
-                              type="button"
-                              className={`dropdown-option ${formData.riskTolerance === 'moderate' ? 'selected' : ''}`}
-                              onClick={() => {
-                                setFormData(prev => ({ ...prev, riskTolerance: 'moderate' }))
-                                setRiskDropdownOpen(false)
-                              }}
-                            >
-                              Moderate (4% per month)
-                            </button>
+                            {!formData.includeSecondInvestment && (
+                              <button
+                                type="button"
+                                className={`dropdown-option ${formData.riskTolerance === 'moderate' ? 'selected' : ''}`}
+                                onClick={() => {
+                                  setFormData(prev => ({ ...prev, riskTolerance: 'moderate' }))
+                                  setRiskDropdownOpen(false)
+                                }}
+                              >
+                                Moderate (4% per month)
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -2176,6 +2612,101 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                 )}
               </div>
 
+              {formMode === 'investor' && (
+                <div className="secondary-investment-toggle">
+                  <label className="secondary-investment-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={formData.includeSecondInvestment}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setFormData(prev => ({
+                          ...prev,
+                          includeSecondInvestment: checked,
+                          riskTolerance: checked ? 'conservative' : prev.riskTolerance,
+                          ...(checked
+                            ? {}
+                            : {
+                                secondaryInitialInvestment: '',
+                                secondaryStartingDate: '',
+                                secondaryMonthlyAdditions: '0'
+                              })
+                        }))
+                      }}
+                    />
+                    <span>Add a second investment (Moderate — 4% per month)</span>
+                  </label>
+                  <p className="form-help secondary-investment-hint">
+                    When enabled, your first tranche is Conservative (2% per month). The second tranche is fixed at
+                    Moderate (4% per month).
+                  </p>
+                </div>
+              )}
+
+              {formMode === 'investor' && formData.includeSecondInvestment && (
+                <div className="secondary-investment-block">
+                  <h3 className="secondary-investment-heading">Second investment</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="secondaryInitialInvestment" className="form-label">
+                        Initial amount <span className="required">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        id="secondaryInitialInvestment"
+                        name="secondaryInitialInvestment"
+                        className="form-input"
+                        value={formData.secondaryInitialInvestment}
+                        onChange={handleInputChange}
+                        placeholder="Enter amount"
+                        min="0"
+                        step="0.01"
+                        required={formData.includeSecondInvestment}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="secondaryStartingDate" className="form-label">
+                        Starting date <span className="required">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        id="secondaryStartingDate"
+                        name="secondaryStartingDate"
+                        className="form-input"
+                        value={formData.secondaryStartingDate}
+                        onChange={handleInputChange}
+                        required={formData.includeSecondInvestment}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="secondaryMonthlyAdditions" className="form-label">
+                        Monthly additions
+                      </label>
+                      <input
+                        type="number"
+                        id="secondaryMonthlyAdditions"
+                        name="secondaryMonthlyAdditions"
+                        className="form-input"
+                        value={formData.secondaryMonthlyAdditions}
+                        onChange={handleInputChange}
+                        placeholder="0 - 20,000"
+                        min="0"
+                        max="20000"
+                        step="0.01"
+                      />
+                      <small className="form-help">Amount you plan to add monthly to this tranche (0 to 20,000)</small>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Risk profile</label>
+                      <div className="secondary-risk-fixed">Moderate (4% per month)</div>
+                      <small className="form-help">The second tranche always uses the moderate profile.</small>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="form-actions">
                 <button
                   type="button"
@@ -2184,6 +2715,18 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     setFormMode(null)
                     setError('')
                     setSuccess('')
+                    setFormData({
+                      initialInvestment: '',
+                      startingDate: '',
+                      country: '',
+                      phoneNumber: '',
+                      monthlyAdditions: '0',
+                      riskTolerance: '',
+                      includeSecondInvestment: false,
+                      secondaryInitialInvestment: '',
+                      secondaryStartingDate: '',
+                      secondaryMonthlyAdditions: '0'
+                    })
                   }}
                   className="btn-cancel"
                   disabled={submitting}

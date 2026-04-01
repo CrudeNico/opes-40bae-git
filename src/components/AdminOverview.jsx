@@ -232,10 +232,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             if (lastRecord && lastRecord.endingBalance) {
               total += lastRecord.endingBalance
             } else if (investmentData.initialInvestment) {
-              total += investmentData.initialInvestment
+              total +=
+                investmentData.initialInvestment +
+                (investmentData.secondaryInvestment?.initialInvestment || 0)
             }
           } else if (investmentData.initialInvestment) {
-            total += investmentData.initialInvestment
+            total +=
+              investmentData.initialInvestment +
+              (investmentData.secondaryInvestment?.initialInvestment || 0)
           }
         }
       })
@@ -353,6 +357,16 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                   displayName.toLowerCase().includes('clara perez ramirez') ||
                   displayName.toLowerCase().includes('clara perez')) {
                 monthlyReturnRate = 0.03 // 3% for Clara Perez Ramirez
+              } else if (investmentData.secondaryInvestment) {
+                const i1 = investmentData.initialInvestment || 0
+                const i2 = investmentData.secondaryInvestment.initialInvestment || 0
+                const r1 =
+                  investmentData.monthlyReturnRate ||
+                  (investmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+                const r2 = investmentData.secondaryInvestment.monthlyReturnRate ?? 0.04
+                const total = i1 + i2
+                monthlyReturnRate =
+                  total > 0 ? (i1 * r1 + i2 * r2) / total : r1
               } else {
                 // Default: 2% for conservative, 4% for high risk
                 monthlyReturnRate = investmentData.monthlyReturnRate || 

@@ -4,6 +4,32 @@ import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } fro
 import { getAdmin3SampleInvestors } from '../utils/admin3SampleUsers'
 import './AdminInvestorsManagement.css'
 
+const TRANCHE_PRIMARY = 'primary'
+const TRANCHE_SECONDARY = 'secondary'
+
+function sortMonthlyHistoryAdmin(history) {
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+  return [...(history || [])].sort((a, b) => {
+    if (a.year !== b.year) return parseInt(a.year, 10) - parseInt(b.year, 10)
+    return monthNames.indexOf(a.month) - monthNames.indexOf(b.month)
+  })
+}
+
+function getLastTrancheEndingAdmin(history, tranche, fallback) {
+  const sorted = sortMonthlyHistoryAdmin((history || []).filter((r) => r.tranche === tranche))
+  return sorted.length ? sorted[sorted.length - 1].endingBalance : fallback
+}
+
+function computeDualTrancheSumBalance(history, primaryInit, secondaryInit) {
+  return (
+    getLastTrancheEndingAdmin(history, TRANCHE_PRIMARY, primaryInit) +
+    getLastTrancheEndingAdmin(history, TRANCHE_SECONDARY, secondaryInit)
+  )
+}
+
 const PLACEHOLDER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
 
 const getProfilePlaceholder = (inv) => {
@@ -37,7 +63,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     depositAmount: '',
     depositDate: '',
     withdrawalAmount: '',
-    withdrawalDate: ''
+    withdrawalDate: '',
+    performanceScope: 'primary'
   })
   const [loadingMonthlyUpdate, setLoadingMonthlyUpdate] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
@@ -230,7 +257,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         depositDate: editedRecordData.depositDate || null,
         withdrawalAmount: withdrawalAmount,
         withdrawalDate: editedRecordData.withdrawalDate || null,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        ...(editingRecord.tranche ? { tranche: editingRecord.tranche } : {})
       }
 
       // Update the history array
@@ -345,7 +373,32 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
 
       const userData = userDoc.data()
       const currentInvestmentData = (isAdmin3 ? selectedInvestor.investmentData : userData.investmentData) || {}
-      const currentBalance = currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
+      const primaryInit = currentInvestmentData.initialInvestment || 0
+      const secondaryInit = currentInvestmentData.secondaryInvestment?.initialInvestment || 0
+      const hasDualTranche =
+        currentInvestmentData.secondaryInvestment &&
+        (currentInvestmentData.secondaryInvestment.initialInvestment || 0) > 0
+      const scope = !hasDualTranche
+        ? 'account'
+        : monthlyUpdate.performanceScope === 'secondary'
+          ? 'secondary'
+          : 'primary'
+
+      let currentBalance =
+        scope === 'account'
+          ? currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
+          : scope === 'primary'
+            ? getLastTrancheEndingAdmin(
+                currentInvestmentData.monthlyHistory,
+                TRANCHE_PRIMARY,
+                primaryInit
+              )
+            : getLastTrancheEndingAdmin(
+                currentInvestmentData.monthlyHistory,
+                TRANCHE_SECONDARY,
+                secondaryInit
+              )
+
       const totalDeposits = currentInvestmentData.totalDeposits || currentInvestmentData.initialInvestment || 0
       const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
 
@@ -451,17 +504,27 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         depositDate: monthlyUpdate.depositDate || null,
         withdrawalAmount: withdrawalAmount,
         withdrawalDate: monthlyUpdate.withdrawalDate || null,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        ...(scope === 'primary'
+          ? { tranche: TRANCHE_PRIMARY }
+          : scope === 'secondary'
+            ? { tranche: TRANCHE_SECONDARY }
+            : {})
       }
 
       // Get existing monthly history
       const existingHistory = currentInvestmentData.monthlyHistory || []
       const updatedHistory = [...existingHistory, monthlyRecord]
 
+      const finalCombinedBalance =
+        scope === 'account'
+          ? newBalance
+          : computeDualTrancheSumBalance(updatedHistory, primaryInit, secondaryInit)
+
       // Update investment data
       const updatedInvestmentData = {
         ...currentInvestmentData,
-        currentBalance: newBalance,
+        currentBalance: finalCombinedBalance,
         totalDeposits: newTotalDeposits,
         totalWithdrawals: newTotalWithdrawals,
         monthlyHistory: updatedHistory,
@@ -485,7 +548,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         depositAmount: '',
         depositDate: '',
         withdrawalAmount: '',
-        withdrawalDate: ''
+        withdrawalDate: '',
+        performanceScope: 'primary'
       })
       setShowAddPerformance(false)
 
@@ -627,7 +691,95 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
               {showViewPerformance && selectedInvestor.investmentData && (
                 <div className="performance-view-section">
                   <h3 className="section-title">Monthly Performance History</h3>
-                  {selectedInvestor.investmentData.monthlyHistory && selectedInvestor.investmentData.monthlyHistory.length > 0 ? (
+                  {selectedInvestor.investmentData.secondaryInvestment ? (
+                    (() => {
+                      const mh = selectedInvestor.investmentData.monthlyHistory || []
+                      const primaryRows = mh
+                        .map((record, index) => ({ record, index }))
+                        .filter(({ record }) => record.tranche === TRANCHE_PRIMARY)
+                      const secondaryRows = mh
+                        .map((record, index) => ({ record, index }))
+                        .filter(({ record }) => record.tranche === TRANCHE_SECONDARY)
+                      const legacyRows = mh
+                        .map((record, index) => ({ record, index }))
+                        .filter(({ record }) => !record.tranche)
+                      if (mh.length === 0) {
+                        return <p className="no-history">No performance history recorded yet.</p>
+                      }
+                      const renderTable = (rows, title) => (
+                        <div className="performance-tranche-block" key={title}>
+                          <h4 className="performance-tranche-title">{title}</h4>
+                          {rows.length > 0 ? (
+                            <div className="history-table">
+                              <div className="history-header">
+                                <div>Month/Year</div>
+                                <div>Growth %</div>
+                                <div>Growth Amount</div>
+                                <div>Deposit</div>
+                                <div>Withdrawal</div>
+                                <div>Ending Balance</div>
+                              </div>
+                              {rows.map(({ record, index }) => (
+                                <div
+                                  key={`${title}-${index}`}
+                                  className={`history-row ${canEditPerformance ? 'clickable' : ''}`}
+                                  onClick={
+                                    canEditPerformance ? () => handleRecordClick(record, index) : undefined
+                                  }
+                                >
+                                  <div>
+                                    {record.month} {record.year}
+                                  </div>
+                                  <div>{record.percentageGrowth}%</div>
+                                  <div>
+                                    €
+                                    {(record.growthAmount || 0).toLocaleString('en-US', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    })}
+                                  </div>
+                                  <div>
+                                    {record.depositAmount > 0
+                                      ? `€${record.depositAmount.toLocaleString('en-US', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2
+                                        })}`
+                                      : '-'}
+                                  </div>
+                                  <div>
+                                    {record.withdrawalAmount > 0
+                                      ? `€${record.withdrawalAmount.toLocaleString('en-US', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2
+                                        })}`
+                                      : '-'}
+                                  </div>
+                                  <div>
+                                    €
+                                    {record.endingBalance.toLocaleString('en-US', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="no-history no-history-tranche">No entries for this tranche yet.</p>
+                          )}
+                        </div>
+                      )
+                      return (
+                        <div className="performance-tranche-groups">
+                          {renderTable(primaryRows, 'Conservative (2%)')}
+                          {renderTable(secondaryRows, 'Moderate (4%)')}
+                          {legacyRows.length > 0 &&
+                            renderTable(legacyRows, 'Combined (legacy, before per-tranche logging)')}
+                        </div>
+                      )
+                    })()
+                  ) : selectedInvestor.investmentData.monthlyHistory &&
+                    selectedInvestor.investmentData.monthlyHistory.length > 0 ? (
                     <div className="history-table">
                       <div className="history-header">
                         <div>Month/Year</div>
@@ -638,17 +790,45 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         <div>Ending Balance</div>
                       </div>
                       {selectedInvestor.investmentData.monthlyHistory.map((record, index) => (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className={`history-row ${canEditPerformance ? 'clickable' : ''}`}
                           onClick={canEditPerformance ? () => handleRecordClick(record, index) : undefined}
                         >
-                          <div>{record.month} {record.year}</div>
+                          <div>
+                            {record.month} {record.year}
+                          </div>
                           <div>{record.percentageGrowth}%</div>
-                          <div>€{record.growthAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                          <div>{record.depositAmount > 0 ? `€${record.depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
-                          <div>{record.withdrawalAmount > 0 ? `€${record.withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
-                          <div>€{record.endingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div>
+                            €
+                            {(record.growthAmount || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </div>
+                          <div>
+                            {record.depositAmount > 0
+                              ? `€${record.depositAmount.toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}`
+                              : '-'}
+                          </div>
+                          <div>
+                            {record.withdrawalAmount > 0
+                              ? `€${record.withdrawalAmount.toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}`
+                              : '-'}
+                          </div>
+                          <div>
+                            €
+                            {record.endingBalance.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -663,6 +843,23 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                 <div className="add-performance-section">
                   <h3 className="section-title">Add Monthly Performance</h3>
                   <div className="monthly-update-form">
+                    {selectedInvestor.investmentData?.secondaryInvestment && (
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Apply performance to</label>
+                          <select
+                            className="form-input"
+                            value={monthlyUpdate.performanceScope || 'primary'}
+                            onChange={(e) =>
+                              setMonthlyUpdate({ ...monthlyUpdate, performanceScope: e.target.value })
+                            }
+                          >
+                            <option value="primary">Conservative (2%)</option>
+                            <option value="secondary">Moderate (4%)</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                     <div className="form-row">
                       <div className="form-group">
                         <label className="form-label">Month</label>

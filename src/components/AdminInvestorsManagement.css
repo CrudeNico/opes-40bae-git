@@ -261,6 +261,32 @@
   margin-top: 1.5rem;
 }
 
+.performance-tranche-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.performance-tranche-block {
+  margin: 0;
+}
+
+.performance-tranche-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.performance-tranche-block .history-table {
+  margin-top: 0;
+}
+
+.no-history-tranche {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .history-table {
   display: flex;
   flex-direction: column;

@@ -228,6 +228,19 @@
   margin: 0;
 }
 
+.subsection-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 1rem 0 0.75rem;
+}
+
+.investment-secondary-edit-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
 .user-info-display {
   background: #f9fafb;
   border: 1px solid #e5e7eb;

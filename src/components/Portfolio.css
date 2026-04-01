@@ -340,6 +340,63 @@ select.form-input option {
   margin-top: 0.25rem;
 }
 
+.secondary-investment-toggle {
+  margin: 1.25rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.secondary-investment-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.secondary-investment-checkbox-label input {
+  margin-top: 0.2rem;
+  cursor: pointer;
+}
+
+.secondary-investment-hint {
+  margin-top: 0.5rem;
+  margin-left: 1.75rem;
+}
+
+.secondary-investment-block {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+
+.secondary-investment-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1rem;
+}
+
+.secondary-risk-fixed {
+  padding: 0.65rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.metric-subline {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0.35rem 0 0;
+  line-height: 1.4;
+}
+
 .form-actions {
   display: flex;
   gap: 1rem;
@@ -436,6 +493,62 @@ select.form-input option {
 /* Portfolio Graph Section */
 .portfolio-graph-section {
   margin-bottom: 3rem;
+}
+
+.portfolio-graph-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.portfolio-graph-section-header .section-subtitle {
+  margin-bottom: 0.25rem;
+}
+
+.portfolio-view-hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.portfolio-tranche-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.portfolio-tranche-toggle button {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.portfolio-tranche-toggle button:hover {
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.portfolio-tranche-toggle button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.portfolio-history-empty {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0;
+  padding: 1rem 0;
 }
 
 /* Hide graph on mobile */
@@ -848,6 +961,48 @@ html.dark-mode .form-header h2,
 html.dark-mode .metric-value,
 html.dark-mode .metric-label {
   color: #f9fafb;
+}
+
+html.dark-mode .portfolio-view-hint,
+html.dark-mode .portfolio-history-empty {
+  color: #9ca3af;
+}
+
+html.dark-mode .portfolio-tranche-toggle button {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+html.dark-mode .portfolio-tranche-toggle button:hover {
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+html.dark-mode .portfolio-tranche-toggle button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+html.dark-mode .metric-subline {
+  color: #9ca3af;
+}
+
+html.dark-mode .secondary-investment-heading,
+html.dark-mode .secondary-investment-checkbox-label span {
+  color: #f9fafb;
+}
+
+html.dark-mode .secondary-investment-block {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .secondary-risk-fixed {
+  background: #111827;
+  border-color: #4b5563;
+  color: #e5e7eb;
 }
 
 html.dark-mode .widget-description,
