@@ -25,6 +25,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   })
   const [investmentData, setInvestmentData] = useState(null)
   const [editingInvestment, setEditingInvestment] = useState(false)
+  const [includeSecondaryTrancheEdit, setIncludeSecondaryTrancheEdit] = useState(false)
   const [editedInvestmentData, setEditedInvestmentData] = useState({})
   const [loadingSave, setLoadingSave] = useState(false)
   const [loadingApprove, setLoadingApprove] = useState(false)
@@ -87,6 +88,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
       }
       // Always reset edit mode when selecting a user - Admin 2 will never be able to enter edit mode
       setEditingInvestment(false)
+      setIncludeSecondaryTrancheEdit(false)
       setEditingProfile(false)
       setEditedProfile({
         displayName: selectedUser.displayName || '',
@@ -239,16 +241,27 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
       }
 
       if (requestedAccountType === 'Investor') {
-        updatedInvestmentData.riskTolerance =
-          editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
-        updatedInvestmentData.monthlyReturnRate =
-          editedInvestmentData.monthlyReturnRate ||
-          investmentData.monthlyReturnRate ||
-          (updatedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
-        if (
-          investmentData.secondaryInvestment ||
-          editedInvestmentData.secondaryInvestment?.initialInvestment != null
-        ) {
+        const hadSecondary = !!investmentData.secondaryInvestment
+        const si = editedInvestmentData.secondaryInvestment || {}
+        const secAmt = si.initialInvestment
+        const newSecondaryValid =
+          includeSecondaryTrancheEdit &&
+          Number.isFinite(secAmt) &&
+          secAmt > 0 &&
+          si.startingDate
+
+        if (includeSecondaryTrancheEdit && !hadSecondary && !newSecondaryValid) {
+          setError(
+            'To add a second tranche, enter a positive initial amount and starting date, or turn off "Add second tranche".'
+          )
+          setLoadingSave(false)
+          return
+        }
+
+        const saveSecondary = hadSecondary || newSecondaryValid
+        if (saveSecondary) {
+          updatedInvestmentData.riskTolerance = 'conservative'
+          updatedInvestmentData.monthlyReturnRate = 0.02
           updatedInvestmentData.secondaryInvestment = {
             initialInvestment:
               editedInvestmentData.secondaryInvestment?.initialInvestment ??
@@ -265,6 +278,13 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
             riskTolerance: 'moderate',
             monthlyReturnRate: 0.04
           }
+        } else {
+          updatedInvestmentData.riskTolerance =
+            editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
+          updatedInvestmentData.monthlyReturnRate =
+            editedInvestmentData.monthlyReturnRate ||
+            investmentData.monthlyReturnRate ||
+            (updatedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
         }
       } else {
         // Trader: ensure no undefined fields
@@ -362,16 +382,27 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
       }
 
       if (requestedAccountType === 'Investor') {
-        approvedInvestmentData.riskTolerance =
-          editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
-        approvedInvestmentData.monthlyReturnRate =
-          editedInvestmentData.monthlyReturnRate ||
-          investmentData.monthlyReturnRate ||
-          (approvedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
-        if (
-          investmentData.secondaryInvestment ||
-          editedInvestmentData.secondaryInvestment?.initialInvestment != null
-        ) {
+        const hadSecondary = !!investmentData.secondaryInvestment
+        const si = editedInvestmentData.secondaryInvestment || {}
+        const secAmt = si.initialInvestment
+        const newSecondaryValid =
+          includeSecondaryTrancheEdit &&
+          Number.isFinite(secAmt) &&
+          secAmt > 0 &&
+          si.startingDate
+
+        if (includeSecondaryTrancheEdit && !hadSecondary && !newSecondaryValid) {
+          setError(
+            'To add a second tranche, enter a positive initial amount and starting date, or turn off "Add second tranche".'
+          )
+          setLoadingApprove(false)
+          return
+        }
+
+        const saveSecondary = hadSecondary || newSecondaryValid
+        if (saveSecondary) {
+          approvedInvestmentData.riskTolerance = 'conservative'
+          approvedInvestmentData.monthlyReturnRate = 0.02
           approvedInvestmentData.secondaryInvestment = {
             initialInvestment:
               editedInvestmentData.secondaryInvestment?.initialInvestment ??
@@ -388,6 +419,13 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
             riskTolerance: 'moderate',
             monthlyReturnRate: 0.04
           }
+        } else {
+          approvedInvestmentData.riskTolerance =
+            editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
+          approvedInvestmentData.monthlyReturnRate =
+            editedInvestmentData.monthlyReturnRate ||
+            investmentData.monthlyReturnRate ||
+            (approvedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
         }
       } else {
         approvedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
@@ -607,6 +645,17 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                           Pending
                         </span>
                       )}
+                      {user.investmentData &&
+                        user.investmentData.status === 'pending' &&
+                        user.investmentData.accountType !== 'Trader' &&
+                        !user.investmentData.secondaryInvestment && (
+                          <span
+                            className="user-status-badge status-pending-single-tranche"
+                            title="Pending investment with one tranche only (no second tranche requested)"
+                          >
+                            Single tranche
+                          </span>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -737,6 +786,12 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                             </span>
                           </div>
                         )}
+                        {investmentData.accountType !== 'Trader' && !investmentData.secondaryInvestment && (
+                          <div className="info-item">
+                            <span className="info-label">Second tranche:</span>
+                            <span className="info-value">Not requested — add under Edit Investment if needed</span>
+                          </div>
+                        )}
                         {investmentData.accountType !== 'Trader' && investmentData.secondaryInvestment && (
                           <>
                             <div className="info-item">
@@ -763,7 +818,10 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                         <div className="investment-actions">
                           {canEditInvestments && (
                             <button
-                              onClick={() => setEditingInvestment(true)}
+                              onClick={() => {
+                                setIncludeSecondaryTrancheEdit(!!investmentData.secondaryInvestment)
+                                setEditingInvestment(true)
+                              }}
                               className="btn-edit"
                             >
                               {investmentData.accountType === 'Trader' ? 'Edit Tracking' : 'Edit Investment'}
@@ -856,9 +914,46 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                           </div>
                         )}
                       </div>
-                      {investmentData.accountType !== 'Trader' && investmentData.secondaryInvestment && (
+                      {investmentData.accountType !== 'Trader' && !investmentData.secondaryInvestment && (
+                        <div className="investment-secondary-edit-block investment-secondary-toggle-only">
+                          <label className="secondary-tranche-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={includeSecondaryTrancheEdit}
+                              onChange={(e) => {
+                                const checked = e.target.checked
+                                setIncludeSecondaryTrancheEdit(checked)
+                                if (checked) {
+                                  setEditedInvestmentData((prev) => ({
+                                    ...prev,
+                                    riskTolerance: 'conservative',
+                                    secondaryInvestment: {
+                                      riskTolerance: 'moderate',
+                                      monthlyReturnRate: 0.04,
+                                      ...(prev.secondaryInvestment || {}),
+                                      monthlyAdditions: prev.secondaryInvestment?.monthlyAdditions ?? 0
+                                    }
+                                  }))
+                                } else {
+                                  setEditedInvestmentData((prev) => {
+                                    const next = { ...prev }
+                                    delete next.secondaryInvestment
+                                    return next
+                                  })
+                                }
+                              }}
+                            />
+                            <span>Add second tranche (Moderate 4%)</span>
+                          </label>
+                        </div>
+                      )}
+                      {investmentData.accountType !== 'Trader' &&
+                        (investmentData.secondaryInvestment || includeSecondaryTrancheEdit) && (
                         <div className="investment-secondary-edit-block">
                           <h4 className="subsection-title">Second tranche (Moderate 4%)</h4>
+                          <p className="form-help secondary-tranche-edit-hint">
+                            First tranche must be Conservative (2%) when two tranches are saved.
+                          </p>
                           <div className="form-row">
                             <div className="form-group">
                               <label className="form-label">Initial amount</label>
@@ -866,12 +961,13 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                                 type="number"
                                 className="form-input"
                                 value={editedInvestmentData.secondaryInvestment?.initialInvestment ?? ''}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const v = e.target.value
                                   handleSecondaryInvestmentFieldChange(
                                     'initialInvestment',
-                                    parseFloat(e.target.value)
+                                    v === '' ? '' : parseFloat(v)
                                   )
-                                }
+                                }}
                                 min="0"
                                 step="0.01"
                               />
@@ -894,13 +990,16 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                               <input
                                 type="number"
                                 className="form-input"
-                                value={editedInvestmentData.secondaryInvestment?.monthlyAdditions ?? ''}
-                                onChange={(e) =>
+                                value={
+                                  editedInvestmentData.secondaryInvestment?.monthlyAdditions ?? ''
+                                }
+                                onChange={(e) => {
+                                  const v = e.target.value
                                   handleSecondaryInvestmentFieldChange(
                                     'monthlyAdditions',
-                                    parseFloat(e.target.value)
+                                    v === '' ? '' : parseFloat(v)
                                   )
-                                }
+                                }}
                                 min="0"
                                 max="20000"
                                 step="0.01"
@@ -913,6 +1012,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                         <button
                           onClick={() => {
                             setEditingInvestment(false)
+                            setIncludeSecondaryTrancheEdit(!!investmentData.secondaryInvestment)
                             setEditedInvestmentData(investmentData)
                           }}
                           className="btn-cancel"

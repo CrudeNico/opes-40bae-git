@@ -1869,21 +1869,10 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                 </svg>
               </div>
               <div className="metric-content">
-                <h4 className="metric-label">
-                  {isDualInvestor &&
-                  portfolioTrancheView === 'total' &&
-                  monthlyHistoryForMetrics.length === 0
-                    ? 'Blended monthly target (avg.)'
-                    : 'Total % Gain'}
-                </h4>
+                <h4 className="metric-label">Total % Gain</h4>
                 <p className={`metric-value ${totalPercentageGain >= 0 ? 'positive' : 'negative'}`}>
                   {totalPercentageGain.toFixed(2)}%
                 </p>
-                {isDualInvestor &&
-                  portfolioTrancheView === 'total' &&
-                  monthlyHistoryForMetrics.length === 0 && (
-                  <p className="metric-subline">Average of 2% and 4% monthly targets (no combined history yet)</p>
-                )}
               </div>
             </div>
           </div>
