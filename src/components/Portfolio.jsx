@@ -1143,8 +1143,22 @@ const Portfolio = ({ user, onStatusUpdate }) => {
         viewCurrentBalance = currentBalance
         viewMonthlyRate = monthlyReturnRate
         viewMonthlyAdditions = monthlyAdditions
-        viewTotalDeposits = totalDeposits
-        viewTotalWithdrawals = totalWithdrawals
+        const primaryHist = fullH.filter((r) => r.tranche === TRANCHE_PRIMARY)
+        const secondaryHist = fullH.filter((r) => r.tranche === TRANCHE_SECONDARY)
+        const hasPerTrancheRows = primaryHist.length > 0 || secondaryHist.length > 0
+        if (hasPerTrancheRows) {
+          const depPrimary =
+            primaryInit + primaryHist.reduce((s, r) => s + (r.depositAmount || 0), 0)
+          const depSecondary =
+            secondaryInit + secondaryHist.reduce((s, r) => s + (r.depositAmount || 0), 0)
+          viewTotalDeposits = depPrimary + depSecondary
+          viewTotalWithdrawals =
+            primaryHist.reduce((s, r) => s + (r.withdrawalAmount || 0), 0) +
+            secondaryHist.reduce((s, r) => s + (r.withdrawalAmount || 0), 0)
+        } else {
+          viewTotalDeposits = totalDeposits
+          viewTotalWithdrawals = totalWithdrawals
+        }
         if (graphHistory.length === 0) {
           viewMonthlyRate = (0.02 + 0.04) / 2
         }
