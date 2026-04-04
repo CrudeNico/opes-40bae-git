@@ -95,6 +95,25 @@
   margin: 0 auto;
 }
 
+/* Executive Board: 3 top, 4 middle, 8 bottom */
+.team-grid--executive-tier {
+  margin-bottom: 2.5rem;
+}
+
+.team-grid--executive-tier:last-child {
+  margin-bottom: 0;
+}
+
+.team-grid--executive-tier-1 {
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 960px;
+}
+
+.team-grid--executive-tier-2,
+.team-grid--executive-tier-3 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .team-card {
   background: #ffffff;
   border-radius: 1rem;

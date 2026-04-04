@@ -24,14 +24,29 @@ const OurTeamPage = () => {
     section4: null
   })
   
-  // Executive board members data
-  const leaders = [
-    { id: 1, name: 'Marcos', title: 'Chief Executive Officer' },
-    { id: 2, name: 'Jaime', title: 'Chief Technology Officer' },
-    { id: 3, name: 'Christian', title: 'Chief Risk Officer' },
-    { id: 4, name: 'Nicolas', title: 'Chief Operations Officer' },
-    { id: 5, name: 'Angel', title: 'Algorithmic Trading Officer' },
-    { id: 6, name: 'Clara', title: 'Head of Investor Relations' }
+  // Executive board: 3 top row, 4 middle, 8 bottom (image keys leader1–leader15 in display order)
+  const executiveBoardTiers = [
+    [
+      { id: 1, name: 'Marcos', title: 'Chief Executive Officer', imageKey: 'leader1' },
+      { id: 2, name: 'Jaime', title: 'Chief Technology Officer', imageKey: 'leader2' },
+      { id: 3, name: 'Christian', title: 'Chief Risk Officer', imageKey: 'leader3' }
+    ],
+    [
+      { id: 4, name: 'Nicolas', title: 'Chief Operations Officer', imageKey: 'leader4' },
+      { id: 5, name: 'Angel', title: 'Algorithmic Trading Officer', imageKey: 'leader5' },
+      { id: 6, name: 'Clara', title: 'Head of Investor Relations', imageKey: 'leader6' },
+      { id: 7, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader7' }
+    ],
+    [
+      { id: 8, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader8' },
+      { id: 9, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader9' },
+      { id: 10, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader10' },
+      { id: 11, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader11' },
+      { id: 12, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader12' },
+      { id: 13, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader13' },
+      { id: 14, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader14' },
+      { id: 15, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader15' }
+    ]
   ]
   
   // Offices data
@@ -139,23 +154,30 @@ const OurTeamPage = () => {
       const bannerUrl = await getImageUrl('our-team/BookaCall.png')
       if (bannerUrl) setBannerImageUrl(bannerUrl)
 
-      // Load leader images
-      const leaderUrls = await Promise.all([
-        getImageUrl('our-team/48016C47-7A25-415F-8F2D-31244BD1625F.PNG'),
-        getImageUrl('our-team/610ECB22-C07A-48D1-B646-A90D688F7367.PNG'),
-        getImageUrl('our-team/1C118822-DFE2-4682-A8A8-771B723B06A1.PNG'),
-        getImageUrl('our-team/D0398078-0325-4A5B-B1EE-D4033A6FCDEA.PNG'),
-        getImageUrl('our-team/angel3454.png'),
-        getImageUrl('our-team/clara456.png')
-      ])
-      setLeaderImages({
-        leader1: leaderUrls[0],
-        leader2: leaderUrls[1],
-        leader3: leaderUrls[2],
-        leader4: leaderUrls[3],
-        leader5: leaderUrls[4],
-        leader6: leaderUrls[5]
+      // Load leader images (order matches executiveBoardTiers: 3 + 4 + 8)
+      const leaderPaths = [
+        'our-team/48016C47-7A25-415F-8F2D-31244BD1625F.PNG',
+        'our-team/610ECB22-C07A-48D1-B646-A90D688F7367.PNG',
+        'our-team/1C118822-DFE2-4682-A8A8-771B723B06A1.PNG',
+        'our-team/D0398078-0325-4A5B-B1EE-D4033A6FCDEA.PNG',
+        'our-team/angel3454.png',
+        'our-team/clara456.png',
+        'our-team/exec-07.png',
+        'our-team/exec-08.png',
+        'our-team/exec-09.png',
+        'our-team/exec-10.png',
+        'our-team/exec-11.png',
+        'our-team/exec-12.png',
+        'our-team/exec-13.png',
+        'our-team/exec-14.png',
+        'our-team/exec-15.png'
+      ]
+      const leaderUrls = await Promise.all(leaderPaths.map((p) => getImageUrl(p)))
+      const next = {}
+      leaderUrls.forEach((url, i) => {
+        next[`leader${i + 1}`] = url
       })
+      setLeaderImages(next)
 
       // Load office images with specific filenames
       const officeUrls = await Promise.all([
@@ -551,26 +573,32 @@ const OurTeamPage = () => {
         <section className="white-section team-section">
           <div className="container">
             <h2 className="team-section-title">Executive Board</h2>
-            <div className="team-grid">
-              {leaders.map((leader, index) => (
-                <div key={leader.id} className="team-card">
-                  <div 
-                    className="team-card-image"
-                    style={{
-                      backgroundImage: leaderImages[`leader${index + 1}`] ? `url(${leaderImages[`leader${index + 1}`]})` : 'none',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat'
-                    }}
-                  >
+            {executiveBoardTiers.map((tier, tierIndex) => (
+              <div
+                key={`tier-${tierIndex}`}
+                className={`team-grid team-grid--executive-tier team-grid--executive-tier-${tierIndex + 1}`}
+              >
+                {tier.map((leader) => (
+                  <div key={leader.id} className="team-card">
+                    <div
+                      className="team-card-image"
+                      style={{
+                        backgroundImage: leaderImages[leader.imageKey]
+                          ? `url(${leaderImages[leader.imageKey]})`
+                          : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat'
+                      }}
+                    />
+                    <div className="team-card-content">
+                      <h3 className="team-card-name">{leader.name}</h3>
+                      <p className="team-card-title">{leader.title}</p>
+                    </div>
                   </div>
-                  <div className="team-card-content">
-                    <h3 className="team-card-name">{leader.name}</h3>
-                    <p className="team-card-title">{leader.title}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ))}
           </div>
         </section>
 
