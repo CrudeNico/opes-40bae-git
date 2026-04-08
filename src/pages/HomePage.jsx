@@ -7,6 +7,12 @@ import { getImageUrl } from '../utils/imageStorage'
 import Footer from '../components/Footer'
 import './HomePage.css'
 
+const ArrowIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="btn-arrow-icon" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+  </svg>
+)
+
 const HomePage = () => {
   const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -60,6 +66,15 @@ const HomePage = () => {
     section2: null,
     section3: null,
     section4: null
+  })
+  const [tabImages, setTabImages] = useState({
+    commodityMarket: null,
+    tradersBrokers: null,
+    assetOwners: null,
+    capitalPartners: null,
+    researchDevelopment: null,
+    execution: null,
+    capitalProtection: null
   })
   const [heroAnimationsReady, setHeroAnimationsReady] = useState(false)
 
@@ -202,6 +217,26 @@ const HomePage = () => {
         section2: sectionUrls[1],
         section3: sectionUrls[2],
         section4: sectionUrls[3]
+      })
+
+      // Load tab widget images
+      const tabImageUrls = await Promise.all([
+        getImageUrl('Risk-Guidance/OilMarketfundamentals.png'),
+        getImageUrl('Crude-Oil-Strategies/Stockexchange.jpeg'),
+        getImageUrl('Learning/laptop.jpeg'),
+        getImageUrl('partners/Managment.jpeg'),
+        getImageUrl('Execution-&-Technology/layout.png'),
+        getImageUrl('Execution-&-Technology/trfloor.jpeg'),
+        getImageUrl('Execution-&-Technology/212.jpg')
+      ])
+      setTabImages({
+        commodityMarket: tabImageUrls[0],
+        tradersBrokers: tabImageUrls[1],
+        assetOwners: tabImageUrls[2],
+        capitalPartners: tabImageUrls[3],
+        researchDevelopment: tabImageUrls[4],
+        execution: tabImageUrls[5],
+        capitalProtection: tabImageUrls[6]
       })
     }
 
@@ -754,27 +789,39 @@ const HomePage = () => {
         <section className="hero">
           <div className="hero-content">
             <h1 className="hero-title">
-              <span className={`hero-title-line1 ${heroAnimationsReady ? 'fade-in' : ''}`}>Monetize, Track and Trade Energy &</span>
-              <span className={`hero-title-line2 ${heroAnimationsReady ? 'fade-in' : ''}`}>Environmental Commodities</span>
+              <span className={`hero-title-line1 ${heroAnimationsReady ? 'fade-in' : ''}`}>
+                Monetize, Track and Trade Energy
+              </span>
+              <span className={`hero-title-line2 ${heroAnimationsReady ? 'fade-in' : ''}`}>
+                & Environmental Commodities
+              </span>
             </h1>
             <p className={`hero-subtitle ${heroAnimationsReady ? 'fade-in' : ''}`}>
-              Opessocius operates the world's largest integrated platform for the energy transition – trusted by financial institutions, corporations, governments and power producers worldwide.
+              <span className="hero-subtitle-lead">
+                Opessocius operates the world&apos;s largest integrated platform for the energy transition – trusted by
+              </span>
+              <span className="hero-subtitle-tail">
+                financial institutions, corporations, governments, and leading global power producers worldwide.
+              </span>
             </p>
             <div className={`hero-buttons ${heroAnimationsReady ? 'fade-in' : ''}`}>
               <button 
                 className="btn btn-primary"
                 onClick={() => {
-                  // Find the consultation section or scroll to contact
-                  const consultationSection = document.querySelector('.consultation-section')
-                  if (consultationSection) {
-                    consultationSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  // Scroll to the "Daniel / How it works" advisor block.
+                  const advisorSection = document.querySelector('.advisor-section')
+                  const fallbackSection = document.querySelector('.third-widget-section')
+                  if (advisorSection) {
+                    advisorSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  } else if (fallbackSection) {
+                    fallbackSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   } else {
                     // Fallback: scroll to contact section
                     navigate('/contact')
                   }
                 }}
               >
-                Talk to an Expert →
+                Talk to an Expert <ArrowIcon />
               </button>
               <button 
                 className="btn btn-secondary"
@@ -820,7 +867,7 @@ const HomePage = () => {
                 className="btn btn-primary-white"
                 onClick={() => handleNavigateToTop('/investment-calculator')}
               >
-                Calculate investment →
+                Calculate investment <ArrowIcon />
               </button>
             </div>
 
@@ -914,10 +961,8 @@ const HomePage = () => {
             <div className="stats-section">
               <div className="stat-card">
                 <div className="stat-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-drop-circle">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M10.07 15.34c1.115 .88 2.74 .88 3.855 0c1.115 -.88 1.398 -2.388 .671 -3.575l-2.596 -3.765l-2.602 3.765c-.726 1.187 -.443 2.694 .672 3.575" />
-                    <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m20.893 13.393-1.135-1.135a2.252 2.252 0 0 1-.421-.585l-1.08-2.16a.414.414 0 0 0-.663-.107.827.827 0 0 1-.812.21l-1.273-.363a.89.89 0 0 0-.738 1.595l.587.39c.59.395.674 1.23.172 1.732l-.2.2c-.212.212-.33.498-.33.796v.41c0 .409-.11.809-.32 1.158l-1.315 2.191a2.11 2.11 0 0 1-1.81 1.025 1.055 1.055 0 0 1-1.055-1.055v-1.172c0-.92-.56-1.747-1.414-2.089l-.655-.261a2.25 2.25 0 0 1-1.383-2.46l.007-.042a2.25 2.25 0 0 1 .29-.787l.09-.15a2.25 2.25 0 0 1 2.37-1.048l1.178.236a1.125 1.125 0 0 0 1.302-.795l.208-.73a1.125 1.125 0 0 0-.578-1.315l-.665-.332-.091.091a2.25 2.25 0 0 1-1.591.659h-.18c-.249 0-.487.1-.662.274a.931.931 0 0 1-1.458-1.137l1.411-2.353a2.25 2.25 0 0 0 .286-.76m11.928 9.869A9 9 0 0 0 8.965 3.525m11.928 9.868A9 9 0 1 1 8.965 3.525" />
                   </svg>
                 </div>
                 <h3 className="stat-title">Crude Oil Trading Expertise</h3>
@@ -925,16 +970,8 @@ const HomePage = () => {
               </div>
               <div className="stat-card">
                 <div className="stat-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-building-bank">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M3 21l18 0" />
-                    <path d="M3 10l18 0" />
-                    <path d="M5 6l7 -3l7 3" />
-                    <path d="M4 10l0 11" />
-                    <path d="M20 10l0 11" />
-                    <path d="M8 14l0 3" />
-                    <path d="M12 14l0 3" />
-                    <path d="M16 14l0 3" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
                   </svg>
                 </div>
                 <h3 className="stat-title">Capital-Backed Trading</h3>
@@ -942,17 +979,8 @@ const HomePage = () => {
               </div>
               <div className="stat-card">
                 <div className="stat-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-chart-candle">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M4 7a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3" />
-                    <path d="M6 4l0 2" />
-                    <path d="M6 11l0 9" />
-                    <path d="M10 15a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3" />
-                    <path d="M12 4l0 10" />
-                    <path d="M12 19l0 1" />
-                    <path d="M16 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -4" />
-                    <path d="M18 4l0 1" />
-                    <path d="M18 11l0 9" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-2.25-1.313M21 7.5v2.25m0-2.25-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3 2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0 6.75 2.25-1.313M12 21.75V19.5m0 2.25-2.25-1.313m0-16.875L12 2.25l2.25 1.313M21 14.25v2.25l-2.25 1.313m-13.5 0L3 16.5v-2.25" />
                   </svg>
                 </div>
                 <h3 className="stat-title">Market-Driven Strategy</h3>
@@ -960,17 +988,8 @@ const HomePage = () => {
               </div>
               <div className="stat-card">
                 <div className="stat-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-circle-dashed-check">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M8.56 3.69a9 9 0 0 0 -2.92 1.95" />
-                    <path d="M3.69 8.56a9 9 0 0 0 -.69 3.44" />
-                    <path d="M3.69 15.44a9 9 0 0 0 1.95 2.92" />
-                    <path d="M8.56 20.31a9 9 0 0 0 3.44 .69" />
-                    <path d="M15.44 20.31a9 9 0 0 0 2.92 -1.95" />
-                    <path d="M20.31 15.44a9 9 0 0 0 .69 -3.44" />
-                    <path d="M20.31 8.56a9 9 0 0 0 -1.95 -2.92" />
-                    <path d="M15.44 3.69a9 9 0 0 0 -3.44 -.69" />
-                    <path d="M9 12l2 2l4 -4" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                   </svg>
                 </div>
                 <h3 className="stat-title">Trusted Trading Partner</h3>
@@ -988,7 +1007,7 @@ const HomePage = () => {
                 className="btn btn-primary-white"
                 onClick={() => handleNavigateToTop('/portfolio-models')}
               >
-                View portfolio models →
+                View portfolio models <ArrowIcon />
               </button>
             </div>
 
@@ -1058,7 +1077,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/crude-oil-strategies')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1066,6 +1085,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.commodityMarket ? (
+                            <img src={tabImages.commodityMarket} alt="Commodity Market" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1081,7 +1107,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/partners')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1089,6 +1115,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.tradersBrokers ? (
+                            <img src={tabImages.tradersBrokers} alt="Traders and Brokers" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1104,7 +1137,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/managed-portfolios')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1112,6 +1145,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.assetOwners ? (
+                            <img src={tabImages.assetOwners} alt="Asset Owners" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1127,7 +1167,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/partners')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1135,6 +1175,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.capitalPartners ? (
+                            <img src={tabImages.capitalPartners} alt="Capital Partners" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1150,7 +1197,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/macro-insights')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1158,6 +1205,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.researchDevelopment ? (
+                            <img src={tabImages.researchDevelopment} alt="Research and Development" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1173,7 +1227,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/performance-tracking')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1181,6 +1235,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.execution ? (
+                            <img src={tabImages.execution} alt="Execution" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1196,7 +1257,7 @@ const HomePage = () => {
                             className="btn btn-primary-white"
                             onClick={() => handleNavigateToTop('/risk-management')}
                           >
-                            Learn More →
+                            Learn More <ArrowIcon />
                           </button>
                           <button 
                             className="btn btn-secondary-white"
@@ -1204,6 +1265,13 @@ const HomePage = () => {
                           >
                             Trading Platforms
                           </button>
+                        </div>
+                        <div className="widget-image-placeholder">
+                          {tabImages.capitalProtection ? (
+                            <img src={tabImages.capitalProtection} alt="Capital Protection" className="widget-tab-image" />
+                          ) : (
+                            'Image Placeholder'
+                          )}
                         </div>
                       </div>
                     )}
@@ -1222,7 +1290,7 @@ const HomePage = () => {
                 className="btn btn-primary-white"
                 onClick={() => handleNavigateToTop('/risk-management')}
               >
-                View risk management →
+                View risk management <ArrowIcon />
               </button>
             </div>
 
@@ -1468,15 +1536,16 @@ const HomePage = () => {
                 </div>
               </div>
               <div className="light-blue-text">
-                <h2 className="light-blue-title">Transact efficiently across commodities</h2>
-                <p className="light-blue-subtitle">One platform for the full range of energy and environmental commodities.</p>
-                <button 
-                  className="light-blue-learn-more"
-                  onClick={() => handleNavigateToTop('/crude-oil-strategies')}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
-                >
-                  Learn more <span className="learn-more-arrow">›</span>
-                </button>
+                <h2 className="light-blue-title">
+                  Transact efficiently
+                  <br />
+                  across commodities
+                </h2>
+                <p className="light-blue-subtitle">
+                  One platform for the full range of energy and environmental commodities.
+                  <br />
+                  Delivering seamless access, real-time insights, and desk grade execution.
+                </p>
               </div>
             </div>
           </div>
@@ -1491,7 +1560,7 @@ const HomePage = () => {
                 className="btn-view-all"
                 onClick={() => handleNavigateToTop('/learning')}
               >
-                View All <span className="view-all-arrow">→</span>
+                View All <ArrowIcon />
               </button>
             </div>
             <div className="featured-cards-grid">
@@ -1578,19 +1647,21 @@ const HomePage = () => {
               >
               </div>
               <div className="cta-widget-content">
-                <h2 className="cta-title" style={{ color: '#ffffff' }}>Ready to transact with confidence?</h2>
+                <h2 className="cta-title" style={{ color: '#ffffff' }}>Ready to transact with confidence</h2>
                 <button 
                   className="btn btn-primary-white cta-button"
                   onClick={() => handleNavigateToTop('/contact')}
                 >
-                  Talk to an Expert →
+                  Talk to an Expert <ArrowIcon />
                 </button>
               </div>
             </div>
             <p className="disclaimer-text">
-              Trading in futures and options involves substantial risk of loss and is not suitable for everyone. Past performance is not indicative of future results.
+              Trading derivatives, including CFDs, futures, and options, involves significant risk of loss and may not be suitable for all investors. Market conditions can change rapidly, and the use of leverage may amplify both gains and losses. Past performance is not indicative of future results.
               <br /><br />
-              When Evolution Markets acts as a broker in futures contracts, either on an introductory or execution basis, it is acting through its wholly-owned subsidiaries, Evolution Markets Futures LLC or Evolution Markets Limited. Evolution Markets Futures LLC is an introducing broker registered with the U.S. Commodity Futures Trading Commission and is a member of the National Futures Association. Evolution Markets Limited is registered with the U.K. Financial Conduct Authority and is an introducing broker registered with the U.S. Commodity Futures Trading Commission and is a member of the National Futures Association.
+              The information, strategies, and market views provided by Opessocius Asset Management are for informational and educational purposes only and do not constitute investment advice, a recommendation, or an offer to buy or sell any financial instrument. Any use of this information is at the sole discretion and risk of the user.
+              <br /><br />
+              Users are responsible for ensuring that their activities comply with applicable laws and regulations in their jurisdiction. Opessocius Asset Management makes no guarantees regarding performance outcomes and assumes no liability for any losses incurred as a result of reliance on the information or strategies provided.
             </p>
           </div>
         </section>

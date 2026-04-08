@@ -26,25 +26,25 @@ const Footer = ({ handleLinkClick }) => {
                 <ul className={`footer-link-list ${expandedFooterSection === 'pages' ? 'expanded' : ''}`} style={{ flex: 1 }}>
                   <li><Link to="/careers" onClick={handleLinkClick}>Careers</Link></li>
                   <li><Link to="/contact" onClick={handleLinkClick}>Contact</Link></li>
-                  <li><Link to="/our-team" onClick={handleLinkClick}>Our Team</Link></li>
+                  <li><Link to="/our-team" onClick={handleLinkClick}>Team</Link></li>
                   <li><Link to="/partners" onClick={handleLinkClick}>Partners</Link></li>
                 </ul>
                 <ul className={`footer-link-list ${expandedFooterSection === 'pages' ? 'expanded' : ''}`} style={{ flex: 1 }}>
-                  <li><Link to="/crude-oil-strategies" onClick={handleLinkClick}>Crude Oil Strategies</Link></li>
-                  <li><Link to="/portfolio-models" onClick={handleLinkClick}>Portfolio Models</Link></li>
-                  <li><Link to="/risk-management" onClick={handleLinkClick}>Risk Management</Link></li>
-                  <li><Link to="/execution-technology" onClick={handleLinkClick}>Execution and Technology</Link></li>
+                  <li><Link to="/crude-oil-strategies" onClick={handleLinkClick}>Strategies</Link></li>
+                  <li><Link to="/portfolio-models" onClick={handleLinkClick}>Models</Link></li>
+                  <li><Link to="/risk-management" onClick={handleLinkClick}>Management</Link></li>
+                  <li><Link to="/execution-technology" onClick={handleLinkClick}>Execution</Link></li>
                 </ul>
                 <ul className={`footer-link-list ${expandedFooterSection === 'pages' ? 'expanded' : ''}`} style={{ flex: 1 }}>
-                  <li><Link to="/investment-calculator" onClick={handleLinkClick}>Investment Calculator</Link></li>
-                  <li><Link to="/managed-portfolios" onClick={handleLinkClick}>Managed Portfolios</Link></li>
-                  <li><Link to="/performance-tracking" onClick={handleLinkClick}>Performance Tracking</Link></li>
+                  <li><Link to="/investment-calculator" onClick={handleLinkClick}>Calculator</Link></li>
+                  <li><Link to="/managed-portfolios" onClick={handleLinkClick}>Portfolios</Link></li>
+                  <li><Link to="/performance-tracking" onClick={handleLinkClick}>Performance</Link></li>
                   <li><Link to="/onboarding" onClick={handleLinkClick}>Onboarding</Link></li>
                 </ul>
                 <ul className={`footer-link-list ${expandedFooterSection === 'pages' ? 'expanded' : ''}`} style={{ flex: 1 }}>
                   <li><Link to="/learning" onClick={handleLinkClick}>Learning</Link></li>
-                  <li><Link to="/macro-insights" onClick={handleLinkClick}>Macro Insights</Link></li>
-                  <li><Link to="/risk-guidance" onClick={handleLinkClick}>Risk Guidance</Link></li>
+                  <li><Link to="/macro-insights" onClick={handleLinkClick}>Insights</Link></li>
+                  <li><Link to="/risk-guidance" onClick={handleLinkClick}>Guidance</Link></li>
                   <li><Link to="/compliance" onClick={handleLinkClick}>Compliance</Link></li>
                 </ul>
               </div>
@@ -59,8 +59,8 @@ const Footer = ({ handleLinkClick }) => {
                 <span className="footer-chevron">›</span>
               </button>
               <ul className={`footer-link-list ${expandedFooterSection === 'legal' ? 'expanded' : ''}`}>
-                <li><span>Registered in Dubai, United Arab Emirates</span></li>
-                <li><span>Regulated under applicable UAE laws and regulations</span></li>
+                <li><span className="footer-legal-note">Registered in Dubai</span></li>
+                <li><span className="footer-legal-note">Regulated under UAE</span></li>
               </ul>
             </div>
             <div className="footer-column">
@@ -73,7 +73,7 @@ const Footer = ({ handleLinkClick }) => {
                 <span className="footer-chevron">›</span>
               </button>
               <ul className={`footer-link-list ${expandedFooterSection === 'company' ? 'expanded' : ''}`}>
-                <li><Link to="/our-team" onClick={handleLinkClick}>About Us</Link></li>
+                <li><Link to="/our-team" onClick={handleLinkClick}>About</Link></li>
                 <li><Link to="/careers" onClick={handleLinkClick}>Careers</Link></li>
                 <li><Link to="/contact" onClick={handleLinkClick}>Contact</Link></li>
                 <li><Link to="/partners" onClick={handleLinkClick}>Partners</Link></li>
