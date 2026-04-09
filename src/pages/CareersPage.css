@@ -56,6 +56,9 @@
   color: #ffffff;
   margin: 0 0 1rem 0;
   line-height: 1.1;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .page-banner-subtitle {
@@ -63,7 +66,24 @@
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
   line-height: 1.6;
-  font-weight: 400;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
+}
+
+.careers-page .white-hero-title,
+.careers-page .white-hero-subtitle {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
+}
+
+.careers-page .white-section {
+  padding-bottom: 2rem;
+}
+
+.careers-page .white-hero {
+  margin-bottom: 0;
 }
 
 /* Footer and Header styles are imported from HomePage.css */

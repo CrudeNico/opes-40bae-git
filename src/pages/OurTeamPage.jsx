@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import L from 'leaflet'
 import { getImageUrl } from '../utils/imageStorage'
 import Footer from '../components/Footer'
 import './OurTeamPage.css'
 import './HomePage.css'
+import 'leaflet/dist/leaflet.css'
 
 const OurTeamPage = () => {
   const [openNavSection, setOpenNavSection] = useState(null)
@@ -14,49 +16,17 @@ const OurTeamPage = () => {
   const navItemsRef = useRef({ section1: null, section2: null, section3: null, section4: null })
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
+  const officesMapRef = useRef(null)
+  const officesMapInstanceRef = useRef(null)
   const [bannerImageUrl, setBannerImageUrl] = useState(null)
-  const [leaderImages, setLeaderImages] = useState({})
-  const [officeImages, setOfficeImages] = useState({})
+  const [leadershipWidgetImageUrl, setLeadershipWidgetImageUrl] = useState(null)
   const [sectionImages, setSectionImages] = useState({
     section1: null,
     section2: null,
     section3: null,
     section4: null
   })
-  
-  // Executive board: 3 top row, 4 middle, 8 bottom (image keys leader1–leader15 in display order)
-  const executiveBoardTiers = [
-    [
-      { id: 1, name: 'Marcos', title: 'Chief Executive Officer', imageKey: 'leader1' },
-      { id: 2, name: 'Jaime', title: 'Chief Technology Officer', imageKey: 'leader2' },
-      { id: 3, name: 'Christian', title: 'Chief Risk Officer', imageKey: 'leader3' }
-    ],
-    [
-      { id: 4, name: 'Nicolas', title: 'Chief Operations Officer', imageKey: 'leader4' },
-      { id: 5, name: 'Angel', title: 'Algorithmic Trading Officer', imageKey: 'leader5' },
-      { id: 6, name: 'Clara', title: 'Head of Investor Relations', imageKey: 'leader6' },
-      { id: 7, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader7' }
-    ],
-    [
-      { id: 8, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader8' },
-      { id: 9, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader9' },
-      { id: 10, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader10' },
-      { id: 11, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader11' },
-      { id: 12, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader12' },
-      { id: 13, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader13' },
-      { id: 14, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader14' },
-      { id: 15, name: 'Name TBD', title: 'Title TBD', imageKey: 'leader15' }
-    ]
-  ]
-  
-  // Offices data
-  const offices = [
-    { id: 1, city: 'Madrid' },
-    { id: 2, city: 'Dubai' },
-    { id: 3, city: 'London' },
-    { id: 4, city: 'Amsterdam' }
-  ]
-  
+
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
       setOpenMobileNavSection(openMobileNavSection === 'main' ? null : 'main')
@@ -154,44 +124,9 @@ const OurTeamPage = () => {
       const bannerUrl = await getImageUrl('our-team/BookaCall.png')
       if (bannerUrl) setBannerImageUrl(bannerUrl)
 
-      // Load leader images (order matches executiveBoardTiers: 3 + 4 + 8)
-      const leaderPaths = [
-        'our-team/48016C47-7A25-415F-8F2D-31244BD1625F.PNG',
-        'our-team/610ECB22-C07A-48D1-B646-A90D688F7367.PNG',
-        'our-team/1C118822-DFE2-4682-A8A8-771B723B06A1.PNG',
-        'our-team/D0398078-0325-4A5B-B1EE-D4033A6FCDEA.PNG',
-        'our-team/angel3454.png',
-        'our-team/clara456.png',
-        'our-team/exec-07.png',
-        'our-team/exec-08.png',
-        'our-team/exec-09.png',
-        'our-team/exec-10.png',
-        'our-team/exec-11.png',
-        'our-team/exec-12.png',
-        'our-team/exec-13.png',
-        'our-team/exec-14.png',
-        'our-team/exec-15.png'
-      ]
-      const leaderUrls = await Promise.all(leaderPaths.map((p) => getImageUrl(p)))
-      const next = {}
-      leaderUrls.forEach((url, i) => {
-        next[`leader${i + 1}`] = url
-      })
-      setLeaderImages(next)
-
-      // Load office images with specific filenames
-      const officeUrls = await Promise.all([
-        getImageUrl('our-team/building2.png'), // Madrid
-        getImageUrl('our-team/2building1.png'), // Dubai
-        getImageUrl('our-team/towe.png'), // London
-        getImageUrl('our-team/towe3.png') // Amsterdam
-      ])
-      setOfficeImages({
-        madrid: officeUrls[0],
-        dubai: officeUrls[1],
-        london: officeUrls[2],
-        amsterdam: officeUrls[3]
-      })
+      // Load leadership widget image
+      const towerUrl = await getImageUrl('our-team/tower.png')
+      if (towerUrl) setLeadershipWidgetImageUrl(towerUrl)
 
       // Load section dropdown images
       const sectionUrls = await Promise.all([
@@ -208,6 +143,53 @@ const OurTeamPage = () => {
       })
     }
     loadImages()
+  }, [])
+
+  useEffect(() => {
+    if (!officesMapRef.current || officesMapInstanceRef.current) return
+
+    const map = L.map(officesMapRef.current, {
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      attributionControl: false
+    }).setView([40, 17], 3)
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map)
+
+    const officePoints = [
+      { name: 'Madrid', coords: [40.4168, -3.7038] },
+      { name: 'London', coords: [51.5072, -0.1276] },
+      { name: 'Amsterdam', coords: [52.3676, 4.9041] },
+      { name: 'Dubai', coords: [25.2048, 55.2708] }
+    ]
+
+    officePoints.forEach((office) => {
+      L.circleMarker(office.coords, {
+        radius: 7,
+        fillColor: '#1e40af',
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.95
+      }).addTo(map)
+    })
+
+    officesMapInstanceRef.current = map
+
+    return () => {
+      if (officesMapInstanceRef.current) {
+        officesMapInstanceRef.current.remove()
+        officesMapInstanceRef.current = null
+      }
+    }
   }, [])
 
   // Position dropdown widget to span from Section 1 to Section 4 (only on open, not on scroll)
@@ -558,7 +540,7 @@ const OurTeamPage = () => {
         </section>
 
         {/* Hero Section */}
-        <section className="white-section">
+        <section className="white-section team-intro-section">
           <div className="container">
             <div className="white-hero">
               <h2 className="white-hero-title">Leadership & Team</h2>
@@ -569,62 +551,40 @@ const OurTeamPage = () => {
           </div>
         </section>
 
-        {/* Executive Board Section */}
-        <section className="white-section team-section">
+        <section className="white-section leadership-widget-section">
           <div className="container">
-            <h2 className="team-section-title">Executive Board</h2>
-            {executiveBoardTiers.map((tier, tierIndex) => (
+            <div className="leadership-widget">
               <div
-                key={`tier-${tierIndex}`}
-                className={`team-grid team-grid--executive-tier team-grid--executive-tier-${tierIndex + 1}`}
-              >
-                {tier.map((leader) => (
-                  <div key={leader.id} className="team-card">
-                    <div
-                      className="team-card-image"
-                      style={{
-                        backgroundImage: leaderImages[leader.imageKey]
-                          ? `url(${leaderImages[leader.imageKey]})`
-                          : 'none',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat'
-                      }}
-                    />
-                    <div className="team-card-content">
-                      <h3 className="team-card-name">{leader.name}</h3>
-                      <p className="team-card-title">{leader.title}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+                className="leadership-widget-image"
+                style={{
+                  backgroundImage: leadershipWidgetImageUrl ? `url(${leadershipWidgetImageUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundColor: leadershipWidgetImageUrl ? 'transparent' : '#f3f4f6'
+                }}
+              />
+              <p className="leadership-widget-text">
+                The team is structured into specialized functions across research, risk management, technology, quantitative strategies, and operations. Each member has a clearly defined role, enabling fast decision making and strong cross functional collaboration. All operators are enrolled in the CFA Program, maintaining a strong foundation in certified financial education, complemented by continuous training and hands on market experience.
+              </p>
+            </div>
           </div>
         </section>
 
         {/* Offices Section */}
         <section className="white-section offices-section">
           <div className="container">
-            <h2 className="team-section-title">Our Offices</h2>
-            <div className="team-grid">
-              {offices.map((office) => (
-                <div key={office.id} className="team-card">
-                  <div 
-                    className="team-card-image"
-                    style={{
-                      backgroundImage: officeImages[office.city.toLowerCase()] ? `url(${officeImages[office.city.toLowerCase()]})` : 'none',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundColor: officeImages[office.city.toLowerCase()] ? 'transparent' : '#f3f4f6'
-                    }}
-                  >
-                  </div>
-                  <div className="team-card-content">
-                    <h3 className="team-card-name">{office.city}</h3>
-                  </div>
-                </div>
-              ))}
+            <div className="white-hero offices-hero">
+              <h2 className="white-hero-title">Our Offices</h2>
+              <p className="white-hero-subtitle">
+                Our offices provide a stable foundation for daily operations, supporting coordination, oversight, and team alignment across all functions.
+              </p>
+            </div>
+            <div className="offices-widget">
+              <div className="offices-map" ref={officesMapRef} />
+              <p className="offices-widget-text">
+                We operate on a global basis, actively covering all major time zones to ensure continuous market presence and responsiveness. The team regularly engages with clients worldwide, with presence in key financial hubs including Madrid, Dubai, Amsterdam, and London, reinforcing strong relationships and direct communication.
+              </p>
             </div>
           </div>
         </section>

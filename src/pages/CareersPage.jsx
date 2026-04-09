@@ -53,10 +53,10 @@ const CareersPage = () => {
   const [jobs] = useState([
     {
       id: 1,
-      title: 'Quantitative Trading Developer (Energy Markets)',
+      title: 'Quantitative Trading Developer',
       location: 'Madrid or Amsterdam',
-      remote: 'Hybrid / Remote (EU time zone required)',
-      hours: '40–55 hours/week (market-driven)',
+      remote: 'Hybrid / Remote',
+      hours: '40–55 hours/week',
       categories: ['Trading', 'Technology', 'Quantitative'],
       description: 'Design, build, and maintain trading systems used in live energy markets. This role sits directly between strategy and execution.',
       roleOverview: 'You will design, build, and maintain trading systems used in live energy markets. This role sits directly between strategy and execution. Code you write will size risk, route orders, and manage real capital in real time.',
@@ -109,9 +109,9 @@ const CareersPage = () => {
     },
     {
       id: 3,
-      title: 'Backend Software Engineer (Platform & Infrastructure)',
+      title: 'Backend Software Engineer',
       location: 'Amsterdam or Dubai',
-      remote: 'Hybrid only',
+      remote: 'Hybrid / Remote',
       hours: '40–50 hours/week',
       categories: ['Technology', 'Software Engineering', 'Infrastructure'],
       description: 'Work on the core infrastructure that supports trading, client portals, and internal operations.',
@@ -137,9 +137,9 @@ const CareersPage = () => {
     },
     {
       id: 4,
-      title: 'Client & Investment Relations Manager',
+      title: 'Client & Investment Relations',
       location: 'Madrid or Dubai',
-      remote: 'Partial (on-site preferred)',
+      remote: 'Hybrid / Remote',
       hours: '35–45 hours/week',
       categories: ['Client Relations', 'Investment', 'Management'],
       description: 'Manage professional relationships with investors and partners. Requires financial literacy and discretion.',
@@ -165,9 +165,9 @@ const CareersPage = () => {
     },
     {
       id: 5,
-      title: 'Risk & Compliance Associate (Trading Operations)',
+      title: 'Risk & Compliance Associate',
       location: 'London or Amsterdam',
-      remote: 'No',
+      remote: 'Hybrid / Remote',
       hours: '40 hours/week',
       categories: ['Risk Management', 'Compliance', 'Operations'],
       description: 'Support trading operations by monitoring risk exposure, enforcing controls, and ensuring processes are followed.',
@@ -775,7 +775,7 @@ const CareersPage = () => {
           <div className="container">
             {/* Hero Section */}
             <div className="white-hero">
-              <h2 className="white-hero-title">Build With Us in Global Commodity Markets</h2>
+              <h2 className="white-hero-title">Join Our Commodities Trading Team</h2>
               <p className="white-hero-subtitle">
                 From trading and technology to operations and risk, we hire people who design, operate, and scale real market infrastructure. If you want responsibility, measurable impact, and exposure, explore our open roles.
               </p>

@@ -17,6 +17,7 @@
     "@getbrevo/brevo": "^3.0.1",
     "firebase": "^12.7.0",
     "firebase-admin": "^12.0.0",
+    "leaflet": "^1.9.4",
     "playwright": "^1.49.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
