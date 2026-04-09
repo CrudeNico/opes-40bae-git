@@ -16,7 +16,6 @@ const PortfolioModelsPage = () => {
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
   const [expandedModel, setExpandedModel] = useState(null)
-  const modelsSectionRef = useRef(null)
   const [bannerImageUrl, setBannerImageUrl] = useState(null)
   const [sectionImages, setSectionImages] = useState({
     section1: null,
@@ -508,30 +507,8 @@ const PortfolioModelsPage = () => {
           </div>
         </section>
 
-        {/* Hero Section */}
-        <section className="white-section">
-          <div className="container">
-            <div className="white-hero">
-              <h2 className="white-hero-title">Structured Portfolio Solutions for Capital Growth</h2>
-              <p className="white-hero-subtitle">
-                Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
-              </p>
-              <button 
-                className="btn btn-primary-white"
-                onClick={() => {
-                  if (modelsSectionRef.current) {
-                    modelsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }
-                }}
-              >
-                Calculate your investment →
-              </button>
-            </div>
-          </div>
-        </section>
-
         {/* Portfolio Models Section */}
-        <section className="white-section portfolio-models-section" ref={modelsSectionRef}>
+        <section className="white-section portfolio-models-section">
           <div className="container">
             <h2 className="portfolio-models-title">Our Portfolio Models</h2>
             <p className="portfolio-models-subtitle">Choose the investment strategy that aligns with your goals</p>
@@ -776,6 +753,19 @@ const PortfolioModelsPage = () => {
                   <p>Leverage, exposure limits, and position concentration are always higher in the high-risk portfolio, reflecting its role as the primary risk-bearing vehicle within the overall structure.</p>
                   <p>Investors should select a portfolio based on their financial objectives, risk tolerance, and understanding of market exposure — not solely on target returns.</p>
                 </div>
+              </div>
+
+              <div className="portfolio-inline-cta">
+                <h2 className="white-hero-title">Structured Portfolio Solutions for Capital Growth</h2>
+                <p className="white-hero-subtitle">
+                  Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
+                </p>
+                <button
+                  className="btn btn-primary-white"
+                  onClick={() => navigate('/investment-calculator')}
+                >
+                  Calculate your investment →
+                </button>
               </div>
             </div>
           </div>

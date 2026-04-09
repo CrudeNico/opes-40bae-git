@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { getFirestore, collection, addDoc, Timestamp } from 'firebase/firestore'
 import { auth } from '../firebase/config'
 import { sendConsultationConfirmationEmail } from '../firebase/email'
@@ -15,6 +15,7 @@ const ArrowIcon = () => (
 
 const HomePage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   
@@ -167,6 +168,30 @@ const HomePage = () => {
     }, 100)
     return () => clearTimeout(timer)
   }, [])
+
+  // Handle cross-page scroll requests (e.g., Contact -> Home risk section)
+  useEffect(() => {
+    if (!location.state?.scrollToRiskManagement) return
+
+    const scrollToRiskSection = () => {
+      const riskSection = document.querySelector('#risk-management-section')
+      if (!riskSection) return
+      const elementPosition = riskSection.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - 100
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+    }
+
+    scrollToRiskSection()
+    const timer1 = setTimeout(scrollToRiskSection, 250)
+    const timer2 = setTimeout(scrollToRiskSection, 700)
+
+    navigate(location.pathname, { replace: true, state: {} })
+
+    return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+    }
+  }, [location.state, location.pathname, navigate])
 
   // Load images and video from Firebase Storage
   useEffect(() => {
@@ -1281,7 +1306,7 @@ const HomePage = () => {
             </div>
 
             {/* Third Hero Section */}
-            <div className="white-hero third-hero">
+            <div className="white-hero third-hero" id="risk-management-section">
               <h2 className="white-hero-title">Risk Management Built Into Every Allocation</h2>
               <p className="white-hero-subtitle">
                 Understand the risk management principles, capital hierarchy, and protective mechanisms that govern exposure, drawdowns, and portfolio behavior across market conditions.

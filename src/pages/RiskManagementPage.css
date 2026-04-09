@@ -97,6 +97,9 @@
   padding-bottom: 1rem;
   border-bottom: 3px solid #3b82f6;
   line-height: 1.2;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .risk-section-content {
@@ -111,6 +114,9 @@
   line-height: 1.8;
   margin: 0;
   text-align: justify;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 /* Mobile Responsive */

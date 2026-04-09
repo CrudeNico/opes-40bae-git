@@ -576,7 +576,7 @@ const ManagedPortfoliosPage = () => {
         </section>
 
         {/* Hero Section */}
-        <section className="white-section">
+        <section className="white-section managed-hero-section">
           <div className="container">
             <div className="white-hero">
               <h2 className="white-hero-title">Segmented Portfolio Management</h2>

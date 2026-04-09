@@ -12,6 +12,14 @@
   max-width: 100vw;
 }
 
+.performance-tracking-page .white-hero-title,
+.performance-tracking-page .white-hero-subtitle,
+.performance-tracking-page .performance-widget-title,
+.performance-tracking-page .performance-widget-description {
+  font-family: 'Open Sans', sans-serif !important;
+  font-stretch: 100%;
+}
+
 /* Performance Widgets Section */
 .performance-widgets-section {
   padding: 1rem 2rem 4rem;

@@ -555,11 +555,6 @@ const PerformanceTrackingPage = () => {
         <section className="white-section performance-widgets-section">
           <div className="container">
             <div className="performance-widgets-content">
-              <div className="performance-widgets-header">
-                <h2 className="performance-widgets-title">Performance Reports</h2>
-                <p className="performance-widgets-subtitle">Download quarterly and annual performance reports</p>
-              </div>
-              
               <div className="performance-widgets-grid">
                 {performanceWidgets.map((widget) => (
                   <div 

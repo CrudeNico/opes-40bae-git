@@ -12,6 +12,12 @@
   max-width: 100vw;
 }
 
+.macro-insights-page .white-hero-title,
+.macro-insights-page .white-hero-subtitle {
+  font-family: 'Open Sans', sans-serif !important;
+  font-stretch: 100%;
+}
+
 /* Positioning & Market Access Section */
 .positioning-section {
   padding: 4rem 2rem;

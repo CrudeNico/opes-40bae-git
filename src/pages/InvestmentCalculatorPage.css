@@ -18,6 +18,12 @@
   background: #ffffff;
 }
 
+.investment-calculator-page .white-hero-title,
+.investment-calculator-page .white-hero-subtitle {
+  font-family: 'Open Sans', sans-serif !important;
+  font-stretch: 100%;
+}
+
 /* Calculator Widget Section */
 .calculator-widget-section {
   padding: 1rem 2rem 4rem;
@@ -229,7 +235,7 @@
 
 /* Calculator Text Section */
 .calculator-text-section {
-  padding: 1.5rem 2rem 3rem;
+  padding: 0.75rem 2rem 3rem;
   background: #ffffff;
 }
 

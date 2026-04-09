@@ -494,27 +494,6 @@ const ExecutionTechnologyPage = () => {
           </div>
         </section>
 
-        {/* Hero Section */}
-        <section className="white-section">
-          <div className="container">
-            <div className="white-hero">
-              <h2 className="white-hero-title">Model Your Execution Performance</h2>
-              <p className="white-hero-subtitle">
-                Estimate potential outcomes based on our execution framework, risk controls, and capital allocation logic. Use our calculator to understand how technology and discipline translate into results.
-              </p>
-              <button 
-                className="btn btn-primary-white"
-                onClick={() => {
-                  navigate('/investment-calculator')
-                  handleLinkClick()
-                }}
-              >
-                Calculate Returns →
-              </button>
-            </div>
-          </div>
-        </section>
-
         {/* Process Timeline Section */}
         <section className="white-section process-timeline-section">
           <div className="container">
@@ -529,7 +508,7 @@ const ExecutionTechnologyPage = () => {
                 <div className="timeline-step">
                   <div className="timeline-number">1</div>
                   <div className="timeline-widget">
-                    <h3 className="timeline-widget-title">Signal Generation & Data Filtering</h3>
+                    <h3 className="timeline-widget-title">Signal Generation & Data</h3>
                     <p className="timeline-widget-text">Multi-layer analyzers continuously process market data to identify executable conditions, filtering noise and invalid setups before any operation is produced.</p>
                   </div>
                 </div>
@@ -538,7 +517,7 @@ const ExecutionTechnologyPage = () => {
                 <div className="timeline-step">
                   <div className="timeline-number">2</div>
                   <div className="timeline-widget">
-                    <h3 className="timeline-widget-title">Programmatic Signal Dispatch</h3>
+                    <h3 className="timeline-widget-title">Programmatic Signal</h3>
                     <p className="timeline-widget-text">Validated conditions are transmitted through our execution system in near real time, generating structured operations within seconds of detection.</p>
                   </div>
                 </div>
@@ -547,7 +526,7 @@ const ExecutionTechnologyPage = () => {
                 <div className="timeline-step">
                   <div className="timeline-number">3</div>
                   <div className="timeline-widget">
-                    <h3 className="timeline-widget-title">Operator Review & Authorization</h3>
+                    <h3 className="timeline-widget-title">Operator Authorization</h3>
                     <p className="timeline-widget-text">Live operators assess each operation against execution context, liquidity, and risk parameters, authorizing only those that meet predefined criteria.</p>
                   </div>
                 </div>
@@ -556,7 +535,7 @@ const ExecutionTechnologyPage = () => {
                 <div className="timeline-step">
                   <div className="timeline-number">4</div>
                   <div className="timeline-widget">
-                    <h3 className="timeline-widget-title">Execution & Live Monitoring</h3>
+                    <h3 className="timeline-widget-title">Execution & Monitoring</h3>
                     <p className="timeline-widget-text">Approved operations are routed to the broker for CFD execution, followed by continuous monitoring and real-time risk management throughout the position lifecycle.</p>
                   </div>
                 </div>

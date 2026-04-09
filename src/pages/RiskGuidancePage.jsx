@@ -33,18 +33,6 @@ const RiskGuidancePage = () => {
     acknowledgment: useRef(null)
   }
 
-  const scrollToSection = (sectionKey) => {
-    const section = sectionRefs[sectionKey]?.current
-    if (section) {
-      const offset = 100
-      const elementPosition = section.getBoundingClientRect().top + window.scrollY
-      window.scrollTo({
-        top: elementPosition - offset,
-        behavior: 'smooth'
-      })
-    }
-  }
-  
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
       setOpenMobileNavSection(openMobileNavSection === 'main' ? null : 'main')
@@ -502,35 +490,6 @@ const RiskGuidancePage = () => {
             <div className="page-banner-content">
               <h1 className="page-banner-title">Risk Guidance</h1>
               <p className="page-banner-subtitle">Probabilities and expectations</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Navigation Section */}
-        <section className="white-section risk-guidance-nav-section">
-          <div className="container">
-            <div className="risk-guidance-nav-grid">
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('introduction')}>
-                Introduction
-              </button>
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('probabilistic')}>
-                Probabilistic Nature
-              </button>
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('structural')}>
-                Low-Risk Portfolio Structure
-              </button>
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('scope')}>
-                Principal Protection Scope
-              </button>
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('treatment')}>
-                Treatment of Capital
-              </button>
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('fully')}>
-                Fully At-Risk Structure
-              </button>
-              <button className="risk-guidance-nav-item" onClick={() => scrollToSection('acknowledgment')}>
-                Investor Acknowledgment
-              </button>
             </div>
           </div>
         </section>

@@ -462,17 +462,6 @@ const CrudeOilStrategiesPage = () => {
           </div>
         </section>
 
-        {/* Text Section */}
-        <section className="white-section strategy-text-section">
-          <div className="container">
-            <div className="strategy-text-content">
-              <p className="strategy-text-small">
-                Our systematic approach to crude oil trading leverages quantitative models and real-time market analysis to identify and capitalize on structural inefficiencies in energy markets.
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* Positioning & Exposure Control Section */}
         <section className="white-section positioning-section">
           <div className="container">
@@ -559,7 +548,7 @@ const CrudeOilStrategiesPage = () => {
               <p className="cta-subtitle">
                 Investors may select between conservative and higher-risk profiles, each operating within a jointly managed capital structure that enhances margin safety and execution resilience.
               </p>
-              <Link to="/investment-calculator" className="btn btn-primary-white">
+              <Link to="/investment-calculator" className="btn btn-primary-white cta-calculate-btn">
                 Calculate your investment →
               </Link>
             </div>

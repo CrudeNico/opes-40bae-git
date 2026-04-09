@@ -33,18 +33,6 @@ const CompliancePage = () => {
     reporting: useRef(null)
   }
 
-  const scrollToSection = (sectionKey) => {
-    const section = sectionRefs[sectionKey]?.current
-    if (section) {
-      const offset = 100
-      const elementPosition = section.getBoundingClientRect().top + window.scrollY
-      window.scrollTo({
-        top: elementPosition - offset,
-        behavior: 'smooth'
-      })
-    }
-  }
-  
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
       setOpenMobileNavSection(openMobileNavSection === 'main' ? null : 'main')
@@ -501,35 +489,6 @@ const CompliancePage = () => {
             <div className="page-banner-content">
               <h1 className="page-banner-title">Compliance</h1>
               <p className="page-banner-subtitle">Legal and disclosures</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Navigation Section */}
-        <section className="white-section compliance-nav-section">
-          <div className="container">
-            <div className="compliance-nav-grid">
-              <button className="compliance-nav-item" onClick={() => scrollToSection('investment')}>
-                Investment Philosophy
-              </button>
-              <button className="compliance-nav-item" onClick={() => scrollToSection('market')}>
-                Market Focus
-              </button>
-              <button className="compliance-nav-item" onClick={() => scrollToSection('strategy')}>
-                Core Strategy Architecture
-              </button>
-              <button className="compliance-nav-item" onClick={() => scrollToSection('risk')}>
-                Risk Management Framework
-              </button>
-              <button className="compliance-nav-item" onClick={() => scrollToSection('capital')}>
-                Capital Protection
-              </button>
-              <button className="compliance-nav-item" onClick={() => scrollToSection('operational')}>
-                Operational Process
-              </button>
-              <button className="compliance-nav-item" onClick={() => scrollToSection('reporting')}>
-                Reporting Standards
-              </button>
             </div>
           </div>
         </section>

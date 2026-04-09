@@ -12,11 +12,21 @@
   max-width: 100vw;
 }
 
+.execution-technology-page .main-content {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
+}
+
+.execution-technology-page .white-section .white-hero {
+  margin-bottom: 1.25rem;
+}
+
 /* Process Timeline Section */
 .process-timeline-section {
-  padding: 1rem 2rem 4rem;
+  padding: 5rem 2rem 4rem;
   background: #ffffff;
-  margin-top: -2rem;
+  margin-top: 0;
 }
 
 .process-timeline-content {

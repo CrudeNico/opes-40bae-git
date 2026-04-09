@@ -73,6 +73,13 @@
   margin-bottom: 1rem;
 }
 
+.partners-page .white-hero-title,
+.partners-page .white-hero-subtitle {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
+}
+
 /* Partners Grid Section */
 .partners-grid-section {
   padding: 0 2rem 4rem;

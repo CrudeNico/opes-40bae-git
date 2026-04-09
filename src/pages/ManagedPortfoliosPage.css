@@ -12,9 +12,26 @@
   max-width: 100vw;
 }
 
+.managed-portfolios-page .white-hero-title,
+.managed-portfolios-page .white-hero-subtitle,
+.managed-portfolios-page .big-widget-text p,
+.managed-portfolios-page .investor-choice-title,
+.managed-portfolios-page .investor-choice-description {
+  font-family: 'Open Sans', sans-serif !important;
+  font-stretch: 100%;
+}
+
+.managed-portfolios-page .managed-hero-section {
+  padding-bottom: 2.5rem;
+}
+
+.managed-portfolios-page .managed-hero-section .white-hero {
+  margin-bottom: 1.75rem;
+}
+
 /* Big Widget Section */
 .big-widget-section {
-  padding-top: 1rem;
+  padding-top: 0.25rem;
   padding-bottom: 4rem;
 }
 

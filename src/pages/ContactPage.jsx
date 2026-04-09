@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { getFirestore, collection, addDoc, Timestamp } from 'firebase/firestore'
+import { auth } from '../firebase/config'
+import { sendConsultationConfirmationEmail } from '../firebase/email'
 import { getImageUrl } from '../utils/imageStorage'
 import Footer from '../components/Footer'
 import './ContactPage.css'
@@ -17,12 +20,141 @@ const ContactPage = () => {
   const dropdownWidgetRef = useRef(null)
   const closeTimeoutRef = useRef(null)
   const [bannerImageUrl, setBannerImageUrl] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [selectedTime, setSelectedTime] = useState('')
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  const [profileImageUrl, setProfileImageUrl] = useState(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    company: '',
+    message: ''
+  })
+  const [loadingConsultation, setLoadingConsultation] = useState(false)
+  const [consultationSuccess, setConsultationSuccess] = useState(false)
+  const [consultationError, setConsultationError] = useState('')
   const [sectionImages, setSectionImages] = useState({
     section1: null,
     section2: null,
     section3: null,
     section4: null
   })
+
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month + 1, 0).getDate()
+  }
+
+  const getFirstDayOfMonth = (month, year) => {
+    return new Date(year, month, 1).getDay()
+  }
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const timeSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM']
+
+  const generateCalendarDays = () => {
+    const days = []
+    const firstDay = getFirstDayOfMonth(currentMonth, currentYear)
+    const daysInMonth = getDaysInMonth(currentMonth, currentYear)
+
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null)
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentYear, currentMonth, day)
+      const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+      const isAvailable = !isPast && day % 3 !== 0
+      days.push({ day, date, isAvailable })
+    }
+
+    return days
+  }
+
+  const days = generateCalendarDays()
+
+  const handleScheduleConsultation = async () => {
+    if (!selectedDate || !selectedTime) {
+      setConsultationError('Please select a date and time.')
+      return
+    }
+
+    if (!formData.name.trim() || !formData.email.trim()) {
+      setConsultationError('Please fill in your name and email.')
+      return
+    }
+
+    setLoadingConsultation(true)
+    setConsultationError('')
+    setConsultationSuccess(false)
+
+    try {
+      const db = getFirestore()
+      const consultationData = {
+        userName: formData.name.trim(),
+        userEmail: formData.email.trim(),
+        company: formData.company || '',
+        date: Timestamp.fromDate(selectedDate),
+        time: selectedTime,
+        message: formData.message || '',
+        status: 'pending',
+        createdAt: Timestamp.now(),
+        type: 'consultation',
+        ...(auth.currentUser && { userId: auth.currentUser.uid })
+      }
+
+      await addDoc(collection(db, 'supportRequests'), consultationData)
+
+      const emailResult = await sendConsultationConfirmationEmail(
+        formData.email.trim(),
+        formData.name.trim(),
+        selectedDate,
+        selectedTime
+      )
+
+      if (!emailResult.success) {
+        console.error('Failed to send confirmation email:', emailResult.error)
+      }
+
+      setConsultationSuccess(true)
+      setSelectedDate(null)
+      setSelectedTime('')
+      setFormData({
+        name: '',
+        email: '',
+        company: '',
+        message: ''
+      })
+
+      setTimeout(() => {
+        setConsultationSuccess(false)
+      }, 5000)
+    } catch (error) {
+      console.error('Error submitting consultation:', error)
+      setConsultationError('Failed to submit consultation request. Please try again.')
+    } finally {
+      setLoadingConsultation(false)
+    }
+  }
   
   const toggleMenu = () => {
     if (openMobileNavSection === null || openMobileNavSection === 'main') {
@@ -148,6 +280,8 @@ const ContactPage = () => {
     const loadBannerImage = async () => {
       const bannerUrl = await getImageUrl('contact/callcenter.jpeg')
       if (bannerUrl) setBannerImageUrl(bannerUrl)
+      const profileUrl = await getImageUrl('homepage/diegorequena.JPG')
+      if (profileUrl) setProfileImageUrl(profileUrl)
 
       // Load section dropdown images
       const sectionUrls = await Promise.all([
@@ -513,33 +647,13 @@ const ContactPage = () => {
         </section>
 
         {/* Hero Section */}
-        <section className="white-section">
+        <section className="white-section contact-hero-section">
           <div className="container">
             <div className="white-hero">
               <h2 className="white-hero-title">Get in Touch With Our Team</h2>
               <p className="white-hero-subtitle">
                 For general inquiries, partnerships, or client-related matters, contact us directly. Our team will route your request to the appropriate department and respond promptly.
               </p>
-              <button 
-                className="btn btn-primary-white"
-                onClick={() => {
-                  navigate('/')
-                  // Scroll to calendar section on homepage after navigation with offset
-                  setTimeout(() => {
-                    const calendarSection = document.querySelector('.third-widget-section')
-                    if (calendarSection) {
-                      const elementPosition = calendarSection.getBoundingClientRect().top
-                      const offsetPosition = elementPosition + window.pageYOffset - 100 // 100px offset from top
-                      window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
-                      })
-                    }
-                  }, 300)
-                }}
-              >
-                Schedule appointment →
-              </button>
             </div>
           </div>
         </section>
@@ -581,8 +695,189 @@ const ContactPage = () => {
                   </div>
                   <div className="contact-info-details">
                     <h3 className="contact-info-label">Address</h3>
-                    <p className="contact-info-value">Banco de Bilbao Tower, 28046 Madrid</p>
+                    <p className="contact-info-value">Dubai Silicon Oasis</p>
                   </div>
+                </div>
+              </div>
+              <div className="third-widget-section contact-calendar-widget">
+                <div className="third-widget">
+                  {!selectedDate ? (
+                    <div className="calendar-container">
+                      <div className="calendar-layout">
+                        <div className="advisor-section">
+                          <div className="advisor-profile">
+                            <div
+                              className="advisor-avatar"
+                              style={{
+                                backgroundImage: profileImageUrl ? `url(${profileImageUrl})` : 'none',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat'
+                              }}
+                            >
+                              <div className="live-indicator"></div>
+                            </div>
+                            <h4 className="advisor-name">Daniel</h4>
+                          </div>
+                          <div className="consultation-steps">
+                            <h5 className="steps-title">How it works:</h5>
+                            <div className="step-item">
+                              <span className="step-number">1</span>
+                              <p className="step-text">Select your preferred date</p>
+                            </div>
+                            <div className="step-item">
+                              <span className="step-number">2</span>
+                              <p className="step-text">Prepare your questions</p>
+                            </div>
+                            <div className="step-item">
+                              <span className="step-number">3</span>
+                              <p className="step-text">A specialist will contact you</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="calendar-section">
+                          <div className="calendar-widget">
+                            <div className="calendar-header">
+                              <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
+                              <h4 className="calendar-month">
+                                {monthNames[currentMonth]} {currentYear}
+                              </h4>
+                              <button className="calendar-nav" onClick={handleNextMonth}>›</button>
+                            </div>
+                            <div className="calendar-list-wrapper">
+                              <div className="calendar-list-header">
+                                {weekdays.map((day) => (
+                                  <span key={day} className="calendar-list-weekday">{day}</span>
+                                ))}
+                              </div>
+                              <div className="calendar-list">
+                                {days.map((dayData, index) => {
+                                  if (dayData === null) return null
+
+                                  const today = new Date(new Date().setHours(0, 0, 0, 0))
+                                  if (dayData.date < today) return null
+
+                                  const isToday = dayData.date.toDateString() === today.toDateString()
+
+                                  return (
+                                    <button
+                                      key={index}
+                                      className={`calendar-list-item ${dayData.isAvailable ? 'available' : 'unavailable'}`}
+                                      onClick={() => dayData.isAvailable && setSelectedDate(dayData.date)}
+                                      disabled={!dayData.isAvailable}
+                                    >
+                                      <div className="calendar-list-item-main">
+                                        <span className="calendar-list-item-day">{dayData.day}</span>
+                                        <div className="calendar-list-item-text">
+                                          <span className="calendar-list-item-label">{weekdays[dayData.date.getDay()]}</span>
+                                          <span className="calendar-list-item-date">{monthNames[currentMonth]} {dayData.day}, {currentYear}</span>
+                                        </div>
+                                      </div>
+                                      <div className="calendar-list-item-status">
+                                        {isToday && <span className="calendar-chip today">Today</span>}
+                                        {dayData.isAvailable ? (
+                                          <span className="calendar-chip active">Available</span>
+                                        ) : (
+                                          <span className="calendar-chip muted">Unavailable</span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="consultation-form">
+                      <div className="form-header">
+                        <button className="back-button" onClick={() => setSelectedDate(null)}>← Back</button>
+                        <h3 className="form-title">Schedule Your Consultation</h3>
+                        <p className="selected-date">Selected: {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                      <div className="form-content-layout">
+                        <div className="form-left">
+                          <div className="time-selection">
+                            <label className="form-label">Select Time</label>
+                            <div className="time-slots">
+                              {timeSlots.map((time) => (
+                                <button
+                                  key={time}
+                                  className={`time-slot ${selectedTime === time ? 'selected' : ''}`}
+                                  onClick={() => setSelectedTime(time)}
+                                >
+                                  {time}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="form-fields">
+                            <div className="form-field">
+                              <label className="form-label">Full Name</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Enter your name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              />
+                            </div>
+                            <div className="form-field">
+                              <label className="form-label">Company (Optional)</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Enter your company name"
+                                value={formData.company}
+                                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="form-right">
+                          <div className="form-field form-field-full">
+                            <label className="form-label">Meeting Details (Optional)</label>
+                            <textarea
+                              className="form-textarea"
+                              placeholder="Tell us about what you'd like to discuss..."
+                              rows="4"
+                              value={formData.message}
+                              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-field">
+                            <label className="form-label">Email</label>
+                            <input
+                              type="email"
+                              className="form-input"
+                              placeholder="Enter your email"
+                              value={formData.email}
+                              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            />
+                          </div>
+                          {consultationError && (
+                            <div className="alert alert-error" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#fef2f2', color: '#991b1b', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
+                              {consultationError}
+                            </div>
+                          )}
+                          {consultationSuccess && (
+                            <div className="alert alert-success" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#f0fdf4', color: '#166534', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
+                              Consultation request submitted successfully! You will receive a confirmation email shortly. Please check your inbox and spam folder within 5 minutes.
+                            </div>
+                          )}
+                          <button
+                            className="btn btn-primary-white submit-button"
+                            onClick={handleScheduleConsultation}
+                            disabled={loadingConsultation || !selectedTime}
+                          >
+                            {loadingConsultation ? 'Submitting...' : 'Schedule Consultation'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -619,6 +914,7 @@ const ContactPage = () => {
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="whatsapp-float-icon">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
         </svg>
+        <span className="whatsapp-float-text">Chat on WhatsApp</span>
       </a>
 
       <Footer handleLinkClick={handleLinkClick} />

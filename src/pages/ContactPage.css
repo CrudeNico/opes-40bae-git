@@ -66,11 +66,28 @@
   font-weight: 400;
 }
 
+.contact-page .white-hero-title,
+.contact-page .white-hero-subtitle,
+.contact-page .schedule-title,
+.contact-page .schedule-subtitle {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
+}
+
+.contact-page .contact-hero-section {
+  padding-bottom: 1rem;
+}
+
+.contact-page .contact-hero-section .white-hero {
+  margin-bottom: 0.5rem;
+}
+
 /* Footer and Header styles are imported from HomePage.css */
 
 /* Contact Info Section */
 .contact-info-section {
-  padding: 1rem 2rem 4rem;
+  padding: 0 2rem 4rem;
   background: #ffffff;
 }
 
@@ -82,9 +99,22 @@
 
 .contact-info-title {
   font-size: 2.5rem;
-  font-weight: 600;
+  font-weight: 350;
   color: #1e40af;
   margin: 0 0 1rem 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-stretch: 90%;
+}
+
+.contact-info-label,
+.contact-info-value {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
+}
+
+.contact-calendar-widget {
+  margin-top: 2rem;
 }
 
 .contact-info-subtitle {
@@ -202,14 +232,17 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 60px;
-  height: 60px;
+  height: 56px;
+  width: auto;
+  min-width: 56px;
+  padding: 0 1rem 0 0.75rem;
   background-color: #4dbd7a;
   color: #ffffff;
-  border-radius: 50%;
+  border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   z-index: 9999;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   text-decoration: none;
@@ -217,12 +250,19 @@
 }
 
 .whatsapp-float-icon {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
+}
+
+.whatsapp-float-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .whatsapp-float:hover {
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 /* Mobile Responsive */
@@ -284,5 +324,10 @@
   .whatsapp-float {
     bottom: 16px;
     right: 16px;
+    padding: 0 0.85rem 0 0.65rem;
+  }
+
+  .whatsapp-float-text {
+    font-size: 0.82rem;
   }
 }

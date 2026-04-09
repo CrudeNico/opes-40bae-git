@@ -85,6 +85,9 @@
   color: #1f2937;
   margin: 0;
   line-height: 1.2;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .positioning-body {
@@ -98,6 +101,9 @@
   color: #4b5563;
   line-height: 1.8;
   margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .positioning-image {
@@ -173,6 +179,9 @@
   color: #1f2937;
   margin: 0;
   line-height: 1.2;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .sentiment-body {
@@ -186,6 +195,9 @@
   color: #4b5563;
   line-height: 1.8;
   margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 /* Geopolitical Events & Macro Awareness Section */
@@ -215,6 +227,9 @@
   color: #1f2937;
   margin: 0;
   line-height: 1.2;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .geopolitical-body {
@@ -228,6 +243,9 @@
   color: #4b5563;
   line-height: 1.8;
   margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .geopolitical-image {
@@ -289,6 +307,9 @@
   color: #1f2937;
   margin: 0;
   line-height: 1.2;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .cta-subtitle {
@@ -296,10 +317,18 @@
   color: #6b7280;
   line-height: 1.7;
   margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-weight: 350;
+  font-stretch: 90%;
 }
 
 .cta-section .btn {
   margin-top: 0.5rem;
+}
+
+.cta-calculate-btn {
+  padding: 0.75rem 1.35rem;
+  font-size: 0.95rem;
 }
 
 /* Mobile Responsive */
