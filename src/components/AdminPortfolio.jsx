@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore'
 import { getAdmin3Overrides, saveAdmin3UserOverride } from '../utils/admin3Overrides'
+import { getInvestorCombinedInitial } from '../utils/investorDualTranche'
 import './AdminPortfolio.css'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -374,13 +375,11 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             const lastRecord = sortedHistory[sortedHistory.length - 1]
             if (lastRecord && lastRecord.endingBalance) {
               total += lastRecord.endingBalance
-            } else if (investmentData.initialInvestment) {
-              // Fallback to initial investment if no history
-              total += investmentData.initialInvestment
+            } else {
+              total += getInvestorCombinedInitial(investmentData)
             }
-          } else if (investmentData.initialInvestment) {
-            // Fallback to initial investment
-            total += investmentData.initialInvestment
+          } else {
+            total += getInvestorCombinedInitial(investmentData)
           }
         }
       })

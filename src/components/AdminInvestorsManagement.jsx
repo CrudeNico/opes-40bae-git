@@ -2,33 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
 import { getAdmin3SampleInvestors } from '../utils/admin3SampleUsers'
+import {
+  TRANCHE_PRIMARY,
+  TRANCHE_SECONDARY,
+  getLastTrancheEnding,
+  computeDualTrancheSumBalance,
+  getInvestorCombinedInitial,
+  getAdminInvestorSummaryCurrentBalance,
+  getAdminInvestorSummaryTotalDeposits,
+  getAdminPerformancePreviewStartingBalance
+} from '../utils/investorDualTranche'
 import './AdminInvestorsManagement.css'
-
-const TRANCHE_PRIMARY = 'primary'
-const TRANCHE_SECONDARY = 'secondary'
-
-function sortMonthlyHistoryAdmin(history) {
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-  return [...(history || [])].sort((a, b) => {
-    if (a.year !== b.year) return parseInt(a.year, 10) - parseInt(b.year, 10)
-    return monthNames.indexOf(a.month) - monthNames.indexOf(b.month)
-  })
-}
-
-function getLastTrancheEndingAdmin(history, tranche, fallback) {
-  const sorted = sortMonthlyHistoryAdmin((history || []).filter((r) => r.tranche === tranche))
-  return sorted.length ? sorted[sorted.length - 1].endingBalance : fallback
-}
-
-function computeDualTrancheSumBalance(history, primaryInit, secondaryInit) {
-  return (
-    getLastTrancheEndingAdmin(history, TRANCHE_PRIMARY, primaryInit) +
-    getLastTrancheEndingAdmin(history, TRANCHE_SECONDARY, secondaryInit)
-  )
-}
 
 const PLACEHOLDER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
 
@@ -174,6 +158,13 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       const userData = userDoc.data()
       const currentInvestmentData = (isAdmin3 ? selectedInvestor.investmentData : userData.investmentData) || {}
       const monthlyHistory = currentInvestmentData.monthlyHistory || []
+      const primaryInitForTotals = currentInvestmentData.initialInvestment || 0
+      const secondaryInitForTotals = currentInvestmentData.secondaryInvestment?.initialInvestment || 0
+      const hasDualForTotals =
+        currentInvestmentData.secondaryInvestment &&
+        (currentInvestmentData.secondaryInvestment.initialInvestment || 0) > 0
+      const depositBaseline =
+        hasDualForTotals ? primaryInitForTotals + secondaryInitForTotals : primaryInitForTotals
 
       // Get the record at the index we're editing
       const recordIndex = editingRecord.index
@@ -311,9 +302,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         ? updatedHistory[updatedHistory.length - 1].endingBalance 
         : currentInvestmentData.initialInvestment || 0
 
-      // Recalculate total deposits and withdrawals
-      const totalDeposits = (currentInvestmentData.initialInvestment || 0) + 
-        updatedHistory.reduce((sum, r) => sum + (r.depositAmount || 0), 0)
+      // Recalculate total deposits and withdrawals (both tranche initials when dual)
+      const totalDeposits =
+        depositBaseline + updatedHistory.reduce((sum, r) => sum + (r.depositAmount || 0), 0)
       const totalWithdrawals = updatedHistory.reduce((sum, r) => sum + (r.withdrawalAmount || 0), 0)
 
       // Update investment data
@@ -388,18 +379,22 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         scope === 'account'
           ? currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
           : scope === 'primary'
-            ? getLastTrancheEndingAdmin(
+            ? getLastTrancheEnding(
                 currentInvestmentData.monthlyHistory,
                 TRANCHE_PRIMARY,
                 primaryInit
               )
-            : getLastTrancheEndingAdmin(
+            : getLastTrancheEnding(
                 currentInvestmentData.monthlyHistory,
                 TRANCHE_SECONDARY,
                 secondaryInit
               )
 
-      const totalDeposits = currentInvestmentData.totalDeposits || currentInvestmentData.initialInvestment || 0
+      const combinedInitial = hasDualTranche ? primaryInit + secondaryInit : primaryInit
+      const totalDeposits = Math.max(
+        Number(currentInvestmentData.totalDeposits) || 0,
+        combinedInitial
+      )
       const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
 
       // Helper function to get days in a month
@@ -611,7 +606,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       <div className="investor-balance">
                         <span className="balance-label">Balance:</span>
                         <span className="balance-value">
-                          €{(investor.investmentData.currentBalance || investor.investmentData.initialInvestment || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          €{getAdminInvestorSummaryCurrentBalance(investor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     )}
@@ -638,15 +633,43 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                   <div className="portfolio-summary-grid">
                     <div className="summary-item">
                       <span className="summary-label">Current Balance:</span>
-                      <span className="summary-value">€{(selectedInvestor.investmentData.currentBalance || selectedInvestor.investmentData.initialInvestment || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="summary-value">€{getAdminInvestorSummaryCurrentBalance(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="summary-item">
-                      <span className="summary-label">Initial Investment:</span>
+                      <span className="summary-label">
+                        {selectedInvestor.investmentData.secondaryInvestment
+                          ? 'First tranche initial (Conservative, 2%):'
+                          : 'Initial investment:'}
+                      </span>
                       <span className="summary-value">€{(selectedInvestor.investmentData.initialInvestment || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
+                    {selectedInvestor.investmentData.secondaryInvestment && (
+                      <div className="summary-item">
+                        <span className="summary-label">Second tranche initial (Moderate, 4%):</span>
+                        <span className="summary-value">
+                          €
+                          {(selectedInvestor.investmentData.secondaryInvestment.initialInvestment || 0).toLocaleString(
+                            'en-US',
+                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {selectedInvestor.investmentData.secondaryInvestment && (
+                      <div className="summary-item">
+                        <span className="summary-label">Total initial (both tranches):</span>
+                        <span className="summary-value">
+                          €
+                          {getInvestorCombinedInitial(selectedInvestor.investmentData).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                      </div>
+                    )}
                     <div className="summary-item">
                       <span className="summary-label">Total Deposits:</span>
-                      <span className="summary-value">€{(selectedInvestor.investmentData.totalDeposits || selectedInvestor.investmentData.initialInvestment || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="summary-value">€{getAdminInvestorSummaryTotalDeposits(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="summary-item">
                       <span className="summary-label">Total Withdrawals:</span>
@@ -912,7 +935,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         />
                         {monthlyUpdate.percentageGrowth && selectedInvestor.investmentData && (
                           <small className="form-help">
-                            Equivalent to: €{((selectedInvestor.investmentData.currentBalance || selectedInvestor.investmentData.initialInvestment || 0) * (parseFloat(monthlyUpdate.percentageGrowth) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Equivalent to: €{(getAdminPerformancePreviewStartingBalance(selectedInvestor.investmentData, monthlyUpdate.performanceScope || 'primary') * (parseFloat(monthlyUpdate.percentageGrowth) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </small>
                         )}
                       </div>
@@ -990,7 +1013,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         return amount * (percentageGrowth / 100) * proratedRatio
                       }
 
-                      const currentBalance = selectedInvestor.investmentData.currentBalance || selectedInvestor.investmentData.initialInvestment || 0
+                      const currentBalance = getAdminPerformancePreviewStartingBalance(
+                        selectedInvestor.investmentData,
+                        monthlyUpdate.performanceScope || 'primary'
+                      )
                       const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
                       const baseGrowth = currentBalance * (percentageGrowth / 100)
                       const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0

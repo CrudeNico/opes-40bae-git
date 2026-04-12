@@ -191,6 +191,12 @@
   border: 1px solid #fcd34d;
 }
 
+.user-status-badge.status-investment-editable {
+  background: #0e7490;
+  color: #ecfeff;
+  border: 1px solid #22d3ee;
+}
+
 .no-users {
   text-align: center;
   color: #6b7280;
@@ -411,6 +417,15 @@
   padding: 1.5rem;
   background: #fffbeb;
   margin-bottom: 2rem;
+}
+
+.investment-section-approved {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.investment-window-note {
+  margin: 0 0 1rem 0;
 }
 
 .investment-display {
@@ -952,6 +967,11 @@ html.dark-mode .status-checkbox-label.disabled .status-checkbox-text {
 html.dark-mode .investment-section {
   background: #1f2937;
   border-color: #f59e0b;
+}
+
+html.dark-mode .investment-section-approved {
+  background: #14532d;
+  border-color: #4ade80;
 }
 
 html.dark-mode .info-item .info-label {

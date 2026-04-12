@@ -1,11 +1,142 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, onSnapshot } from 'firebase/firestore'
+import {
+  getAdminInvestorSummaryCurrentBalance,
+  getLastTrancheEnding,
+  TRANCHE_PRIMARY,
+  TRANCHE_SECONDARY
+} from '../utils/investorDualTranche'
 import './AdminOverview.css'
+
+/** Normalize for case- and accent-insensitive comparison (e.g. Nicolás → nicolas). */
+function normalizeOverviewKey(s) {
+  return (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+/** Excluded from “total investor accounts” sum (Marcos & Nicolás/Nicolas de Rodrigo + legacy emails). */
+function isExcludedFromInvestorOverviewTotal(email, displayName) {
+  const em = normalizeOverviewKey(email)
+  const nm = normalizeOverviewKey(displayName)
+  const excludedEmails = [
+    'nicolas.fernandez@opessocius.support',
+    'marcoscollab@gmail.com',
+    'ndrf1806@gmail.com'
+  ]
+  if (excludedEmails.includes(em)) return true
+  const excludedNames = ['marcos de rodrigo', 'nicolas de rodrigo']
+  // After NFD, Nicolás → nicolas, so this matches Nicolás or Nicolas de Rodrigo
+  if (excludedNames.includes(nm)) return true
+  return false
+}
+
+const CALENDAR_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+]
+
+function isClaraPayoutInvestor(email, displayName) {
+  const em = (email || '').toLowerCase()
+  const nm = (displayName || '').toLowerCase()
+  return (
+    em.includes('clara') ||
+    nm.includes('clara perez ramirez') ||
+    nm.includes('clara perez')
+  )
+}
+
+/** True when a second tranche exists with a positive initial (same idea as dual investor in product rules). */
+function hasSecondaryTrancheForTarget(investmentData) {
+  const s = Number(investmentData?.secondaryInvestment?.initialInvestment)
+  return Number.isFinite(s) && s > 0
+}
+
+/** Calendar previous month relative to `referenceDate` (used for payout target vs prior performance). */
+function getPreviousMonthContext(referenceDate = new Date()) {
+  const d = new Date(referenceDate)
+  d.setMonth(d.getMonth() - 1)
+  return { monthName: CALENDAR_MONTH_NAMES[d.getMonth()], year: d.getFullYear() }
+}
+
+function monthlyHistoryRecordsForMonth(monthlyHistory, monthName, year) {
+  return (monthlyHistory || []).filter(
+    (r) => r.month === monthName && parseInt(String(r.year), 10) === year
+  )
+}
+
+/**
+ * If prior month has valid performance rows: sum(endingBalance × percentageGrowth/100) per row.
+ * `percentageGrowth` is stored as whole percent (e.g. 2 → 2%).
+ */
+function payoutFromPreviousMonthRecords(records, monthLabel) {
+  let sum = 0
+  const labelParts = []
+  for (const r of records) {
+    const eb = Number(r.endingBalance)
+    const pg = Number(r.percentageGrowth)
+    if (!Number.isFinite(eb) || !Number.isFinite(pg)) continue
+    sum += eb * (pg / 100)
+    labelParts.push(`${pg}%`)
+  }
+  if (labelParts.length === 0) return null
+  const rateLabel =
+    labelParts.length === 1 ? `${labelParts[0]} (${monthLabel})` : `${labelParts.join(' · ')} (${monthLabel})`
+  return { target: sum, rateLabel }
+}
+
+/**
+ * Monthly € target for the progress bar (~33%) and modal: prior month ledger if present; else fallbacks.
+ */
+function monthlyTargetAndRateForPayout(investmentData, email, displayName, prevCtx) {
+  if (!investmentData) return { target: 0, rateLabel: '—' }
+  const { monthName, year } = prevCtx
+  const prevRecords = monthlyHistoryRecordsForMonth(investmentData.monthlyHistory, monthName, year)
+
+  if (prevRecords.length > 0) {
+    const fromHistory = payoutFromPreviousMonthRecords(prevRecords, `${monthName} ${year}`)
+    if (fromHistory !== null) return fromHistory
+  }
+
+  if (isClaraPayoutInvestor(email, displayName)) {
+    const combined = getAdminInvestorSummaryCurrentBalance(investmentData)
+    return { target: combined * 0.03, rateLabel: '3%' }
+  }
+
+  if (hasSecondaryTrancheForTarget(investmentData)) {
+    const mh = investmentData.monthlyHistory || []
+    const pInit = Number(investmentData.initialInvestment) || 0
+    const sInit = Number(investmentData.secondaryInvestment?.initialInvestment) || 0
+    const primaryBal = getLastTrancheEnding(mh, TRANCHE_PRIMARY, pInit)
+    const secondaryBal = getLastTrancheEnding(mh, TRANCHE_SECONDARY, sInit)
+    return {
+      target: primaryBal * 0.02 + secondaryBal * 0.04,
+      rateLabel: '2% + 4%'
+    }
+  }
+
+  const balance = getAdminInvestorSummaryCurrentBalance(investmentData)
+  const rate =
+    investmentData.monthlyReturnRate != null && Number.isFinite(Number(investmentData.monthlyReturnRate))
+      ? Number(investmentData.monthlyReturnRate)
+      : investmentData.riskTolerance === 'conservative'
+        ? 0.02
+        : 0.04
+  return {
+    target: balance * rate,
+    rateLabel: `${(rate * 100).toFixed(0)}%`
+  }
+}
 
 const AdminOverview = ({ user, userStatuses = [] }) => {
   const [loading, setLoading] = useState(true)
   const [currentBalance, setCurrentBalance] = useState(0)
   const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
+  /** { name, balance, monthlyTarget }[] for the total-investor modal (non–Admin 3 only). */
+  const [investorTotalModalLines, setInvestorTotalModalLines] = useState([])
+  const [showInvestorTotalModal, setShowInvestorTotalModal] = useState(false)
   const [pendingConsultations, setPendingConsultations] = useState(0)
   const [userMessageAlerts, setUserMessageAlerts] = useState(0)
   const [investorPayoutTarget, setInvestorPayoutTarget] = useState(0)
@@ -110,9 +241,19 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     setProgressBarKey(prev => prev + 1)
   }, [currentBalance])
 
+  useEffect(() => {
+    if (!showInvestorTotalModal) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowInvestorTotalModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showInvestorTotalModal])
+
   const loadOverviewData = async () => {
     try {
       setLoading(true)
+      setShowInvestorTotalModal(false)
       const db = getFirestore()
 
       // Load admin portfolio current balance and determine performance owner (Admin vs Admin 2)
@@ -185,68 +326,49 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         setIsAdmin3(true)
       }
 
-      // Load total investor accounts
+      // Load total investor accounts + monthly payout target (same rules as ~33% bar)
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
-      
+      const prevMonthCtx = getPreviousMonthContext()
+
       let total = 0
+      let payoutTargetSum = 0
+      const modalLines = []
       usersSnapshot.forEach((docSnapshot) => {
         const userData = docSnapshot.data()
         const statuses = userData.statuses || []
         const email = userData.email || ''
         const displayName = userData.displayName || ''
-        
-        // Exclude specific users
-        if (
-          email === 'nicolas.fernandez@opessocius.support' || 
-          displayName === 'Nicolas De Rodrigo' ||
-          email === 'marcoscollab@gmail.com' ||
-          displayName === 'Marcos De Rodrigo' ||
-          email === 'ndrf1806@gmail.com' ||
-          displayName === 'Nicolas'
-        ) {
+
+        if (isExcludedFromInvestorOverviewTotal(email, displayName)) {
           return
         }
-        
-        // Only count investors or traders with approved investment accounts
-        if ((statuses.includes('Investor') || statuses.includes('Trader')) && 
-            userData.investmentData && 
-            userData.investmentData.status === 'approved') {
-          const investmentData = userData.investmentData
-          
-          // Get the most current ending capital
-          if (investmentData.currentBalance) {
-            total += investmentData.currentBalance
-          } else if (investmentData.monthlyHistory && investmentData.monthlyHistory.length > 0) {
-            const sortedHistory = [...investmentData.monthlyHistory].sort((a, b) => {
-              const yearA = parseInt(a.year) || 0
-              const yearB = parseInt(b.year) || 0
-              if (yearA !== yearB) return yearA - yearB
-              const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                                 'July', 'August', 'September', 'October', 'November', 'December']
-              const monthA = monthNames.indexOf(a.month || '')
-              const monthB = monthNames.indexOf(b.month || '')
-              return monthA - monthB
-            })
-            const lastRecord = sortedHistory[sortedHistory.length - 1]
-            if (lastRecord && lastRecord.endingBalance) {
-              total += lastRecord.endingBalance
-            } else if (investmentData.initialInvestment) {
-              total +=
-                investmentData.initialInvestment +
-                (investmentData.secondaryInvestment?.initialInvestment || 0)
-            }
-          } else if (investmentData.initialInvestment) {
-            total +=
-              investmentData.initialInvestment +
-              (investmentData.secondaryInvestment?.initialInvestment || 0)
-          }
+
+        // Sum balances for approved Investor accounts only (not traders)
+        if (
+          statuses.includes('Investor') &&
+          userData.investmentData &&
+          userData.investmentData.status === 'approved'
+        ) {
+          const inv = userData.investmentData
+          const balance = getAdminInvestorSummaryCurrentBalance(inv)
+          const { target } = monthlyTargetAndRateForPayout(inv, email, displayName, prevMonthCtx)
+          total += balance
+          payoutTargetSum += target
+          modalLines.push({
+            name: (displayName && displayName.trim()) || 'Unnamed investor',
+            balance,
+            monthlyTarget: target
+          })
         }
       })
+      modalLines.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
       if (userStatuses?.includes('Admin 3')) {
         setTotalInvestorAccounts(ADMIN3_TOTAL_INVESTOR_ACCOUNTS)
+        setInvestorTotalModalLines([])
       } else {
         setTotalInvestorAccounts(total)
+        setInvestorTotalModalLines(modalLines)
       }
 
       // Load pending consultations
@@ -277,7 +399,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       if (userStatuses?.includes('Admin 3')) {
         setInvestorPayoutTarget(ADMIN3_INVESTOR_PAYOUT_TARGET)
       } else {
-        await calculateInvestorPayoutTarget(db)
+        setInvestorPayoutTarget(payoutTargetSum)
       }
 
     } catch (error) {
@@ -285,127 +407,6 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       setError('Failed to load overview data')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const calculateInvestorPayoutTarget = async (db) => {
-    try {
-      // Get current date
-      const now = new Date()
-      const currentYear = now.getFullYear()
-      const currentMonth = now.getMonth() // 0-11
-      
-      // Get previous month
-      let previousMonthIndex = currentMonth - 1
-      let previousYear = currentYear
-      if (previousMonthIndex < 0) {
-        previousMonthIndex = 11
-        previousYear = currentYear - 1
-      }
-      
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December']
-      const previousMonthName = monthNames[previousMonthIndex]
-      
-      console.log(`[Investor Payout Calculation] Looking for previous month: ${previousMonthName} ${previousYear}`)
-      
-      // Get all investors
-      const usersCollection = collection(db, 'users')
-      const usersSnapshot = await getDocs(usersCollection)
-      
-      let totalPayoutTarget = 0
-      const investorBreakdown = []
-      
-      usersSnapshot.forEach((docSnapshot) => {
-        const userData = docSnapshot.data()
-        const statuses = userData.statuses || []
-        const email = userData.email || ''
-        const displayName = userData.displayName || ''
-        
-        // Exclude specific users
-        if (
-          email === 'nicolas.fernandez@opessocius.support' || 
-          displayName === 'Nicolas De Rodrigo' ||
-          email === 'marcoscollab@gmail.com' ||
-          displayName === 'Marcos De Rodrigo' ||
-          email === 'ndrf1806@gmail.com' ||
-          displayName === 'Nicolas'
-        ) {
-          return
-        }
-        
-        // Only process investors or traders with approved investment accounts
-        if ((statuses.includes('Investor') || statuses.includes('Trader')) && 
-            userData.investmentData && 
-            userData.investmentData.status === 'approved') {
-          const investmentData = userData.investmentData
-          
-          // Find the previous month's record in monthlyHistory
-          if (investmentData.monthlyHistory && investmentData.monthlyHistory.length > 0) {
-            const previousMonthRecord = investmentData.monthlyHistory.find(record => 
-              record.month === previousMonthName && 
-              parseInt(record.year) === previousYear
-            )
-            
-            if (previousMonthRecord && previousMonthRecord.endingBalance) {
-              const endingBalance = previousMonthRecord.endingBalance
-              
-              // Get monthly return rate
-              // Special case: Clara Perez Ramirez gets 3%
-              let monthlyReturnRate
-              if (email.toLowerCase().includes('clara') || 
-                  displayName.toLowerCase().includes('clara perez ramirez') ||
-                  displayName.toLowerCase().includes('clara perez')) {
-                monthlyReturnRate = 0.03 // 3% for Clara Perez Ramirez
-              } else if (investmentData.secondaryInvestment) {
-                const i1 = investmentData.initialInvestment || 0
-                const i2 = investmentData.secondaryInvestment.initialInvestment || 0
-                const r1 =
-                  investmentData.monthlyReturnRate ||
-                  (investmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
-                const r2 = investmentData.secondaryInvestment.monthlyReturnRate ?? 0.04
-                const total = i1 + i2
-                monthlyReturnRate =
-                  total > 0 ? (i1 * r1 + i2 * r2) / total : r1
-              } else {
-                // Default: 2% for conservative, 4% for high risk
-                monthlyReturnRate = investmentData.monthlyReturnRate || 
-                                   (investmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
-              }
-              
-              // Calculate projected return for this investor
-              const investorTarget = endingBalance * monthlyReturnRate
-              totalPayoutTarget += investorTarget
-              
-              investorBreakdown.push({
-                name: displayName || email,
-                email: email,
-                endingBalance: endingBalance,
-                monthlyReturnRate: monthlyReturnRate,
-                target: investorTarget
-              })
-            } else {
-              console.log(`[Investor Payout] No ${previousMonthName} ${previousYear} record found for ${displayName || email}`)
-            }
-          } else {
-            console.log(`[Investor Payout] No monthlyHistory found for ${displayName || email}`)
-          }
-        }
-      })
-      
-      console.log(`[Investor Payout Calculation] Total Payout Target: €${totalPayoutTarget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-      console.log(`[Investor Payout Breakdown]:`, investorBreakdown)
-      console.log(`[Investor Payout] Number of investors included: ${investorBreakdown.length}`)
-      
-      // Log each investor's contribution
-      investorBreakdown.forEach(investor => {
-        console.log(`  - ${investor.name}: €${investor.endingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × ${(investor.monthlyReturnRate * 100).toFixed(0)}% = €${investor.target.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-      })
-      
-      setInvestorPayoutTarget(totalPayoutTarget)
-    } catch (error) {
-      console.error('Error calculating investor payout target:', error)
-      setInvestorPayoutTarget(0)
     }
   }
 
@@ -783,8 +784,24 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           <div className="widget-value">€{displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
         </div>
 
-        {/* Total Investor Accounts Widget */}
-        <div className="overview-widget">
+        {/* Total Investor Accounts Widget — click to see names and balances that sum to this total */}
+        <div
+          className={`overview-widget overview-widget-investor-total-click${userStatuses?.includes('Admin 3') || isAdmin3 ? ' overview-widget-investor-total-click-disabled' : ''}`}
+          role="button"
+          tabIndex={userStatuses?.includes('Admin 3') || isAdmin3 ? -1 : 0}
+          onClick={() => {
+            if (userStatuses?.includes('Admin 3') || isAdmin3) return
+            setShowInvestorTotalModal(true)
+          }}
+          onKeyDown={(e) => {
+            if (userStatuses?.includes('Admin 3') || isAdmin3) return
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setShowInvestorTotalModal(true)
+            }
+          }}
+          aria-label="Show list of investors included in total investor accounts"
+        >
           <div className="widget-header">
             <h3 className="widget-title">Total Investor Accounts</h3>
           </div>
@@ -807,6 +824,86 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           <div className="widget-value">{userMessageAlerts}</div>
         </div>
       </div>
+
+      {showInvestorTotalModal && (
+        <div
+          className="investor-total-modal-backdrop"
+          role="presentation"
+          onClick={() => setShowInvestorTotalModal(false)}
+        >
+          <div
+            className="investor-total-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="investor-total-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="investor-total-modal-header">
+              <h3 id="investor-total-modal-title">Investors in this total</h3>
+              <button
+                type="button"
+                className="investor-total-modal-close"
+                onClick={() => setShowInvestorTotalModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="investor-total-modal-list">
+              {investorTotalModalLines.length === 0 ? (
+                <p className="investor-total-modal-empty">No approved investor accounts match the current rules.</p>
+              ) : (
+                <div className="investor-total-modal-grid">
+                  <span className="investor-total-modal-colh">Investor</span>
+                  <span className="investor-total-modal-colh investor-total-modal-colh-num">Balance</span>
+                  <span className="investor-total-modal-colh investor-total-modal-colh-num">Monthly target</span>
+                  {investorTotalModalLines.map((row, idx) => (
+                    <React.Fragment key={`${row.name}-${idx}`}>
+                      <span className="investor-total-modal-name investor-total-modal-grid-row">{row.name}</span>
+                      <span className="investor-total-modal-amount investor-total-modal-grid-row investor-total-modal-cell-num">
+                        €
+                        {row.balance.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                      <span className="investor-total-modal-target-amount investor-total-modal-grid-row investor-total-modal-cell-num">
+                        €
+                        {row.monthlyTarget.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+            {investorTotalModalLines.length > 0 && (
+              <div className="investor-total-modal-footer investor-total-modal-footer-stack">
+                <div className="investor-total-modal-footer-line">
+                  <span>Total balances</span>
+                  <span className="investor-total-modal-amount">
+                    €
+                    {investorTotalModalLines
+                      .reduce((s, r) => s + r.balance, 0)
+                      .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="investor-total-modal-footer-line">
+                  <span>Monthly payout target</span>
+                  <span className="investor-total-modal-target-amount investor-total-modal-footer-target">
+                    €
+                    {investorTotalModalLines
+                      .reduce((s, r) => s + r.monthlyTarget, 0)
+                      .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Monthly Projection Progress Bar */}
       <div className="projection-widget">

@@ -1244,6 +1244,15 @@ const Portfolio = ({ user, onStatusUpdate }) => {
           ? secondaryInit
           : initialInvestment
 
+    const initialMetricLabel =
+      isDualInvestor && portfolioTrancheView === 'total'
+        ? 'Total initial (both tranches)'
+        : isDualInvestor && portfolioTrancheView === 'conservative'
+          ? 'First tranche initial (2%)'
+          : isDualInvestor && portfolioTrancheView === 'moderate'
+            ? 'Second tranche initial (4%)'
+            : 'Initial investment'
+
     const trancheFilteredHistory = isDualInvestor
       ? portfolioTrancheView === 'conservative'
         ? sortMonthlyHistory(
@@ -1857,7 +1866,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                 </svg>
               </div>
               <div className="metric-content">
-                <h4 className="metric-label">Initial Investment</h4>
+                <h4 className="metric-label">{initialMetricLabel}</h4>
                 <p className="metric-value">€{displayInitialForMetric.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
@@ -2488,7 +2497,10 @@ const Portfolio = ({ user, onStatusUpdate }) => {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="initialInvestment" className="form-label">
-                    Initial Investment Amount <span className="required">*</span>
+                    {formMode === 'investor' && formData.includeSecondInvestment
+                      ? 'First tranche amount (Conservative, 2%)'
+                      : 'Initial investment amount'}{' '}
+                    <span className="required">*</span>
                   </label>
                   <input
                     type="number"
@@ -2502,6 +2514,12 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     step="0.01"
                     required
                   />
+                  {formMode === 'investor' && formData.includeSecondInvestment && (
+                    <small className="form-help">
+                      Enter only the first tranche here; the second tranche is entered separately below (they are
+                      summed for your total initial capital).
+                    </small>
+                  )}
                 </div>
 
                 <div className="form-group">

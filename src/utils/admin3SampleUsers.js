@@ -141,14 +141,27 @@ export function generateAdmin3SampleUsers() {
           status: 'approved',
           accountType: 'Investor',
           riskTolerance: 'moderate',
-          monthlyReturnRate: 0.04
+          monthlyReturnRate: 0.04,
+          startingDate: '2026-03-15',
+          country: 'United States',
+          phoneNumber: '+1 555-0100',
+          monthlyAdditions: 0,
+          // Fixed dates so the 30-day admin correction window is deterministic in sandbox (vs. Date.now()).
+          initiatedAt: '2026-04-01T12:00:00.000Z',
+          approvedAt: '2026-04-02T12:00:00.000Z'
         }
       } else if (primaryStatus === 'Trader') {
         u.investmentData = {
           initialInvestment: Math.round((10000 + rand() * 90000) * 100) / 100,
           status: 'approved',
           accountType: 'Trader',
-          monthlyReturnRate: 0
+          monthlyReturnRate: 0,
+          startingDate: '2026-03-20',
+          country: 'Canada',
+          phoneNumber: '+1 555-0200',
+          monthlyAdditions: 0,
+          initiatedAt: '2026-04-01T12:00:00.000Z',
+          approvedAt: '2026-04-03T12:00:00.000Z'
         }
       }
       users.push(u)

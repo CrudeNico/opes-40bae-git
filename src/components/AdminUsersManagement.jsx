@@ -2,7 +2,32 @@ import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
 import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
 import { generateAdmin3SampleUsers } from '../utils/admin3SampleUsers'
+import { computeDualTrancheSumBalance, getInvestorCombinedInitial } from '../utils/investorDualTranche'
 import './AdminUsersManagement.css'
+
+/** Admins may correct submitted investment details within this window from submission (or approval if no submission date). */
+const INVESTMENT_ADMIN_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+
+function getInvestmentRecordStartMs(investmentData) {
+  if (!investmentData) return null
+  const raw = investmentData.initiatedAt || investmentData.approvedAt
+  if (!raw) return null
+  const t = Date.parse(raw)
+  return Number.isFinite(t) ? t : null
+}
+
+function isWithinAdminInvestmentEditWindow(investmentData) {
+  const start = getInvestmentRecordStartMs(investmentData)
+  if (start == null) return false
+  return Date.now() - start <= INVESTMENT_ADMIN_EDIT_WINDOW_MS
+}
+
+function formatAdminInvestmentEditDeadline(investmentData) {
+  const start = getInvestmentRecordStartMs(investmentData)
+  if (start == null) return ''
+  const end = new Date(start + INVESTMENT_ADMIN_EDIT_WINDOW_MS)
+  return end.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) => {
   const isAdmin2 = currentUserStatuses && (currentUserStatuses.includes('Admin 2') || currentUserStatuses.includes('Relations'))
@@ -218,6 +243,11 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
       return
     }
 
+    if (investmentData.status === 'approved' && !isWithinAdminInvestmentEditWindow(investmentData)) {
+      setError('The 30-day period to correct this investment has ended.')
+      return
+    }
+
     setLoadingSave(true)
     setError('')
     setSuccess('')
@@ -227,8 +257,9 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
 
       const requestedAccountType = investmentData.accountType || 'Investor'
 
-      // Build safe payload, avoiding undefined fields for Trader
+      // Merge into existing investmentData so approved accounts keep performance fields (e.g. monthlyHistory).
       const updatedInvestmentData = {
+        ...investmentData,
         initialInvestment: editedInvestmentData.initialInvestment ?? investmentData.initialInvestment,
         startingDate: editedInvestmentData.startingDate ?? investmentData.startingDate,
         country: editedInvestmentData.country ?? investmentData.country,
@@ -238,6 +269,10 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         status: investmentData.status,
         initiatedAt: investmentData.initiatedAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
+      }
+
+      if (investmentData.status === 'approved' && investmentData.approvedAt) {
+        updatedInvestmentData.approvedAt = investmentData.approvedAt
       }
 
       if (requestedAccountType === 'Investor') {
@@ -279,12 +314,28 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
             monthlyReturnRate: 0.04
           }
         } else {
+          delete updatedInvestmentData.secondaryInvestment
           updatedInvestmentData.riskTolerance =
             editedInvestmentData.riskTolerance || investmentData.riskTolerance || 'conservative'
           updatedInvestmentData.monthlyReturnRate =
             editedInvestmentData.monthlyReturnRate ||
             investmentData.monthlyReturnRate ||
             (updatedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
+        }
+
+        const pInit = Number(updatedInvestmentData.initialInvestment) || 0
+        const sInit = Number(updatedInvestmentData.secondaryInvestment?.initialInvestment) || 0
+        const inceptionTotal = pInit + sInit
+        const mh = updatedInvestmentData.monthlyHistory || []
+        if (mh.length === 0) {
+          updatedInvestmentData.totalDeposits = inceptionTotal
+          updatedInvestmentData.currentBalance = inceptionTotal
+        } else if (updatedInvestmentData.secondaryInvestment && sInit > 0) {
+          updatedInvestmentData.currentBalance = computeDualTrancheSumBalance(mh, pInit, sInit)
+          const td = Number(updatedInvestmentData.totalDeposits)
+          if (!Number.isFinite(td) || td < inceptionTotal) {
+            updatedInvestmentData.totalDeposits = inceptionTotal
+          }
         }
       } else {
         // Trader: ensure no undefined fields
@@ -427,6 +478,12 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
             investmentData.monthlyReturnRate ||
             (approvedInvestmentData.riskTolerance === 'conservative' ? 0.02 : 0.04)
         }
+
+        const pAppr = Number(approvedInvestmentData.initialInvestment) || 0
+        const sAppr = Number(approvedInvestmentData.secondaryInvestment?.initialInvestment) || 0
+        const inceptionAppr = pAppr + sAppr
+        approvedInvestmentData.totalDeposits = inceptionAppr
+        approvedInvestmentData.currentBalance = inceptionAppr
       } else {
         approvedInvestmentData.monthlyReturnRate = investmentData.monthlyReturnRate || 0
       }
@@ -656,6 +713,16 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                             Single tranche
                           </span>
                         )}
+                      {user.investmentData?.status === 'approved' &&
+                        (user.statuses || []).includes('Investor') &&
+                        isWithinAdminInvestmentEditWindow(user.investmentData) && (
+                          <span
+                            className="user-status-badge status-investment-editable"
+                            title="Investment details can still be corrected by an admin (30 days from submission or approval date)"
+                          >
+                            Editable investment
+                          </span>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -747,18 +814,47 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
               </div>
 
               {/* Investment / Tracking Data Section */}
-              {investmentData && investmentData.status === 'pending' && (
-                <div className="user-detail-section investment-section">
+              {investmentData &&
+                (investmentData.status === 'pending' || investmentData.status === 'approved') && (
+                <div
+                  className={`user-detail-section investment-section${
+                    investmentData.status === 'approved' ? ' investment-section-approved' : ''
+                  }`}
+                >
                   <h3 className="section-title">
-                    {investmentData.accountType === 'Trader'
-                      ? 'Pending Tracking Request'
-                      : 'Pending Investment Request'}
+                    {investmentData.status === 'pending'
+                      ? investmentData.accountType === 'Trader'
+                        ? 'Pending Tracking Request'
+                        : 'Pending Investment Request'
+                      : investmentData.accountType === 'Trader'
+                        ? 'Approved Tracking'
+                        : 'Approved Investment'}
                   </h3>
+                  {investmentData.status === 'approved' && (
+                    <p className="section-description investment-window-note">
+                      {isWithinAdminInvestmentEditWindow(investmentData) ? (
+                        <>
+                          Investment details can be corrected until{' '}
+                          <strong>{formatAdminInvestmentEditDeadline(investmentData)}</strong> (30 days from when the
+                          investor submitted the request, or from approval if no submission date is stored).
+                        </>
+                      ) : (
+                        <>
+                          The 30-day window to correct investment details from the submission or approval date has
+                          ended. Contact engineering if a correction is still required.
+                        </>
+                      )}
+                    </p>
+                  )}
                   {!editingInvestment ? (
                     <div className="investment-display">
                       <div className="investment-info-grid">
                         <div className="info-item">
-                          <span className="info-label">Initial Investment:</span>
+                          <span className="info-label">
+                            {investmentData.accountType !== 'Trader' && investmentData.secondaryInvestment
+                              ? 'First tranche (Conservative, 2%):'
+                              : 'Initial investment:'}
+                          </span>
                           <span className="info-value">${investmentData.initialInvestment?.toLocaleString() || 'N/A'}</span>
                         </div>
                         <div className="info-item">
@@ -810,13 +906,22 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                                 ${investmentData.secondaryInvestment.monthlyAdditions?.toLocaleString() || '0'}
                               </span>
                             </div>
+                            <div className="info-item">
+                              <span className="info-label">Total initial (both tranches):</span>
+                              <span className="info-value">
+                                ${getInvestorCombinedInitial(investmentData).toLocaleString()}
+                              </span>
+                            </div>
                           </>
                         )}
                       </div>
                       {/* Completely hide action buttons for Admin 2 - only show if user has permissions */}
                       {!isAdmin2 && (
                         <div className="investment-actions">
-                          {canEditInvestments && (
+                          {canEditInvestments &&
+                            (investmentData.status === 'pending' ||
+                              (investmentData.status === 'approved' &&
+                                isWithinAdminInvestmentEditWindow(investmentData))) && (
                             <button
                               onClick={() => {
                                 setIncludeSecondaryTrancheEdit(!!investmentData.secondaryInvestment)
@@ -827,7 +932,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                               {investmentData.accountType === 'Trader' ? 'Edit Tracking' : 'Edit Investment'}
                             </button>
                           )}
-                          {canApproveInvestments && (
+                          {canApproveInvestments && investmentData.status === 'pending' && (
                             <button
                               onClick={handleApproveInvestment}
                               disabled={loadingApprove}
@@ -847,7 +952,12 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                     <div className="investment-edit-form">
                       <div className="form-row">
                         <div className="form-group">
-                          <label className="form-label">Initial Investment</label>
+                          <label className="form-label">
+                            {investmentData.accountType !== 'Trader' &&
+                            (investmentData.secondaryInvestment || includeSecondaryTrancheEdit)
+                              ? 'First tranche amount (Conservative, 2%) — not including second tranche'
+                              : 'Initial investment'}
+                          </label>
                           <input
                             type="number"
                             className="form-input"
@@ -902,15 +1012,24 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                         </div>
                         {investmentData.accountType !== 'Trader' && (
                           <div className="form-group">
-                            <label className="form-label">Risk Tolerance</label>
+                            <label className="form-label">Risk tolerance (first tranche only)</label>
                             <select
                               className="form-input"
                               value={editedInvestmentData.riskTolerance || ''}
                               onChange={(e) => handleInvestmentFieldChange('riskTolerance', e.target.value)}
+                              disabled={
+                                !!investmentData.secondaryInvestment || includeSecondaryTrancheEdit
+                              }
                             >
                               <option value="conservative">Conservative (2% per month)</option>
                               <option value="moderate">Moderate (4% per month)</option>
                             </select>
+                            {(investmentData.secondaryInvestment || includeSecondaryTrancheEdit) && (
+                              <small className="form-help">
+                                With two tranches, the first tranche is always Conservative (2%); the second is
+                                Moderate (4%).
+                              </small>
+                            )}
                           </div>
                         )}
                       </div>
