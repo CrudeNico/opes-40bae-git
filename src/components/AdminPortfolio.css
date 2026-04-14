@@ -76,18 +76,20 @@
 
 .btn-add-performance {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
+  background: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #111827;
+  border-radius: 9999px;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-add-performance:hover:not(:disabled) {
-  background: #2563eb;
+  background: #111827;
+  border-color: #0f172a;
+  transform: translateY(-1px);
 }
 
 .btn-add-performance:disabled {
@@ -175,24 +177,38 @@
 
 .btn-submit {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
+  background: #e5e7eb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   align-self: flex-start;
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: #2563eb;
+  background: #d1d5db;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
 }
 
 .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.admin-portfolio-content .add-performance-section .btn-submit {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+}
+
+.admin-portfolio-content .add-performance-section .btn-submit:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 /* Portfolio Graph Section */
@@ -383,18 +399,20 @@
 
 .btn-edit-record {
   padding: 0.5rem 1rem;
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-edit-record:hover:not(:disabled) {
-  background: #2563eb;
+  background: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
 }
 
 .btn-edit-record:disabled {
@@ -416,19 +434,20 @@
 
 .btn-cancel {
   padding: 0.75rem 1.5rem;
-  background: #ffffff;
+  background: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-cancel:hover:not(:disabled) {
-  background: #f9fafb;
+  background: #e5e7eb;
   border-color: #9ca3af;
+  transform: translateY(-1px);
 }
 
 .btn-cancel:disabled {

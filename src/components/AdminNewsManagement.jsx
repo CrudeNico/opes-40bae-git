@@ -13,6 +13,8 @@ const AdminNewsManagement = () => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingNews, setEditingNews] = useState(null)
   const [loadingAction, setLoadingAction] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedNewsIds, setSelectedNewsIds] = useState([])
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
 
@@ -245,7 +247,6 @@ const AdminNewsManagement = () => {
       const newsDocRef = doc(db, 'news', newsId)
       await deleteDoc(newsDocRef)
 
-      setSuccess('News article deleted successfully!')
       await loadNews()
     } catch (error) {
       console.error('Error deleting news:', error)
@@ -253,6 +254,71 @@ const AdminNewsManagement = () => {
     } finally {
       setLoadingAction(false)
     }
+  }
+
+  const handleDeleteSelectedNews = async () => {
+    if (selectedNewsIds.length === 0) return
+
+    setLoadingAction(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const selectedArticles = news.filter((article) => selectedNewsIds.includes(article.id))
+
+      for (const article of selectedArticles) {
+        if (article.imageUrl) {
+          try {
+            const storage = getStorage()
+            const urlPath = article.imageUrl.split('/o/')[1]?.split('?')[0]
+            if (urlPath) {
+              const decodedPath = decodeURIComponent(urlPath)
+              const imageRef = ref(storage, decodedPath)
+              await deleteObject(imageRef)
+            }
+          } catch (deleteError) {
+            console.warn('Could not delete image from storage:', deleteError)
+          }
+        }
+
+        await deleteDoc(doc(db, 'news', article.id))
+      }
+
+      setSelectedNewsIds([])
+      setSelectionMode(false)
+      await loadNews()
+    } catch (error) {
+      console.error('Error deleting selected news:', error)
+      setError(`Failed to delete selected news: ${error.message}`)
+    } finally {
+      setLoadingAction(false)
+    }
+  }
+
+  const handleToggleSelectionMode = async () => {
+    if (loadingAction) return
+
+    if (selectionMode && selectedNewsIds.length > 0) {
+      await handleDeleteSelectedNews()
+      return
+    }
+
+    if (selectionMode) {
+      setSelectionMode(false)
+      setSelectedNewsIds([])
+      return
+    }
+
+    setSelectionMode(true)
+    setSelectedNewsIds([])
+  }
+
+  const handleToggleCardSelection = (newsId) => {
+    if (!selectionMode || loadingAction) return
+    setSelectedNewsIds((prev) =>
+      prev.includes(newsId) ? prev.filter((id) => id !== newsId) : [...prev, newsId]
+    )
   }
 
   const handleCancel = () => {
@@ -303,6 +369,25 @@ const AdminNewsManagement = () => {
       <div className="admin-news-header">
         <h2 className="panel-title">News Management</h2>
         <div className="admin-news-actions">
+          <button
+            className={`btn-select-delete-news ${
+              selectedNewsIds.length > 0 ? 'has-selection' : selectionMode ? 'selection-active' : ''
+            }`}
+            onClick={handleToggleSelectionMode}
+            disabled={loadingAction}
+            title={
+              selectedNewsIds.length > 0
+                ? `Delete ${selectedNewsIds.length} selected article${selectedNewsIds.length === 1 ? '' : 's'}`
+                : selectionMode
+                  ? 'Exit selection mode'
+                  : 'Select articles to delete'
+            }
+            aria-label="Select and delete news articles"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="select-delete-icon">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
+          </button>
           <button
             className="btn-refresh-news"
             onClick={handleRefreshNews}
@@ -414,7 +499,11 @@ const AdminNewsManagement = () => {
         ) : (
           <div className="news-grid">
             {news.map((article) => (
-              <div key={article.id} className="news-card">
+              <div
+                key={article.id}
+                className={`news-card ${selectionMode ? 'selectable' : ''} ${selectedNewsIds.includes(article.id) ? 'selected-for-delete' : ''}`}
+                onClick={() => handleToggleCardSelection(article.id)}
+              >
                 {article.imageUrl && (
                   <div className="news-card-image">
                     <img src={article.imageUrl} alt={article.title} />
@@ -449,19 +538,23 @@ const AdminNewsManagement = () => {
                     <button
                       className="btn-edit"
                       onClick={() => {
+                        if (selectionMode) return
                         setEditingNews(article)
                         setShowAddForm(false)
                         setError('')
                         setSuccess('')
                       }}
-                      disabled={showAddForm || loadingAction}
+                      disabled={showAddForm || loadingAction || selectionMode}
                     >
                       Edit
                     </button>
                     <button
                       className="btn-delete"
-                      onClick={() => handleDeleteNews(article.id, article.imageUrl)}
-                      disabled={showAddForm || loadingAction}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteNews(article.id, article.imageUrl)
+                      }}
+                      disabled={showAddForm || loadingAction || selectionMode}
                     >
                       Delete
                     </button>

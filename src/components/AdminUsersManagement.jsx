@@ -3,11 +3,8 @@ import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'fireb
 import { httpsCallable } from 'firebase/functions'
 import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
 import { generateAdmin3SampleUsers } from '../utils/admin3SampleUsers'
-<<<<<<< HEAD
 import { computeDualTrancheSumBalance, getInvestorCombinedInitial } from '../utils/investorDualTranche'
-=======
 import { functions as firebaseFunctions } from '../firebase/config'
->>>>>>> bd69499 (Newsautomated)
 import './AdminUsersManagement.css'
 
 /** Admins may correct submitted investment details within this window from submission (or approval if no submission date). */

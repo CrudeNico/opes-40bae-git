@@ -32,6 +32,47 @@
   gap: 0.75rem;
 }
 
+.btn-select-delete-news {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-select-delete-news:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-select-delete-news.selection-active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.btn-select-delete-news.has-selection {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+
+.btn-select-delete-news:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.select-delete-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .panel-title {
   font-size: 1.75rem;
   font-weight: 600;
@@ -39,20 +80,27 @@
   margin: 0;
 }
 
+.admin-news-management .panel-title {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .btn-add-news {
   padding: 0.75rem 1.5rem;
-  background: #10b981;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
+  background: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #111827;
+  border-radius: 9999px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-add-news:hover:not(:disabled) {
-  background: #059669;
+  background: #111827;
+  border-color: #0f172a;
+  transform: translateY(-1px);
 }
 
 .btn-add-news:disabled {
@@ -65,7 +113,7 @@
   background: #ffffff;
   color: #1f2937;
   border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -206,23 +254,25 @@
   cursor: not-allowed;
 }
 
-.btn-submit {
+.admin-news-management .news-form-container .form-actions .btn-submit {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
+  background: #e5e7eb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-submit:hover:not(:disabled) {
-  background: #2563eb;
+.admin-news-management .news-form-container .form-actions .btn-submit:hover:not(:disabled) {
+  background: #d1d5db;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
 }
 
-.btn-submit:disabled {
+.admin-news-management .news-form-container .form-actions .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -258,6 +308,15 @@
 .news-card:hover {
   border-color: #3b82f6;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.news-card.selectable {
+  cursor: pointer;
+}
+
+.news-card.selected-for-delete {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
 .news-card-image {
@@ -329,30 +388,37 @@
 .btn-delete {
   flex: 1;
   padding: 0.625rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 9999px;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-edit {
-  background: #3b82f6;
-  color: #ffffff;
+.admin-news-management .news-card-actions .btn-edit {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #e5e7eb;
 }
 
-.btn-edit:hover:not(:disabled) {
-  background: #2563eb;
+.admin-news-management .news-card-actions .btn-edit:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
 }
 
-.btn-delete {
-  background: #ef4444;
-  color: #ffffff;
+.admin-news-management .news-card-actions .btn-delete {
+  background: #e5e7eb;
+  color: #4b5563;
+  border-color: #d1d5db;
 }
 
-.btn-delete:hover:not(:disabled) {
-  background: #dc2626;
+.admin-news-management .news-card-actions .btn-delete:hover:not(:disabled) {
+  background: #d1d5db;
+  border-color: #9ca3af;
+  color: #374151;
+  transform: translateY(-1px);
 }
 
 .btn-edit:disabled,
