@@ -51,6 +51,25 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.investors-list-panel .panel-title {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.investor-details-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.investor-details-email {
+  font-size: 0.9rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
 .investors-list {
   display: flex;
   flex-direction: column;
@@ -226,30 +245,33 @@
 .btn-action {
   flex: 1;
   padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 9999px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-view {
-  background: #3b82f6;
+  background: #1e3a8a;
   color: #ffffff;
+  border-color: #1e40af;
 }
 
 .btn-view:hover {
-  background: #2563eb;
+  background: #1e40af;
 }
 
 .btn-add {
-  background: #10b981;
-  color: #ffffff;
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
 }
 
 .btn-add:hover {
-  background: #059669;
+  background: #e5e7eb;
+  border-color: #9ca3af;
 }
 
 /* Performance View Section */
@@ -447,24 +469,41 @@
 
 .btn-submit {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   align-self: flex-start;
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: #2563eb;
+  background: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
 }
 
 .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.admin-investors-management .add-performance-section .btn-submit,
+.admin-investors-management .modal-actions .btn-submit {
+  background: #ffffff !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 9999px !important;
+}
+
+.admin-investors-management .add-performance-section .btn-submit:hover:not(:disabled),
+.admin-investors-management .modal-actions .btn-submit:hover:not(:disabled) {
+  background: #f9fafb !important;
+  border-color: #9ca3af !important;
+  transform: translateY(-1px);
 }
 
 .alert {

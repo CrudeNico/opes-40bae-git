@@ -51,6 +51,11 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.users-list-panel .panel-title {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 
 .users-list {
   display: flex;
@@ -111,6 +116,34 @@
 .user-card-info {
   flex: 1;
   min-width: 0;
+}
+
+.user-card-top-icons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.user-card-top-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-card-top-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.new-user-icon {
+  color: #2563eb;
+}
+
+.pending-user-icon {
+  color: #f59e0b;
 }
 
 .user-card-name {
@@ -238,6 +271,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  border-bottom: none;
 }
 
 .section-title {
@@ -245,6 +279,9 @@
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+  border-bottom: none;
+  text-decoration: none;
+  padding-bottom: 0;
 }
 
 .subsection-title {
@@ -292,6 +329,24 @@
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   padding: 1.5rem;
+}
+
+.user-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-header-actions .btn-edit {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  color: #374151;
+}
+
+.user-header-actions .btn-edit:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .user-info-avatar {
@@ -619,7 +674,7 @@
   background: #ffffff;
   color: #b91c1c;
   border: 1px solid #fca5a5;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -634,6 +689,18 @@
 .btn-eliminate-user:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.admin-users-management .user-info-display .btn-edit {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  color: #374151;
+}
+
+.admin-users-management .user-info-display .btn-edit:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .alert {

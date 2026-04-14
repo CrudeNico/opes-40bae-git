@@ -1412,20 +1412,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
         {/* Investment Graph */}
         <div className="portfolio-graph-section">
-          <h3 className="section-subtitle">Investment Growth & Projection</h3>
           <div className="graph-container">
-            <div className="graph-legend">
-              {projectionData.some(p => p.isHistorical) && (
-                <div className="legend-item">
-                  <div className="legend-line current"></div>
-                  <span>Historical</span>
-                </div>
-              )}
-              <div className="legend-item">
-                <div className="legend-line projection"></div>
-                <span>5-Month Projection</span>
-              </div>
-            </div>
             <svg className="investment-graph" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
               {/* Grid lines */}
               {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => {
@@ -1524,28 +1511,6 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                 )
               })}
               
-              {/* Axis labels */}
-              <text
-                x="400"
-                y="395"
-                fill="#6b7280"
-                fontSize="14"
-                textAnchor="middle"
-                fontWeight="500"
-              >
-                Time
-              </text>
-              <text
-                x="0"
-                y="150"
-                fill="#6b7280"
-                fontSize="14"
-                textAnchor="middle"
-                fontWeight="500"
-                transform="rotate(-90 0 200)"
-              >
-                Balance (€)
-              </text>
             </svg>
           </div>
         </div>
@@ -1659,7 +1624,6 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         {/* Monthly History Section */}
         {monthlyHistory.length > 0 && (
           <div className="portfolio-history-section">
-            <h3 className="section-subtitle">Monthly Performance History</h3>
             <div className="history-container">
               <div className={`history-table ${canAddPerformance ? 'with-actions' : ''}`}>
                 <div className="history-header">

@@ -61,9 +61,12 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   const [success, setSuccess] = useState('')
   const [editingProfile, setEditingProfile] = useState(false)
   const [editedProfile, setEditedProfile] = useState({ displayName: '', email: '', profileImageUrl: '' })
+  const [dismissedNewUserFlags, setDismissedNewUserFlags] = useState({})
+  const [dismissedFlagsHydrated, setDismissedFlagsHydrated] = useState(false)
   
   const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Learner', 'Community']
   const placeholderColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
+  const NEW_USER_FLAGS_STORAGE_KEY = 'adminUsersDismissedNewFlags'
 
   const canEliminateUser = (user) => {
     if (!user || user._isSample || isAdmin3 || !canModifyStatuses) return false
@@ -86,6 +89,43 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   useEffect(() => {
     loadUsers()
   }, [])
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(NEW_USER_FLAGS_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') setDismissedNewUserFlags(parsed)
+    } catch {
+      // ignore malformed localStorage
+    } finally {
+      setDismissedFlagsHydrated(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!dismissedFlagsHydrated) return
+    try {
+      window.localStorage.setItem(NEW_USER_FLAGS_STORAGE_KEY, JSON.stringify(dismissedNewUserFlags))
+    } catch {
+      // ignore storage write errors
+    }
+  }, [dismissedNewUserFlags, dismissedFlagsHydrated])
+
+  const getCreatedAtMs = (createdAt) => {
+    if (!createdAt) return 0
+    if (typeof createdAt?.toMillis === 'function') return createdAt.toMillis()
+    if (typeof createdAt?.seconds === 'number') return createdAt.seconds * 1000
+    const t = Date.parse(createdAt)
+    return Number.isFinite(t) ? t : 0
+  }
+
+  const isNewUser = (user) => {
+    if (!user?.id || user._isSample || dismissedNewUserFlags[user.id]) return false
+    return getCreatedAtMs(user.createdAt) > 0
+  }
+
+  const isPendingUser = (user) => user?.investmentData?.status === 'pending'
 
   useEffect(() => {
     if (selectedUser) {
@@ -174,12 +214,17 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         })
       }
 
-      // Sort users: admins first, then pending investors, then by display name
+      // Sort users: new users first, then pending investors, then admins, then by display name
       usersList.sort((a, b) => {
+        const aIsNew = isNewUser(a)
+        const bIsNew = isNewUser(b)
+        const aIsPending = isPendingUser(a)
+        const bIsPending = isPendingUser(b)
         const aIsAdmin = (a.statuses || []).includes('Admin')
         const bIsAdmin = (b.statuses || []).includes('Admin')
-        const aIsPending = a.investmentData && a.investmentData.status === 'pending'
-        const bIsPending = b.investmentData && b.investmentData.status === 'pending'
+
+        if (aIsNew && !bIsNew) return -1
+        if (!aIsNew && bIsNew) return 1
 
         if (aIsAdmin && !bIsAdmin) return -1
         if (!aIsAdmin && bIsAdmin) return 1
@@ -205,6 +250,9 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   }
 
   const handleUserSelect = (user) => {
+    if (isNewUser(user)) {
+      setDismissedNewUserFlags((prev) => ({ ...prev, [user.id]: true }))
+    }
     setSelectedUser(user)
     setError('')
     setSuccess('')
@@ -726,6 +774,22 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                     )}
                   </div>
                   <div className="user-card-info">
+                    <div className="user-card-top-icons">
+                      {isNewUser(user) && (
+                        <span className="user-card-top-icon new-user-icon" title="New user account">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+                          </svg>
+                        </span>
+                      )}
+                      {isPendingUser(user) && (
+                        <span className="user-card-top-icon pending-user-icon" title="Pending investment request">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                          </svg>
+                        </span>
+                      )}
+                    </div>
                     <h3 className="user-card-name">{user.displayName || 'No name'}</h3>
                     <p className="user-card-email">{user.email}</p>
                     <div className="user-status-badges">
@@ -775,8 +839,6 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         <div className="user-details-panel">
           {selectedUser ? (
             <div className="user-details">
-              <h2 className="panel-title">Edit User Statuses</h2>
-              
               {error && <div className="alert alert-error">{error}</div>}
               {success && <div className="alert alert-success">{success}</div>}
 
@@ -784,16 +846,23 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
               <div className="user-detail-section">
                 <div className="user-detail-section-header">
                   <h3 className="section-title">User Information</h3>
-                  {canEliminateUser(selectedUser) && (
-                    <button
-                      type="button"
-                      className="btn-eliminate-user"
-                      onClick={handleEliminateUser}
-                      disabled={loadingEliminate}
-                    >
-                      {loadingEliminate ? 'Eliminating...' : 'Eliminate User'}
-                    </button>
-                  )}
+                  <div className="user-header-actions">
+                    {(canModifyStatuses || isAdmin3) && (
+                      <button type="button" onClick={() => setEditingProfile(true)} className="btn-edit">
+                        Edit Profile
+                      </button>
+                    )}
+                    {canEliminateUser(selectedUser) && (
+                      <button
+                        type="button"
+                        className="btn-eliminate-user"
+                        onClick={handleEliminateUser}
+                        disabled={loadingEliminate}
+                      >
+                        {loadingEliminate ? 'Eliminating...' : 'Eliminate User'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {!editingProfile ? (
                   <div className="user-info-display">
@@ -817,11 +886,6 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                       <span className="info-label">Email:</span>
                       <span className="info-value">{selectedUser.email}</span>
                     </div>
-                    {(canModifyStatuses || isAdmin3) && (
-                      <button type="button" onClick={() => setEditingProfile(true)} className="btn-edit">
-                        Edit Profile
-                      </button>
-                    )}
                   </div>
                 ) : (
                   <div className="user-info-edit">
@@ -1207,11 +1271,11 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
               {/* User Statuses */}
               <div className="user-detail-section">
                 <h3 className="section-title">User Statuses</h3>
-                <p className="section-description">
-                  {canModifyStatuses 
-                    ? 'Select one or more statuses to grant access to different features.'
-                    : 'You do not have permission to modify user statuses. This feature is only available to full administrators.'}
-                </p>
+                {!canModifyStatuses && (
+                  <p className="section-description">
+                    You do not have permission to modify user statuses. This feature is only available to full administrators.
+                  </p>
+                )}
                 <div className="statuses-list">
                   {availableStatuses.map((status) => (
                     <label key={status} className={`status-checkbox-label ${!canModifyStatuses ? 'disabled' : ''}`}>

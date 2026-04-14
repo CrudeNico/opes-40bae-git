@@ -621,7 +621,12 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         <div className="investor-details-panel">
           {selectedInvestor ? (
             <div className="investor-details">
-              <h2 className="panel-title">{selectedInvestor.displayName || selectedInvestor.email}</h2>
+              <div className="investor-details-header">
+                <h2 className="panel-title">{selectedInvestor.displayName || selectedInvestor.email}</h2>
+                {selectedInvestor.email && (
+                  <span className="investor-details-email">{selectedInvestor.email}</span>
+                )}
+              </div>
               
               {error && <div className="alert alert-error">{error}</div>}
               {success && <div className="alert alert-success">{success}</div>}
@@ -713,7 +718,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
               {/* View Performance Table */}
               {showViewPerformance && selectedInvestor.investmentData && (
                 <div className="performance-view-section">
-                  <h3 className="section-title">Monthly Performance History</h3>
                   {selectedInvestor.investmentData.secondaryInvestment ? (
                     (() => {
                       const mh = selectedInvestor.investmentData.monthlyHistory || []
@@ -864,7 +868,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
               {/* Add Performance Form - Only show for admins with full permissions, and not for Traders */}
               {showAddPerformance && canAddPerformance && !(selectedInvestor.statuses && selectedInvestor.statuses.includes('Trader')) && (
                 <div className="add-performance-section">
-                  <h3 className="section-title">Add Monthly Performance</h3>
                   <div className="monthly-update-form">
                     {selectedInvestor.investmentData?.secondaryInvestment && (
                       <div className="form-row">
