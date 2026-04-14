@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
 import { generateAdmin3SampleUsers } from '../utils/admin3SampleUsers'
+<<<<<<< HEAD
 import { computeDualTrancheSumBalance, getInvestorCombinedInitial } from '../utils/investorDualTranche'
+=======
+import { functions as firebaseFunctions } from '../firebase/config'
+>>>>>>> bd69499 (Newsautomated)
 import './AdminUsersManagement.css'
 
 /** Admins may correct submitted investment details within this window from submission (or approval if no submission date). */
@@ -54,6 +59,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   const [editedInvestmentData, setEditedInvestmentData] = useState({})
   const [loadingSave, setLoadingSave] = useState(false)
   const [loadingApprove, setLoadingApprove] = useState(false)
+  const [loadingEliminate, setLoadingEliminate] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [editingProfile, setEditingProfile] = useState(false)
@@ -61,6 +67,13 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   
   const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Learner', 'Community']
   const placeholderColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
+
+  const canEliminateUser = (user) => {
+    if (!user || user._isSample || isAdmin3 || !canModifyStatuses) return false
+    const statuses = Array.isArray(user.statuses) ? user.statuses.filter(Boolean) : []
+    const isPending = user.investmentData?.status === 'pending'
+    return isPending || statuses.length === 0
+  }
 
   const getProfilePlaceholder = (u) => {
     if (u?.profilePlaceholder) return u.profilePlaceholder
@@ -649,6 +662,36 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
     }
   }
 
+  const handleEliminateUser = async () => {
+    if (!selectedUser || !canEliminateUser(selectedUser)) return
+
+    const confirmElimination = window.confirm(
+      `Eliminate ${selectedUser.displayName || selectedUser.email || 'this user'}?\n\nThis will permanently delete their account data and login. They can create a new account later.`
+    )
+    if (!confirmElimination) return
+
+    setLoadingEliminate(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const eliminateUserCallable = httpsCallable(firebaseFunctions, 'eliminatePendingUser')
+      await eliminateUserCallable({ userId: selectedUser.id })
+      const eliminatedUserId = selectedUser.id
+
+      setSuccess('User account eliminated successfully.')
+      setSelectedUser(null)
+      setUsers(prev => prev.filter(u => u.id !== eliminatedUserId))
+      await loadUsers()
+    } catch (err) {
+      console.error('Error eliminating user:', err)
+      const errorMessage = err?.message || 'Failed to eliminate user account. Please try again.'
+      setError(errorMessage.replace(/^FirebaseError:\s*/i, ''))
+    } finally {
+      setLoadingEliminate(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="admin-users-loading">
@@ -742,7 +785,19 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
 
               {/* User Info - editable */}
               <div className="user-detail-section">
-                <h3 className="section-title">User Information</h3>
+                <div className="user-detail-section-header">
+                  <h3 className="section-title">User Information</h3>
+                  {canEliminateUser(selectedUser) && (
+                    <button
+                      type="button"
+                      className="btn-eliminate-user"
+                      onClick={handleEliminateUser}
+                      disabled={loadingEliminate}
+                    >
+                      {loadingEliminate ? 'Eliminating...' : 'Eliminate User'}
+                    </button>
+                  )}
+                </div>
                 {!editingProfile ? (
                   <div className="user-info-display">
                     <div className="user-info-avatar">

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { functions as firebaseFunctions } from '../firebase/config'
 import './AdminNewsManagement.css'
 
 const AdminNewsManagement = () => {
@@ -268,6 +270,26 @@ const AdminNewsManagement = () => {
     setSuccess('')
   }
 
+  const handleRefreshNews = async () => {
+    setLoadingAction(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const refreshNewsCallable = httpsCallable(firebaseFunctions, 'refreshOilNewsNow')
+      const result = await refreshNewsCallable()
+      const insertedCount = result?.data?.insertedCount ?? 0
+      setSuccess(`News refreshed successfully. ${insertedCount} oil article${insertedCount === 1 ? '' : 's'} added.`)
+      await loadNews()
+    } catch (err) {
+      console.error('Error refreshing oil news:', err)
+      const errorMessage = err?.message || 'Failed to refresh oil news. Please try again.'
+      setError(errorMessage.replace(/^FirebaseError:\s*/i, ''))
+    } finally {
+      setLoadingAction(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="admin-news-loading">
@@ -280,18 +302,27 @@ const AdminNewsManagement = () => {
     <div className="admin-news-management">
       <div className="admin-news-header">
         <h2 className="panel-title">News Management</h2>
-        <button
-          className="btn-add-news"
-          onClick={() => {
-            setShowAddForm(true)
-            setEditingNews(null)
-            setError('')
-            setSuccess('')
-          }}
-          disabled={showAddForm || editingNews}
-        >
-          + Add News Article
-        </button>
+        <div className="admin-news-actions">
+          <button
+            className="btn-refresh-news"
+            onClick={handleRefreshNews}
+            disabled={loadingAction}
+          >
+            {loadingAction ? 'Refreshing...' : 'Refresh News'}
+          </button>
+          <button
+            className="btn-add-news"
+            onClick={() => {
+              setShowAddForm(true)
+              setEditingNews(null)
+              setError('')
+              setSuccess('')
+            }}
+            disabled={showAddForm || editingNews || loadingAction}
+          >
+            + Add News Article
+          </button>
+        </div>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}

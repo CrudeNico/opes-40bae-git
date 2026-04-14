@@ -233,6 +233,13 @@
   gap: 1rem;
 }
 
+.user-detail-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .section-title {
   font-size: 1rem;
   font-weight: 600;
@@ -603,6 +610,28 @@
 }
 
 .btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-eliminate-user {
+  padding: 0.5rem 0.875rem;
+  background: #ffffff;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-eliminate-user:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.btn-eliminate-user:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -1015,6 +1044,17 @@ html.dark-mode .btn-cancel {
 html.dark-mode .btn-cancel:hover:not(:disabled) {
   background: #4b5563;
   border-color: #6b7280;
+}
+
+html.dark-mode .btn-eliminate-user {
+  background: #3f1d1d;
+  color: #fecaca;
+  border-color: #7f1d1d;
+}
+
+html.dark-mode .btn-eliminate-user:hover:not(:disabled) {
+  background: #7f1d1d;
+  border-color: #b91c1c;
 }
 
 html.dark-mode .form-input {

@@ -1,0 +1,144 @@
+[debug] [2026-04-13T12:14:53.900Z] ----------------------------------------------------------------------
+[debug] [2026-04-13T12:14:53.901Z] Command:       /opt/homebrew/Cellar/node/24.5.0/bin/node /opt/homebrew/bin/firebase deploy --only functions
+[debug] [2026-04-13T12:14:53.901Z] CLI Version:   15.14.0
+[debug] [2026-04-13T12:14:53.901Z] Platform:      darwin
+[debug] [2026-04-13T12:14:53.902Z] Node Version:  v24.5.0
+[debug] [2026-04-13T12:14:53.902Z] Time:          Mon Apr 13 2026 14:14:53 GMT+0200 (Central European Summer Time)
+[debug] [2026-04-13T12:14:53.902Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-13T12:14:54.621Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-13T12:14:54.621Z] > authorizing via signed-in user (ndrf1806@gmail.com)
+[debug] [2026-04-13T12:14:54.621Z] [iam] checking project opes-40bae for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-04-13T12:14:54.621Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:54.621Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:54.622Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions [none]
+[debug] [2026-04-13T12:14:54.622Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions  x-goog-user-project=opes-40bae
+[debug] [2026-04-13T12:14:54.622Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-04-13T12:14:55.286Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions 200
+[debug] [2026-04-13T12:14:55.287Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-04-13T12:14:55.287Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:55.287Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:55.287Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/opes-40bae/serviceAccounts/opes-40bae@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-04-13T12:14:55.287Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/opes-40bae/serviceAccounts/opes-40bae@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-04-13T12:14:55.549Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/opes-40bae/serviceAccounts/opes-40bae@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-04-13T12:14:55.550Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/opes-40bae/serviceAccounts/opes-40bae@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'opes-40bae'...
+[info] 
+[info] i  deploying functions 
+[debug] [2026-04-13T12:14:55.553Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:55.553Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:55.553Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae [none]
+[debug] [2026-04-13T12:14:55.733Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae 200
+[debug] [2026-04-13T12:14:55.733Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae {"projectNumber":"22800874102","projectId":"opes-40bae","lifecycleState":"ACTIVE","name":"opes-40bae","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-01-05T11:54:14.252024Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-04-13T12:14:55.734Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:55.734Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:55.734Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/opes-40bae/adminSdkConfig [none]
+[debug] [2026-04-13T12:14:56.088Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/opes-40bae/adminSdkConfig 200
+[debug] [2026-04-13T12:14:56.089Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/opes-40bae/adminSdkConfig {"projectId":"opes-40bae","storageBucket":"opes-40bae.firebasestorage.app"}
+[debug] [2026-04-13T12:14:56.089Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:56.089Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:14:56.089Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/opes-40bae/configs [none]
+[debug] [2026-04-13T12:14:56.345Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/opes-40bae/configs 200
+[debug] [2026-04-13T12:14:56.345Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/opes-40bae/configs {}
+[debug] [2026-04-13T12:14:56.347Z] Validating nodejs source
+[warn] ⚠  functions: Runtime Node.js 20 will be deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-04-13T12:14:56.791Z] > [functions] package.json contents: {
+  "name": "ops-functions",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "deploy": "firebase deploy --only functions",
+    "serve": "firebase emulators:start --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.1",
+    "openai": "^4.77.0"
+  }
+}
+[debug] [2026-04-13T12:14:56.791Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-04-13T12:14:56.791Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-04-13T12:14:56.794Z] Found firebase-functions binary at '/Users/nicolas/Desktop/Ops/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8756
+
+[debug] [2026-04-13T12:14:57.063Z] Got response from /__/functions.yaml {"endpoints":{"replyToCommunityMessage":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","secretEnvironmentVariables":[{"key":"OPENAI_API_KEY"}],"labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"communityMessages/{messageId}"},"retry":false},"entryPoint":"replyToCommunityMessage"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{},"params":[{"type":"secret","name":"OPENAI_API_KEY"}]}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2026-04-13T12:15:01.087Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-13T12:15:01.087Z] > authorizing via signed-in user (ndrf1806@gmail.com)
+[debug] [2026-04-13T12:15:01.087Z] [iam] checking project opes-40bae for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2026-04-13T12:15:01.088Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:01.088Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:01.088Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions [none]
+[debug] [2026-04-13T12:15:01.088Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions  x-goog-user-project=opes-40bae
+[debug] [2026-04-13T12:15:01.088Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-04-13T12:15:01.728Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions 200
+[debug] [2026-04-13T12:15:01.728Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/opes-40bae:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-04-13T12:15:01.729Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:01.729Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:01.729Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/opes-40bae/instances pageSize=100&pageToken=
+[debug] [2026-04-13T12:15:02.498Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/opes-40bae/instances 200
+[debug] [2026-04-13T12:15:02.498Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/opes-40bae/instances {}
+[debug] [2026-04-13T12:15:02.500Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:02.500Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:02.500Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/opes-40bae/secrets/OPENAI_API_KEY [none]
+[debug] [2026-04-13T12:15:02.680Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/opes-40bae/secrets/OPENAI_API_KEY 200
+[debug] [2026-04-13T12:15:02.680Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/opes-40bae/secrets/OPENAI_API_KEY {"name":"projects/22800874102/secrets/OPENAI_API_KEY","replication":{"automatic":{}},"createTime":"2026-04-13T10:50:51.417531Z","labels":{"firebase-managed":"functions"},"etag":"\"164f5541a68a3e\""}
+[debug] [2026-04-13T12:15:02.681Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:02.681Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:02.681Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/opes-40bae/secrets/OPENAI_API_KEY/versions/latest [none]
+[debug] [2026-04-13T12:15:02.828Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/opes-40bae/secrets/OPENAI_API_KEY/versions/latest 200
+[debug] [2026-04-13T12:15:02.828Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/opes-40bae/secrets/OPENAI_API_KEY/versions/latest {"name":"projects/22800874102/secrets/OPENAI_API_KEY/versions/3","createTime":"2026-04-13T11:16:12.775643Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"164f559c43ecdb\""}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged /Users/nicolas/Desktop/Ops/functions (38.55 KB) for uploading 
+[debug] [2026-04-13T12:15:02.844Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:02.844Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:02.845Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/opes-40bae/locations/-/functions [none]
+[debug] [2026-04-13T12:15:03.546Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/opes-40bae/locations/-/functions 200
+[debug] [2026-04-13T12:15:03.546Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/opes-40bae/locations/-/functions {}
+[debug] [2026-04-13T12:15:03.547Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:03.547Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:03.548Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/opes-40bae/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-04-13T12:15:29.272Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/opes-40bae/locations/-/functions 200
+[debug] [2026-04-13T12:15:29.273Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/opes-40bae/locations/-/functions {"unreachable":["us-central1"]}
+[debug] [2026-04-13T12:15:29.276Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:29.276Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:29.277Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/opes-40bae/databases/(default) [none]
+[debug] [2026-04-13T12:15:29.364Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/opes-40bae/databases/(default) 200
+[debug] [2026-04-13T12:15:29.364Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/opes-40bae/databases/(default) {"name":"projects/opes-40bae/databases/(default)","uid":"61d8159f-8ba2-432d-90a3-0e8217efe696","createTime":"2026-01-06T22:57:30.368162Z","updateTime":"2026-01-06T22:57:30.368162Z","locationId":"eur3","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-13T11:15:29.360234Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"e","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"INCthILn6pMDMJTu6POB5JID"}
+[info] i  functions: ensuring required API run.googleapis.com is enabled... 
+[info] i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+[info] i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+[info] i  functions: ensuring required API storage.googleapis.com is enabled... 
+[info] i  functions: generating the service identity for pubsub.googleapis.com... 
+[debug] [2026-04-13T12:15:29.367Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:29.367Z] Checked if tokens are valid: true, expires at: 1776083746500
+[info] i  functions: generating the service identity for eventarc.googleapis.com... 
+[debug] [2026-04-13T12:15:29.367Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:29.367Z] Checked if tokens are valid: true, expires at: 1776083746500
+[debug] [2026-04-13T12:15:29.367Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/pubsub.googleapis.com:generateServiceIdentity [none]
+[debug] [2026-04-13T12:15:29.367Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/pubsub.googleapis.com:generateServiceIdentity  x-goog-user-project=22800874102
+[debug] [2026-04-13T12:15:29.367Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/pubsub.googleapis.com:generateServiceIdentity {}
+[debug] [2026-04-13T12:15:29.368Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/eventarc.googleapis.com:generateServiceIdentity [none]
+[debug] [2026-04-13T12:15:29.368Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/eventarc.googleapis.com:generateServiceIdentity  x-goog-user-project=22800874102
+[debug] [2026-04-13T12:15:29.368Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/eventarc.googleapis.com:generateServiceIdentity {}
+[debug] [2026-04-13T12:15:30.285Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/eventarc.googleapis.com:generateServiceIdentity 200
+[debug] [2026-04-13T12:15:30.285Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/eventarc.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-22800874102@gcp-sa-eventarc.iam.gserviceaccount.com","uniqueId":"104442955137614364872"}}
+[debug] [2026-04-13T12:15:30.285Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/pubsub.googleapis.com:generateServiceIdentity 200
+[debug] [2026-04-13T12:15:30.285Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/22800874102/services/pubsub.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-22800874102@gcp-sa-pubsub.iam.gserviceaccount.com","uniqueId":"109300111825108188359"}}
+[info] i  functions: ensuring required API secretmanager.googleapis.com is enabled... 
+[error] 
+[error] Error: The following Cloud Functions V2 regions are currently unreachable:
+	us-central1
+This deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.
