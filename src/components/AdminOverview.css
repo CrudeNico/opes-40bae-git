@@ -462,19 +462,30 @@ html.dark-mode .current-progress-label {
 
   .overview-widgets-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .overview-widget {
-    padding: 1.25rem;
+    padding: 0.9rem 1rem;
+    border-radius: 0.6rem;
+  }
+
+  .widget-header {
+    margin-bottom: 0.45rem;
+  }
+
+  .widget-title {
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
   }
 
   .widget-value {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
+    line-height: 1.2;
   }
 
   .projection-widget {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .projection-header {
@@ -626,9 +637,9 @@ html.dark-mode .projection-description {
 
 .admin-overview-container .calendar-nav-button {
   background: transparent;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
+  border: none;
+  border-radius: 0;
+  padding: 0.35rem;
   cursor: pointer;
   color: #6b7280;
   transition: all 0.2s ease;
@@ -638,8 +649,7 @@ html.dark-mode .projection-description {
 }
 
 .admin-overview-container .calendar-nav-button:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: transparent;
   color: #1f2937;
 }
 
@@ -716,6 +726,10 @@ html.dark-mode .projection-description {
   font-size: 0.625rem;
   font-weight: 600;
   margin-top: 0.25rem;
+}
+
+.admin-overview-container .day-performance-mobile {
+  display: none;
 }
 
 .admin-overview-container .calendar-day.day-win .day-performance {
@@ -869,13 +883,12 @@ html.dark-mode .admin-overview-container .calendar-title {
 }
 
 html.dark-mode .admin-overview-container .calendar-nav-button {
-  border-color: #374151;
+  border: none;
   color: #9ca3af;
 }
 
 html.dark-mode .admin-overview-container .calendar-nav-button:hover {
-  background: #374151;
-  border-color: #4b5563;
+  background: transparent;
   color: #f9fafb;
 }
 
@@ -998,22 +1011,127 @@ html.dark-mode .form-group label {
 /* Mobile Responsive Calendar */
 @media (max-width: 768px) {
   .admin-overview-container .calendar-widget {
-    padding: 1.5rem;
+    padding: 0.75rem;
+    overflow: hidden;
   }
 
   .admin-overview-container .calendar-title {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
+  }
+
+  .admin-overview-container .calendar-header {
+    margin-bottom: 0.75rem;
+    padding: 0 0.1rem;
+  }
+
+  .admin-overview-container .calendar-grid {
+    column-gap: 0.16rem;
+    row-gap: 0;
+    width: 100%;
+    box-sizing: border-box;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .admin-overview-container .calendar-day-header {
+    font-size: 0.62rem;
+    padding: 0.3rem 0;
+  }
+
+  .admin-overview-container .calendar-day-empty {
+    aspect-ratio: auto;
+    height: 55px;
+    min-height: 55px;
   }
 
   .admin-overview-container .calendar-day {
-    padding: 0.375rem;
+    aspect-ratio: auto;
+    height: 55px;
+    padding: 0.14rem;
+    min-height: 55px;
+    min-width: 0;
+    gap: 0.08rem;
   }
 
   .admin-overview-container .day-number {
-    font-size: 0.75rem;
+    font-size: 0.66rem;
+    line-height: 0.95;
   }
 
   .admin-overview-container .day-performance {
-    font-size: 0.5rem;
+    font-size: 0.48rem;
+    line-height: 0.9;
+    margin-top: 0.02rem;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-overview-container .day-performance-sign {
+    display: none;
+  }
+
+  .admin-overview-container .calendar-day.has-performance .day-number {
+    display: none;
+  }
+
+  .admin-overview-container .day-performance-desktop {
+    display: none;
+  }
+
+  .admin-overview-container .day-performance-mobile {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 0;
+    line-height: 1;
+    white-space: nowrap;
+  }
+}
+
+/* Extra-tight phones */
+@media (max-width: 430px) {
+  .admin-overview-container .calendar-widget {
+    padding: 0.62rem;
+  }
+
+  .admin-overview-container .calendar-grid {
+    column-gap: 0.1rem;
+    row-gap: 0;
+    width: 100%;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .admin-overview-container .calendar-header {
+    padding: 0 0.14rem;
+  }
+
+  .admin-overview-container .calendar-day-empty {
+    aspect-ratio: auto;
+    height: 55px;
+    min-height: 55px;
+  }
+
+  .admin-overview-container .calendar-day {
+    aspect-ratio: auto;
+    height: 55px;
+    min-height: 55px;
+    padding: 0.12rem;
+    min-width: 0;
+    gap: 0.06rem;
+  }
+
+  .admin-overview-container .day-number {
+    font-size: 0.62rem;
+  }
+
+  .admin-overview-container .day-performance {
+    font-size: 0.44rem;
+    line-height: 0.88;
+    margin-top: 0;
+  }
+
+  .admin-overview-container .day-performance-mobile {
+    font-size: 0.64rem;
   }
 }

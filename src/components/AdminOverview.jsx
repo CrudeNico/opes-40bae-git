@@ -587,6 +587,18 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
            calendarYear === current.year
   }
 
+  const formatMobilePerformanceAmount = (amount) => {
+    const abs = Math.abs(Number(amount) || 0)
+    if (abs >= 10000) {
+      return `${Math.round(abs / 1000)}k`
+    }
+    if (abs >= 1000) {
+      const compact = (abs / 1000).toFixed(1).replace(/\.0$/, '')
+      return `${compact}k`
+    }
+    return `${Math.round(abs)}`
+  }
+
   // Download monthly performance as a printable HTML report (user can save as PDF)
   const handleDownloadMonthlyReport = () => {
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
@@ -945,7 +957,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               <>
                 <div 
                   className="progress-bar-fill progress-bar-blue"
-                  style={{ width: `${Math.min(progressPercentage, firstTargetPosition) + 0.6}%` }}
+                  style={{ width: `${Math.min(progressPercentage, firstTargetPosition) + 2.1}%` }}
                 ></div>
                 {/* Green from investor target to 7% target */}
                 {progressPercentage > firstTargetPosition && (
@@ -1014,17 +1026,22 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               return (
                 <div
                   key={day}
-                  className={`calendar-day ${isCurrent ? 'current-day' : ''} ${performance ? (performance.type === 'win' ? 'day-win' : 'day-loss') : ''}`}
+                  className={`calendar-day ${isCurrent ? 'current-day' : ''} ${performance ? (performance.type === 'win' ? 'day-win' : 'day-loss') : ''} ${performance ? 'has-performance' : ''}`}
                   onClick={() => {
                     if (!isAdmin2) handleDayClick(day)
                   }}
                 >
                   <span className="day-number">{day}</span>
                   {performance && (
-                    <span className="day-performance">
-                      {performance.type === 'win' ? '+' : '-'}
-                      {performance.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                    <>
+                      <span className="day-performance day-performance-desktop">
+                        <span className="day-performance-sign">{performance.type === 'win' ? '+' : '-'}</span>
+                        {performance.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="day-performance day-performance-mobile" aria-label={`Performance ${performance.type}`}>
+                        {formatMobilePerformanceAmount(performance.amount)}
+                      </span>
+                    </>
                   )}
                 </div>
               )
