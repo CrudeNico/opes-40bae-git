@@ -232,10 +232,10 @@ const AdminLearningManagement = () => {
     try {
       const db = getFirestore()
       const moduleRef = doc(db, 'learningModules', selectedModule.id)
-      const moduleData = modules.find(m => m.id === selectedModule.id)
+      const moduleData = modules.find((m) => m.id === selectedModule.id)
       const currentSubModules = moduleData.subModules || []
-      
-      const newSubModule = {
+
+      const baseSubModule = {
         id: `sub-${Date.now()}`,
         title: subModuleFormData.title.trim(),
         subtext: subModuleFormData.subtext.trim() || '',
@@ -246,15 +246,27 @@ const AdminLearningManagement = () => {
         createdAt: Timestamp.now()
       }
 
+      let newSubModule = { ...baseSubModule }
+      if (pdfFile) {
+        const uploadedUrl = await uploadPDF(pdfFile, selectedModule.id, baseSubModule.id)
+        newSubModule = {
+          ...baseSubModule,
+          content: {
+            pdfUrl: uploadedUrl
+          }
+        }
+      }
+
       const updatedSubModules = [...currentSubModules, newSubModule]
-      
+
       await updateDoc(moduleRef, {
         subModules: updatedSubModules,
         updatedAt: Timestamp.now()
       })
 
-      setSuccess('Sub-module added successfully!')
+      // No success popup text for add-sub-module
       setSubModuleFormData({ title: '', subtext: '' })
+      setPdfFile(null)
       loadModules()
       setSelectedModule({ ...moduleData, subModules: updatedSubModules })
     } catch (error) {
@@ -277,9 +289,22 @@ const AdminLearningManagement = () => {
       const moduleData = modules.find(m => m.id === selectedModule.id)
       const currentSubModules = moduleData.subModules || []
       
-      const updatedSubModules = currentSubModules.map(subModule =>
+      const targetSubModule = currentSubModules.find((subModule) => subModule.id === editingSubModule.id)
+      let nextPdfUrl = targetSubModule?.content?.pdfUrl || ''
+      if (pdfFile) {
+        nextPdfUrl = await uploadPDF(pdfFile, selectedModule.id, editingSubModule.id)
+      }
+
+      const updatedSubModules = currentSubModules.map((subModule) =>
         subModule.id === editingSubModule.id
-          ? { ...subModule, title: subModuleFormData.title.trim(), subtext: subModuleFormData.subtext.trim() || '' }
+          ? {
+              ...subModule,
+              title: subModuleFormData.title.trim(),
+              subtext: subModuleFormData.subtext.trim() || '',
+              content: {
+                pdfUrl: nextPdfUrl
+              }
+            }
           : subModule
       )
       
@@ -291,6 +316,7 @@ const AdminLearningManagement = () => {
       setSuccess('Sub-module updated successfully!')
       setEditingSubModule(null)
       setSubModuleFormData({ title: '', subtext: '' })
+      setPdfFile(null)
       loadModules()
       setSelectedModule({ ...moduleData, subModules: updatedSubModules })
     } catch (error) {
@@ -426,19 +452,25 @@ const AdminLearningManagement = () => {
       <div className="admin-learning-container">
         <div className="admin-learning-header">
           <button className="back-button" onClick={() => setSelectedModule(null)}>
-            ← Back to Modules
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+              className="back-icon"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 19.5 8.25 12l7.5-7.5"
+              />
+            </svg>
           </button>
-          <h2>Manage Sub-Modules: {moduleData?.title}</h2>
+          <h2>Manage: {moduleData?.title}</h2>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
-
-        <div className="admin-learning-actions">
-          <button className="btn btn-primary" onClick={() => setEditingSubModule(null)}>
-            + Add Sub-Module
-          </button>
-        </div>
 
         {/* Add/Edit Sub-Module Form */}
         {!editingSubModule && (
@@ -464,6 +496,15 @@ const AdminLearningManagement = () => {
                   value={subModuleFormData.subtext}
                   onChange={(e) => setSubModuleFormData({ ...subModuleFormData, subtext: e.target.value })}
                   placeholder="Enter sub-module subtext"
+                />
+              </div>
+              <div className="form-group">
+                <label>PDF Document *</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="form-input"
+                  onChange={handlePdfChange}
                 />
               </div>
               <div className="form-actions">
@@ -502,11 +543,39 @@ const AdminLearningManagement = () => {
                   placeholder="Enter sub-module subtext"
                 />
               </div>
+              <div className="form-group">
+                <label>PDF Document (Optional)</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="form-input"
+                  onChange={handlePdfChange}
+                />
+                {(() => {
+                  const currentSubModule = subModules.find((sm) => sm.id === editingSubModule.id)
+                  const currentPdfUrl = currentSubModule?.content?.pdfUrl
+                  if (!currentPdfUrl || pdfFile) return null
+                  return (
+                    <div className="pdf-preview">
+                      <p>
+                        Current PDF: <a href={currentPdfUrl} target="_blank" rel="noopener noreferrer">View Current PDF</a>
+                      </p>
+                    </div>
+                  )
+                })()}
+              </div>
               <div className="form-actions">
                 <button type="submit" className="btn btn-primary" disabled={loadingAction}>
                   {loadingAction ? 'Updating...' : 'Update Sub-Module'}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingSubModule(null)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setEditingSubModule(null)
+                    setPdfFile(null)
+                  }}
+                >
                   Cancel
                 </button>
               </div>
@@ -532,18 +601,14 @@ const AdminLearningManagement = () => {
                       className="btn btn-small"
                       onClick={() => {
                         setEditingSubModule(subModule)
-                        setSubModuleFormData({ title: subModule.title })
+                      setSubModuleFormData({
+                        title: subModule.title || '',
+                        subtext: subModule.subtext || ''
+                      })
+                      setPdfFile(null)
                       }}
                     >
-                      Edit Title
-                    </button>
-                    <button
-                      className="btn btn-small"
-                      onClick={() => {
-                        setEditingContent(subModule)
-                      }}
-                    >
-                      Edit Content
+                    Edit
                     </button>
                     <button
                       className="btn btn-small btn-danger"

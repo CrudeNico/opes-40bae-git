@@ -753,12 +753,17 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     }
   }
 
-  // Determine if current progress label should be hidden to avoid overlapping with targets
+  // Keep the current-progress label hidden whenever it visually overlaps target labels.
+  const currentProgressLabelPosition = Math.min(Math.max(progressPercentage, 5), 95)
+  const TARGET_TWO_POSITION = firstTargetPosition
+  const TARGET_ONE_POSITION = 100
+  const labelOverlapThreshold = 8
+  const rightEdgeOverlapThreshold = 6
   const hideCurrentProgressLabel =
     progressAmount !== 0 &&
     (
-      (secondTargetAmount > 0 && Math.abs(progressAmount - secondTargetAmount) <= 200) ||
-      (monthlyProjection > 0 && Math.abs(progressAmount - monthlyProjection) <= 200)
+      Math.abs(currentProgressLabelPosition - TARGET_TWO_POSITION) <= labelOverlapThreshold ||
+      Math.abs(currentProgressLabelPosition - TARGET_ONE_POSITION) <= rightEdgeOverlapThreshold
     )
 
   if (loading) {
@@ -928,7 +933,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             {progressAmount !== 0 && !hideCurrentProgressLabel && progressPercentage > 0 && progressPercentage <= 100 && (
               <div
                 className="current-progress-label"
-                style={{ left: `${Math.min(Math.max(progressPercentage, 5), 95)}%` }}
+                style={{ left: `${currentProgressLabelPosition}%` }}
               >
                 €{progressAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>

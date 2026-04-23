@@ -621,9 +621,9 @@ const AdminCommunityManagement = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="chat-watcher-status disconnected"
-                title={chatWatcherStatus.lastError || 'Session expired. Click to log in.'}
+                title={chatWatcherStatus.lastError || 'Not logged in. Click to log in.'}
               >
-                Session expired – click to re-login
+                Not logged in
               </a>
             )}
             {chatWatcherStatus?.lastChecked && (
