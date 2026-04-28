@@ -514,6 +514,15 @@ select.form-input option {
   margin: 0;
 }
 
+.portfolio-graph-section--minimal .portfolio-graph-section-header--minimal {
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.graph-container--user-chart {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
 .portfolio-tranche-toggle {
   display: flex;
   flex-wrap: wrap;
@@ -542,6 +551,10 @@ select.form-input option {
   background: #3b82f6;
   border-color: #3b82f6;
   color: #ffffff;
+}
+
+.portfolio-tranche-toggle--header {
+  justify-content: flex-end;
 }
 
 .portfolio-history-empty {
@@ -1057,6 +1070,14 @@ html.dark-mode .graph-container {
 /* Make graph numbers white in dark mode */
 html.dark-mode .graph-container svg text {
   fill: #f9fafb !important;
+}
+
+html.dark-mode .graph-container .investment-graph line {
+  stroke: #4b5563;
+}
+
+html.dark-mode .graph-container .investment-graph line[strokeDasharray='2,2'] {
+  stroke: #6b7280;
 }
 
 html.dark-mode .graph-legend {

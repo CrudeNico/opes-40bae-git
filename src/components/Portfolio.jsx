@@ -43,6 +43,84 @@ function sortMonthlyHistoryStatic(history) {
   })
 }
 
+/** Newest month first for dashboard history tables (oldest row at bottom). */
+function monthlyHistoryNewestFirst(history) {
+  return [...sortMonthlyHistoryStatic(history || [])].reverse()
+}
+
+/** Compact € labels on chart (aligned with admin portfolio graph). */
+function formatChartCompact(num) {
+  if (num >= 1e6) return `€${(num / 1e6).toFixed(2)}M`
+  if (num >= 1e3) {
+    const k = num / 1e3
+    return `€${k.toFixed(1)}k`.replace('.0k', 'k')
+  }
+  return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+/** Calendar position for adaptive x-axis tick spacing. */
+function portfolioPointToSerialMonth(p) {
+  if (p == null || p.year == null) return null
+  const y = parseInt(String(p.year), 10)
+  if (Number.isNaN(y)) return null
+  const m = p.monthNum
+  if (m == null || m < 1 || m > 12) return null
+  return y * 12 + (m - 1)
+}
+
+/**
+ * X-axis labels: if history span > 12 months → one tick per calendar year;
+ * otherwise → roughly every 3 months (less crowded for short timelines).
+ */
+function getPortfolioXAxisTickIndices(projectionData) {
+  const n = projectionData.length
+  const out = new Set(n > 0 ? [0, n - 1] : [])
+  const serials = projectionData.map(portfolioPointToSerialMonth)
+  let minS = Infinity
+  let maxS = -Infinity
+  serials.forEach((s) => {
+    if (s != null && !Number.isNaN(s)) {
+      minS = Math.min(minS, s)
+      maxS = Math.max(maxS, s)
+    }
+  })
+  if (!Number.isFinite(minS)) return out
+
+  const spanMonths = maxS - minS
+  if (spanMonths > 12) {
+    const firstByYear = {}
+    projectionData.forEach((p, i) => {
+      if (p.year != null && firstByYear[p.year] === undefined) {
+        firstByYear[p.year] = i
+      }
+    })
+    Object.values(firstByYear).forEach((i) => out.add(i))
+  } else {
+    for (let t = minS; t <= maxS; t += 3) {
+      let bestI = 0
+      let bestD = Infinity
+      serials.forEach((s, i) => {
+        if (s == null) return
+        const d = Math.abs(s - t)
+        if (d < bestD) {
+          bestD = d
+          bestI = i
+        }
+      })
+      out.add(bestI)
+    }
+  }
+  return out
+}
+
+function portfolioXAxisUsesYearLabels(projectionData) {
+  const serials = projectionData
+    .map(portfolioPointToSerialMonth)
+    .filter((s) => s != null && !Number.isNaN(s))
+  if (serials.length < 2) return false
+  return Math.max(...serials) - Math.min(...serials) > 12
+}
+
 /** Total view: legacy untagged rows, or merged primary+secondary by month when only tagged rows exist */
 function getTotalMergedHistory(fullHistory, primaryInitial, secondaryInitial) {
   const monthNames = [
@@ -116,10 +194,19 @@ function buildGraphProjectionData({
   }
 
   if (sortedHistory.length > 0) {
+    const fr = sortedHistory[0]
+    let startM = getMonthNumber(fr.month) - 1
+    let startY = parseInt(String(fr.year), 10)
+    if (startM < 1) {
+      startM = 12
+      startY -= 1
+    }
     data.push({
       month: -sortedHistory.length,
       balance: initialBalance,
       label: 'Start',
+      year: String(startY),
+      monthNum: startM,
       isHistorical: true
     })
     sortedHistory.forEach((record, index) => {
@@ -127,14 +214,19 @@ function buildGraphProjectionData({
         month: index - sortedHistory.length + 1,
         balance: record.endingBalance,
         label: formatLabel(record.month, record.year),
+        year: String(record.year),
+        monthNum: getMonthNumber(record.month),
         isHistorical: true
       })
     })
   } else {
+    const now = new Date()
     data.push({
       month: 0,
       balance: currentBalance,
       label: 'Now',
+      year: String(now.getFullYear()),
+      monthNum: now.getMonth() + 1,
       isHistorical: false
     })
   }
@@ -175,6 +267,8 @@ function buildGraphProjectionData({
       month: sortedHistory.length + month,
       balance: projectedBalance,
       label: formatLabel(projectionMonth, projectionYear),
+      year: String(projectionYear),
+      monthNum: projectionMonth,
       isHistorical: false
     })
   }
@@ -1198,6 +1292,9 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     const minBalance = Math.min(...projectionData.map((d) => d.balance))
     const range = maxBalance - minBalance || 1
 
+    const xAxisTickIndices = getPortfolioXAxisTickIndices(projectionData)
+    const xAxisYearOnly = portfolioXAxisUsesYearLabels(projectionData)
+
     const monthlyHistoryForMetrics = sortMonthlyHistory(graphHistory)
 
     const totalGain = monthlyHistoryForMetrics.reduce(
@@ -1268,27 +1365,84 @@ const Portfolio = ({ user, onStatusUpdate }) => {
     return (
       <div className="portfolio-container">
         <div className="portfolio-content">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h2 className="portfolio-title">Your Portfolio</h2>
-            {isTrader && (
-              <button
-                onClick={() => setShowAddPerformance(!showAddPerformance)}
-                className="btn-add-performance"
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: '#3b82f6',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.95rem',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease'
-                }}
-              >
-                {showAddPerformance ? 'Cancel' : '+ Add Monthly Performance'}
-              </button>
-            )}
+          <div
+            className="portfolio-page-header-row"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              marginBottom: '2rem'
+            }}
+          >
+            <h2 className="portfolio-title" style={{ margin: 0 }}>
+              Your Portfolio
+            </h2>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                marginLeft: 'auto'
+              }}
+            >
+              {isDualInvestor && (
+                <div
+                  className="portfolio-tranche-toggle portfolio-tranche-toggle--header"
+                  role="tablist"
+                  aria-label="Portfolio tranche view"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={portfolioTrancheView === 'total'}
+                    className={portfolioTrancheView === 'total' ? 'active' : ''}
+                    onClick={() => setPortfolioTrancheView('total')}
+                  >
+                    Total net worth
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={portfolioTrancheView === 'conservative'}
+                    className={portfolioTrancheView === 'conservative' ? 'active' : ''}
+                    onClick={() => setPortfolioTrancheView('conservative')}
+                  >
+                    2% (Conservative)
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={portfolioTrancheView === 'moderate'}
+                    className={portfolioTrancheView === 'moderate' ? 'active' : ''}
+                    onClick={() => setPortfolioTrancheView('moderate')}
+                  >
+                    4% (Moderate)
+                  </button>
+                </div>
+              )}
+              {isTrader && (
+                <button
+                  onClick={() => setShowAddPerformance(!showAddPerformance)}
+                  className="btn-add-performance"
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#3b82f6',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease'
+                  }}
+                >
+                  {showAddPerformance ? 'Cancel' : '+ Add Monthly Performance'}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Error and Success Messages */}
@@ -1597,186 +1751,122 @@ const Portfolio = ({ user, onStatusUpdate }) => {
             </div>
           )}
           
-          {/* Investment Graph */}
-          <div className="portfolio-graph-section">
-            <div className="portfolio-graph-section-header">
-              <div>
-                <h3 className="section-subtitle">Investment Growth & Projection</h3>
-                {isDualInvestor && portfolioTrancheView === 'conservative' && (
-                  <p className="portfolio-view-hint">Conservative tranche — 2% per month</p>
-                )}
-                {isDualInvestor && portfolioTrancheView === 'moderate' && (
-                  <p className="portfolio-view-hint">Moderate tranche — 4% per month</p>
-                )}
-                {isDualInvestor && portfolioTrancheView === 'total' && (
-                  <p className="portfolio-view-hint">Combined view — metrics reflect total net worth</p>
-                )}
-              </div>
-              {isDualInvestor && (
-                <div className="portfolio-tranche-toggle" role="tablist" aria-label="Portfolio tranche view">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={portfolioTrancheView === 'total'}
-                    className={portfolioTrancheView === 'total' ? 'active' : ''}
-                    onClick={() => setPortfolioTrancheView('total')}
-                  >
-                    Total net worth
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={portfolioTrancheView === 'conservative'}
-                    className={portfolioTrancheView === 'conservative' ? 'active' : ''}
-                    onClick={() => setPortfolioTrancheView('conservative')}
-                  >
-                    2% (Conservative)
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={portfolioTrancheView === 'moderate'}
-                    className={portfolioTrancheView === 'moderate' ? 'active' : ''}
-                    onClick={() => setPortfolioTrancheView('moderate')}
-                  >
-                    4% (Moderate)
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="graph-container">
-              <div className="graph-legend">
-                {projectionData.some(p => p.isHistorical) && (
-                  <div className="legend-item">
-                    <div className="legend-line current"></div>
-                    <span>Historical</span>
-                  </div>
-                )}
-                <div className="legend-item">
-                  <div className="legend-line projection"></div>
-                  <span>5-Month Projection</span>
-                </div>
-              </div>
+          {/* Investment graph — grid + scales from min/max balance; x-axis yearly vs quarterly by span */}
+          <div className="portfolio-graph-section portfolio-graph-section--minimal">
+            <div className="graph-container graph-container--user-chart">
               <svg className="investment-graph" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
-                {/* Grid lines */}
-                {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => {
-                  const y = 50 + (ratio * 300)
-                  const value = minBalance + (range * (1 - ratio))
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, gi) => {
+                  const gy = 50 + ratio * 300
+                  const value = minBalance + range * (1 - ratio)
                   return (
-                    <g key={index}>
+                    <g key={gi}>
                       <line
                         x1="50"
-                        y1={y}
+                        y1={gy}
                         x2="750"
-                        y2={y}
+                        y2={gy}
                         stroke="#e5e7eb"
                         strokeWidth="1"
-                        strokeDasharray={ratio === 0 || ratio === 1 ? "0" : "2,2"}
+                        strokeDasharray={ratio === 0 || ratio === 1 ? '0' : '2,2'}
                       />
                       <text
                         x="40"
-                        y={y + 5}
+                        y={gy + 5}
                         fill="#6b7280"
                         fontSize="12"
                         textAnchor="end"
+                        className="portfolio-chart-y-label"
                       >
-                        €{(value / 1000).toFixed(1)}k
+                        {formatChartCompact(value)}
                       </text>
                     </g>
                   )
                 })}
-                
-                {/* Historical line (solid) */}
-                {projectionData.some(p => p.isHistorical) && (
+                {projectionData.some((p) => p.isHistorical) && (
                   <polyline
-                    points={projectionData.map((point, index) => {
-                      const totalPoints = projectionData.length
-                      const x = 50 + (index * (700 / Math.max(totalPoints - 1, 1)))
-                      const y = 350 - ((point.balance - minBalance) / range * 300)
-                      return point.isHistorical ? `${x},${y}` : null
-                    }).filter(p => p !== null).join(' ')}
+                    points={projectionData
+                      .map((point, index) => {
+                        const totalPoints = projectionData.length
+                        const x = 50 + index * (700 / Math.max(totalPoints - 1, 1))
+                        const y = 350 - ((point.balance - minBalance) / range) * 300
+                        return point.isHistorical ? `${x},${y}` : null
+                      })
+                      .filter((p) => p !== null)
+                      .join(' ')}
                     fill="none"
                     stroke="#10b981"
                     strokeWidth="3"
                   />
                 )}
-                
-                {/* Projection line (dashed) - includes last historical point for connection */}
-                {projectionData.some(p => !p.isHistorical) && (
+
+                {projectionData.some((p) => !p.isHistorical) && (
                   <polyline
-                    points={projectionData.map((point, index) => {
-                      const totalPoints = projectionData.length
-                      const x = 50 + (index * (700 / Math.max(totalPoints - 1, 1)))
-                      const y = 350 - ((point.balance - minBalance) / range * 300)
-                      // Include last historical point and all projection points
-                      const lastHistoricalIndex = projectionData.map((p, i) => p.isHistorical ? i : -1).filter(i => i >= 0).pop()
-                      return (!point.isHistorical || index === lastHistoricalIndex) ? `${x},${y}` : null
-                    }).filter(p => p !== null).join(' ')}
+                    points={projectionData
+                      .map((point, index) => {
+                        const totalPoints = projectionData.length
+                        const x = 50 + index * (700 / Math.max(totalPoints - 1, 1))
+                        const y = 350 - ((point.balance - minBalance) / range) * 300
+                        const lastHistoricalIndex = projectionData
+                          .map((p, i) => (p.isHistorical ? i : -1))
+                          .filter((i) => i >= 0)
+                          .pop()
+                        return !point.isHistorical || index === lastHistoricalIndex ? `${x},${y}` : null
+                      })
+                      .filter((p) => p !== null)
+                      .join(' ')}
                     fill="none"
                     stroke="#3b82f6"
                     strokeWidth="3"
                     strokeDasharray="5,5"
                   />
                 )}
-                
-                {/* Data points */}
+
                 {projectionData.map((point, index) => {
                   const totalPoints = projectionData.length
-                  const x = 50 + (index * (700 / (totalPoints - 1)))
-                  const y = 350 - ((point.balance - minBalance) / range * 300)
+                  const x = 50 + index * (700 / Math.max(totalPoints - 1, 1))
+                  const y = 350 - ((point.balance - minBalance) / range) * 300
+                  const amountStep = Math.max(1, Math.floor(totalPoints / 6))
+                  const showAmount =
+                    index % amountStep === 0 || index === totalPoints - 1
+                  const showXTick = xAxisTickIndices.has(index)
+                  const bottomText = !showXTick
+                    ? ''
+                    : xAxisYearOnly
+                      ? point.year || ''
+                      : point.label === 'Start'
+                        ? 'Start'
+                        : point.label || ''
                   return (
                     <g key={index}>
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r="6"
-                        fill={point.isHistorical ? "#10b981" : "#3b82f6"}
-                      />
-                      <text
-                        x={x}
-                        y={y - 15}
-                        fill="#1f2937"
-                        fontSize="11"
-                        textAnchor="middle"
-                        fontWeight="600"
-                      >
-                        €{(point.balance / 1000).toFixed(1)}k
-                      </text>
-                      <text
-                        x={x}
-                        y={380}
-                        fill="#6b7280"
-                        fontSize="11"
-                        textAnchor="middle"
-                      >
-                        {point.label}
-                      </text>
+                      {showAmount && (
+                        <text
+                          x={x}
+                          y={y - 15}
+                          fill="#1f2937"
+                          fontSize="11"
+                          textAnchor="middle"
+                          fontWeight="600"
+                          className="portfolio-chart-value-label"
+                        >
+                          {formatChartCompact(point.balance)}
+                        </text>
+                      )}
+                      {showXTick && bottomText && (
+                        <text
+                          x={x}
+                          y={380}
+                          fill="#6b7280"
+                          fontSize="11"
+                          textAnchor="middle"
+                          fontWeight="500"
+                          className="portfolio-chart-x-label"
+                        >
+                          {bottomText}
+                        </text>
+                      )}
                     </g>
                   )
                 })}
-                
-                {/* Axis labels */}
-                <text
-                  x="400"
-                  y="395"
-                  fill="#6b7280"
-                  fontSize="14"
-                  textAnchor="middle"
-                  fontWeight="500"
-                >
-                  Time
-                </text>
-                <text
-                  x="0"
-                  y="150"
-                  fill="#6b7280"
-                  fontSize="14"
-                  textAnchor="middle"
-                  fontWeight="500"
-                  transform="rotate(-90 0 200)"
-                >
-                  Balance (€)
-                </text>
               </svg>
             </div>
           </div>
@@ -1905,14 +1995,14 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                       <div>Withdrawal</div>
                       <div>Ending Balance</div>
                     </div>
-                    {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => {
+                    {monthlyHistoryNewestFirst(investmentDataState.monthlyHistory).map((record, index) => {
                       const originalIndex = investmentDataState.monthlyHistory.findIndex(
                         (r) => r.month === record.month && r.year === record.year
                       )
                       const recordIndex = originalIndex >= 0 ? originalIndex : index
                       return (
                         <div
-                          key={index}
+                          key={`${record.month}-${record.year}-${record.tranche ?? ''}`}
                           className="history-row clickable"
                           onClick={() => handleRecordClick(record, recordIndex)}
                           style={{ cursor: 'pointer' }}
@@ -1973,7 +2063,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                       <div>Withdrawal</div>
                       <div>Ending Balance</div>
                     </div>
-                    {trancheFilteredHistory.map((record, index) => (
+                    {[...trancheFilteredHistory].reverse().map((record, index) => (
                       <div key={`${record.month}-${record.year}-${index}`} className="history-row">
                         <div>
                           {record.month} {record.year}
@@ -2036,8 +2126,8 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     <div>Withdrawal</div>
                     <div>Ending Balance</div>
                   </div>
-                  {sortMonthlyHistory(investmentDataState.monthlyHistory || []).map((record, index) => (
-                    <div key={index} className="history-row">
+                  {monthlyHistoryNewestFirst(investmentDataState.monthlyHistory).map((record) => (
+                    <div key={`${record.month}-${record.year}-${record.tranche ?? ''}`} className="history-row">
                       <div>
                         {record.month} {record.year}
                       </div>
