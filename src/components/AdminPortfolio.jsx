@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useId } from 'react'
 import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore'
 import { getAdmin3Overrides, saveAdmin3UserOverride } from '../utils/admin3Overrides'
 import { getInvestorCombinedInitial } from '../utils/investorDualTranche'
@@ -13,6 +13,34 @@ function formatCompact(num) {
     return `€${k.toFixed(1)}k`.replace('.0k', 'k')
   }
   return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+/** Labels on the growth line: ≥€1k → rough €Nk (thousands rounded up, no decimals). */
+function formatGraphPointBalance(balance) {
+  const n = Math.max(0, Number(balance) || 0)
+  if (n >= 1e6) return formatCompact(n)
+  if (n >= 1e3) {
+    const k = Math.ceil(n / 1000)
+    if (k >= 1000) return formatCompact(n)
+    return `€${k}k`
+  }
+  return formatCompact(n)
+}
+
+/** Nudge amount labels so they do not sit on the SVG curve (side + above/below). */
+function getGraphAmountLabelOffset(index, totalPoints, x, y, isProjection) {
+  let dx = index % 2 === 0 ? -16 : 16
+  if (index === 0) dx = 14
+  if (index === totalPoints - 1) dx = -14
+  if (x < 88) dx = Math.abs(dx) + 6
+  if (x > 712) dx = -(Math.abs(dx) + 6)
+  const nearTop = y < 82
+  let dy = nearTop ? 22 : -26
+  if (isProjection) {
+    dx += dx >= 0 ? 10 : -10
+    dy += nearTop ? 14 : -14
+  }
+  return { dx, dy }
 }
 
 /** Slightly smooth an SVG line without changing point positions. */
@@ -294,11 +322,14 @@ function generateAdmin3PortfolioData() {
   }
 }
 
+const HISTORICAL_LINE_GREEN = '#10b981'
+
 const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const isAdmin2 = userStatuses && (userStatuses.includes('Admin 2') || userStatuses.includes('Relations'))
   const isAdmin3 = userStatuses && userStatuses.includes('Admin 3')
   const canAddPerformance = !isAdmin2 && !isAdmin3
-  
+  const graphAreaFillUid = `pf${useId().replace(/:/g, '')}`
+
   const [loading, setLoading] = useState(true)
   const [portfolioData, setPortfolioData] = useState(null)
   const [showAddPerformance, setShowAddPerformance] = useState(false)
@@ -1066,6 +1097,24 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     if (p.year && yearLabelIndices[p.year] === undefined) yearLabelIndices[p.year] = i
   })
 
+  const historicalAreaProps =
+    historicalLinePoints.length >= 2
+      ? (() => {
+          const first = historicalLinePoints[0]
+          const last = historicalLinePoints[historicalLinePoints.length - 1]
+          const curveD = buildSmoothSvgPath(historicalLinePoints)
+          return {
+            d: `${curveD} L ${last.x} 350 L ${first.x} 350 Z`,
+            x1: first.x,
+            x2: last.x
+          }
+        })()
+      : null
+
+  const histHGradId = `${graphAreaFillUid}-hist-h`
+  const histVFeatId = `${graphAreaFillUid}-hist-vfeather`
+  const histMaskId = `${graphAreaFillUid}-hist-feather-mask`
+
   return (
     <div className="admin-portfolio-container">
       <div className="admin-portfolio-content">
@@ -1457,6 +1506,44 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         <div className="portfolio-graph-section">
           <div className="graph-container">
             <svg className="investment-graph" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+              {historicalAreaProps && (
+                <defs>
+                  <linearGradient
+                    id={histHGradId}
+                    gradientUnits="userSpaceOnUse"
+                    x1={historicalAreaProps.x1}
+                    y1="350"
+                    x2={historicalAreaProps.x2}
+                    y2="350"
+                  >
+                    <stop offset="0%" stopColor={HISTORICAL_LINE_GREEN} stopOpacity="0.36" />
+                    <stop offset="50%" stopColor={HISTORICAL_LINE_GREEN} stopOpacity="0.21" />
+                    <stop offset="100%" stopColor={HISTORICAL_LINE_GREEN} stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient
+                    id={histVFeatId}
+                    gradientUnits="userSpaceOnUse"
+                    x1="0"
+                    y1="350"
+                    x2="0"
+                    y2="52"
+                  >
+                    <stop offset="0%" stopColor="white" stopOpacity="0" />
+                    <stop offset="35%" stopColor="white" stopOpacity="0.62" />
+                    <stop offset="100%" stopColor="white" stopOpacity="1" />
+                  </linearGradient>
+                  <mask
+                    id={histMaskId}
+                    maskUnits="userSpaceOnUse"
+                    x="0"
+                    y="0"
+                    width="800"
+                    height="400"
+                  >
+                    <rect x="0" y="0" width="800" height="400" fill={`url(#${histVFeatId})`} />
+                  </mask>
+                </defs>
+              )}
               {/* Grid lines */}
               {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => {
                 const y = 50 + (ratio * 300)
@@ -1484,13 +1571,25 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                   </g>
                 )
               })}
-              
+
+              {/* Feathered fill under historical (green) segment only — fades L→R into transparent */}
+              {historicalAreaProps && (
+                <path
+                  className="graph-historical-area-fill"
+                  d={historicalAreaProps.d}
+                  fill={`url(#${histHGradId})`}
+                  mask={`url(#${histMaskId})`}
+                  stroke="none"
+                  pointerEvents="none"
+                />
+              )}
+
               {/* Historical line */}
               {projectionData.some(p => p.isHistorical) && (
                 <path
                   d={buildSmoothSvgPath(historicalLinePoints)}
                   fill="none"
-                  stroke="#10b981"
+                  stroke={HISTORICAL_LINE_GREEN}
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1513,22 +1612,30 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
               {/* Data points */}
               {projectionData.map((point, index) => {
                 const totalPoints = projectionData.length
-                const x = 50 + (index * (700 / (totalPoints - 1)))
+                const xSpan = Math.max(totalPoints - 1, 1)
+                const x = 50 + (index * (700 / xSpan))
                 const y = 350 - ((point.balance - minBalance) / range * 300)
                 const showAmount = index % 6 === 0
                 const showYearLabel = point.year && yearLabelIndices[point.year] === index
+                const { dx, dy } = getGraphAmountLabelOffset(
+                  index,
+                  totalPoints,
+                  x,
+                  y,
+                  !point.isHistorical
+                )
                 return (
                   <g key={index}>
                     {showAmount && (
                       <text
-                        x={x}
-                        y={y - 15}
-                        fill="#1f2937"
+                        className="graph-amount-label"
+                        x={x + dx}
+                        y={y + dy}
                         fontSize="11"
                         textAnchor="middle"
                         fontWeight="600"
                       >
-                        {formatCompact(point.balance)}
+                        {formatGraphPointBalance(point.balance)}
                       </text>
                     )}
                     {showYearLabel && (

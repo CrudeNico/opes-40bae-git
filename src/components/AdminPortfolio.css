@@ -247,6 +247,10 @@
   max-width: 100%;
 }
 
+.investment-graph .graph-amount-label {
+  fill: #1f2937;
+}
+
 .legend-item {
   display: flex;
   align-items: center;
@@ -662,6 +666,10 @@ html.dark-mode .graph-container {
 
 html.dark-mode .graph-legend {
   border-bottom-color: #374151;
+}
+
+html.dark-mode .investment-graph .graph-amount-label {
+  fill: #f9fafb;
 }
 
 html.dark-mode .legend-item {
