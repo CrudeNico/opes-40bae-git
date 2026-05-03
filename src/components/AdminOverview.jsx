@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, Timestamp, onSnapshot } from 'firebase/firestore'
 import {
@@ -21,6 +21,102 @@ function normalizeOverviewKey(s) {
 /** Excluded from “total investor accounts” sum (Marcos & Nicolás/Nicolas de Rodrigo + legacy emails). */
 const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
 
+function isHexColor(s) {
+  return typeof s === 'string' && /^#[0-9A-Fa-f]{6}$/.test(s.trim())
+}
+
+function entrySliceColor(entry, colorIdx, palette) {
+  if (entry && isHexColor(entry.color)) return entry.color.trim()
+  return palette[colorIdx % palette.length]
+}
+
+function newCalendarTradeId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `tr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function tradeSignedAmount(t) {
+  if (!t || (t.type !== 'win' && t.type !== 'loss')) return 0
+  const a = Math.max(0, parseFloat(String(t.amount).replace(',', '.')) || 0)
+  return t.type === 'loss' ? -a : a
+}
+
+/** Non-negative fee (optional); empty / missing = no fee */
+function tradeFeeAmount(t) {
+  if (t == null) return 0
+  const raw = t.fee
+  if (raw === '' || raw == null) return 0
+  return Math.max(0, parseFloat(String(raw).replace(',', '.')) || 0)
+}
+
+/** Signed P&L after fees (gross win/loss minus fee). */
+function tradeNetSigned(t) {
+  return tradeSignedAmount(t) - tradeFeeAmount(t)
+}
+
+/** Normalize stored day performance (legacy single trade or `trades` array). */
+function normalizeDayPerformance(perf) {
+  if (!perf) return { trades: [] }
+  if (Array.isArray(perf.trades) && perf.trades.length > 0) {
+    return {
+      trades: perf.trades.map((t, i) => ({
+        id: t.id || `trade-${i}`,
+        type: t.type === 'loss' ? 'loss' : 'win',
+        amount: Math.max(0, Number(t.amount) || 0),
+        fee: Math.max(0, Number(t.fee) || 0)
+      }))
+    }
+  }
+  if (perf.type && perf.amount != null && perf.amount !== '') {
+    const amt = Math.max(0, Number(perf.amount) || 0)
+    return {
+      trades: [{ id: newCalendarTradeId(), type: perf.type === 'loss' ? 'loss' : 'win', amount: amt }]
+    }
+  }
+  return { trades: [] }
+}
+
+function dayNetSigned(perf) {
+  return normalizeDayPerformance(perf).trades.reduce((s, t) => s + tradeNetSigned(t), 0)
+}
+
+function dayHasPerformanceData(perf) {
+  if (!perf) return false
+  if (Array.isArray(perf.trades) && perf.trades.length > 0) return true
+  return !!(perf.type && perf.amount != null && perf.amount !== '')
+}
+
+/** One legend row per segment entry (same order as the editor list). */
+function buildPieLegendRows(pieSlices, entries, displayBalance, pieAllocatedSum) {
+  const list = entries || []
+  return list.map((entry, idx) => {
+    const slice = pieSlices.find((s) => s.id === entry.id && !s.isRemainder)
+    const accent = entrySliceColor(entry, idx, PIE_SLICE_COLORS)
+    const name = (entry.name || 'User').trim() || 'User'
+    const amt = Math.max(0, Number(entry.amount) || 0)
+    const amtStr = amt.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    let pctNum = 0
+    if (slice) {
+      pctNum = slice.pctOfTarget
+      if (displayBalance <= 0.005 && pieAllocatedSum > 0.005) {
+        pctNum = pieAllocatedSum > 0 ? (amt / pieAllocatedSum) * 100 : 0
+      }
+    }
+    const pctStr = `${pctNum.toFixed(1)}%`
+    return {
+      key: entry.id,
+      accent,
+      name,
+      amtStr,
+      pctStr
+    }
+  })
+}
+
 function newPieEntryId() {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -32,15 +128,15 @@ function createDefaultTwoUserPieEntries(displayBalance) {
   const t = Math.max(0, Number(displayBalance) || 0)
   if (t <= 0) {
     return [
-      { id: newPieEntryId(), name: 'User 1', amount: 0 },
-      { id: newPieEntryId(), name: 'User 2', amount: 0 }
+      { id: newPieEntryId(), name: 'User 1', amount: 0, color: PIE_SLICE_COLORS[0] },
+      { id: newPieEntryId(), name: 'User 2', amount: 0, color: PIE_SLICE_COLORS[1] }
     ]
   }
   const a = Math.round((t / 2) * 100) / 100
   const b = Math.round((t - a) * 100) / 100
   return [
-    { id: newPieEntryId(), name: 'User 1', amount: a },
-    { id: newPieEntryId(), name: 'User 2', amount: b }
+    { id: newPieEntryId(), name: 'User 1', amount: a, color: PIE_SLICE_COLORS[0] },
+    { id: newPieEntryId(), name: 'User 2', amount: b, color: PIE_SLICE_COLORS[1] }
   ]
 }
 
@@ -80,13 +176,16 @@ function buildPieSlices(entries, displayBalance, colors) {
     for (const e of clean) {
       if (e.amount <= 0) continue
       const sweep = (e.amount / sum) * 360
+      const midDeg = angle + sweep / 2
+      const fill = entrySliceColor(e, colorIdx, colors)
       out.push({
         path: pieSlicePath(cx, cy, r, angle, angle + sweep),
         id: e.id,
-        color: colors[colorIdx % colors.length],
+        color: fill,
         entry: e,
         pctOfTarget: 0,
-        isRemainder: false
+        isRemainder: false,
+        midDeg
       })
       angle += sweep
       colorIdx += 1
@@ -98,13 +197,16 @@ function buildPieSlices(entries, displayBalance, colors) {
     for (const e of clean) {
       if (e.amount <= 0) continue
       const sweep = (e.amount / target) * 360
+      const midDeg = angle + sweep / 2
+      const fill = entrySliceColor(e, colorIdx, colors)
       out.push({
         path: pieSlicePath(cx, cy, r, angle, angle + sweep),
         id: e.id,
-        color: colors[colorIdx % colors.length],
+        color: fill,
         entry: e,
         pctOfTarget: (e.amount / target) * 100,
-        isRemainder: false
+        isRemainder: false,
+        midDeg
       })
       angle += sweep
       colorIdx += 1
@@ -112,13 +214,15 @@ function buildPieSlices(entries, displayBalance, colors) {
     const remaining = target - sum
     if (remaining > 0.0001) {
       const sweep = (remaining / target) * 360
+      const midDeg = angle + sweep / 2
       out.push({
         path: pieSlicePath(cx, cy, r, angle, angle + sweep),
         id: '__unallocated__',
         color: '#e5e7eb',
         entry: null,
         pctOfTarget: (remaining / target) * 100,
-        isRemainder: true
+        isRemainder: true,
+        midDeg
       })
     }
     return out
@@ -127,13 +231,16 @@ function buildPieSlices(entries, displayBalance, colors) {
   for (const e of clean) {
     if (e.amount <= 0) continue
     const sweep = (e.amount / sum) * 360
+    const midDeg = angle + sweep / 2
+    const fill = entrySliceColor(e, colorIdx, colors)
     out.push({
       path: pieSlicePath(cx, cy, r, angle, angle + sweep),
       id: e.id,
-      color: colors[colorIdx % colors.length],
+      color: fill,
       entry: e,
       pctOfTarget: target > 0 ? (e.amount / target) * 100 : 0,
-      isRemainder: false
+      isRemainder: false,
+      midDeg
     })
     angle += sweep
     colorIdx += 1
@@ -263,19 +370,33 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [showCurrentBalancePieModal, setShowCurrentBalancePieModal] = useState(false)
   const [currentBalancePieEntries, setCurrentBalancePieEntries] = useState([])
   const [hoveredPieSegmentId, setHoveredPieSegmentId] = useState(null)
-  const [selectedPieSegmentId, setSelectedPieSegmentId] = useState(null)
+  const [pieChartEditorOpen, setPieChartEditorOpen] = useState(false)
+  const [pieColorPickerOpenId, setPieColorPickerOpenId] = useState(null)
   const [savingPieEntries, setSavingPieEntries] = useState(false)
   const [pendingConsultations, setPendingConsultations] = useState(0)
   const [userMessageAlerts, setUserMessageAlerts] = useState(0)
   const [investorPayoutTarget, setInvestorPayoutTarget] = useState(0)
   const [error, setError] = useState('')
-  const [progressBarKey, setProgressBarKey] = useState(0)
+  /** Animated widths (%); blue → green stagger when calendar month changes */
+  const [progressBarFill, setProgressBarFill] = useState({ blue: 0, green: 0, red: 0 })
+  /** Latest bar targets (updated each render) — read inside month-change animation */
+  const barTargetsRef = useRef({
+    blue: 0,
+    green: 0,
+    red: 0,
+    progressPercentage: 0,
+    firstTargetPosition: 33.33
+  })
+  /** Suppress same-month instant sync while month-change stagger runs */
+  const suppressBarSyncRef = useRef(false)
+  const barMonthAnimCleanupRef = useRef(null)
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
   const [dailyPerformances, setDailyPerformances] = useState({})
   const [selectedDay, setSelectedDay] = useState(null)
   const [showDayModal, setShowDayModal] = useState(false)
-  const [dayPerformanceForm, setDayPerformanceForm] = useState({ type: 'win', amount: '' })
+  /** Modal rows: { id, type: 'win'|'loss', amount: string } */
+  const [dayPerformanceTrades, setDayPerformanceTrades] = useState([])
   const [totalDailyPerformance, setTotalDailyPerformance] = useState(0)
   const [performanceOwnerId, setPerformanceOwnerId] = useState(null)
   const [isAdmin2, setIsAdmin2] = useState(false)
@@ -352,22 +473,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     }
   }, [user, calendarMonth, calendarYear, performanceOwnerId, isAdmin3, userStatuses])
 
-  // Calculate total daily performance
+  // Calculate total daily performance (net of wins minus losses, multi-trade aware)
   useEffect(() => {
-    const total = Object.values(dailyPerformances).reduce((sum, perf) => {
-      if (perf.type === 'win') {
-        return sum + (parseFloat(perf.amount) || 0)
-      } else {
-        return sum - (parseFloat(perf.amount) || 0)
-      }
-    }, 0)
+    const total = Object.values(dailyPerformances).reduce(
+      (sum, perf) => sum + dayNetSigned(perf),
+      0
+    )
     setTotalDailyPerformance(total)
   }, [dailyPerformances])
-
-  // Reset progress bar animation when currentBalance changes
-  useEffect(() => {
-    setProgressBarKey(prev => prev + 1)
-  }, [currentBalance])
 
   useEffect(() => {
     if (!showInvestorTotalModal) return
@@ -381,15 +494,28 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   useEffect(() => {
     if (!showCurrentBalancePieModal) return
     const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setShowCurrentBalancePieModal(false)
-        setSelectedPieSegmentId(null)
-        setHoveredPieSegmentId(null)
+      if (e.key !== 'Escape') return
+      if (pieColorPickerOpenId) {
+        setPieColorPickerOpenId(null)
+        return
       }
+      setShowCurrentBalancePieModal(false)
+      setPieChartEditorOpen(false)
+      setHoveredPieSegmentId(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [showCurrentBalancePieModal])
+  }, [showCurrentBalancePieModal, pieColorPickerOpenId])
+
+  useEffect(() => {
+    if (pieColorPickerOpenId == null) return
+    const onDown = (e) => {
+      if (e.target.closest?.('[data-pie-color-anchor]')) return
+      setPieColorPickerOpenId(null)
+    }
+    document.addEventListener('mousedown', onDown, true)
+    return () => document.removeEventListener('mousedown', onDown, true)
+  }, [pieColorPickerOpenId])
 
   const loadOverviewData = async () => {
     try {
@@ -410,7 +536,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 .map((e) => ({
                   id: String(e.id),
                   name: typeof e.name === 'string' ? e.name : 'User',
-                  amount: Number(e.amount) || 0
+                  amount: Number(e.amount) || 0,
+                  ...(isHexColor(e.color) ? { color: e.color.trim() } : {})
                 }))
             )
           } else {
@@ -608,26 +735,67 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     dailyPerfUnsubscribeRef.current = unsubscribe
   }
 
+  const updateDayTrade = (id, patch) => {
+    setDayPerformanceTrades((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...patch } : t))
+    )
+  }
+
+  const addDayTradeRow = () => {
+    setDayPerformanceTrades((prev) => [
+      ...prev,
+      { id: newCalendarTradeId(), type: null, amount: '', fee: '' }
+    ])
+  }
+
+  const removeDayTradeRow = (id) => {
+    setDayPerformanceTrades((prev) => {
+      if (prev.length <= 1) return prev
+      return prev.filter((t) => t.id !== id)
+    })
+  }
+
   const handleDayClick = (day) => {
     setSelectedDay(day)
     const dayKey = day.toString()
-    if (dailyPerformances[dayKey]) {
-      setDayPerformanceForm({
-        type: dailyPerformances[dayKey].type,
-        amount: dailyPerformances[dayKey].amount.toString()
-      })
+    const perf = dailyPerformances[dayKey]
+    const { trades } = normalizeDayPerformance(perf)
+    if (trades.length > 0) {
+      setDayPerformanceTrades(
+        trades.map((t) => ({
+          id: t.id || newCalendarTradeId(),
+          type: t.type === 'loss' ? 'loss' : 'win',
+          amount: t.amount === 0 ? '' : String(t.amount),
+          fee:
+            t.fee != null && Number(t.fee) > 0 ? String(Number(t.fee)) : ''
+        }))
+      )
     } else {
-      setDayPerformanceForm({ type: 'win', amount: '' })
+      setDayPerformanceTrades([{ id: newCalendarTradeId(), type: null, amount: '', fee: '' }])
     }
     setShowDayModal(true)
   }
 
   const handleSaveDayPerformance = async () => {
     if (isAdmin2 || isAdmin3 || userStatuses?.includes('Admin 3')) return
+    if (!selectedDay) return
 
-    if (!selectedDay || !dayPerformanceForm.amount || parseFloat(dayPerformanceForm.amount) <= 0) {
-      return
-    }
+    const cleaned = dayPerformanceTrades
+      .map((t) => {
+        if (t.type !== 'win' && t.type !== 'loss') return null
+        const amount = Math.max(0, parseFloat(String(t.amount).replace(',', '.')) || 0)
+        const feeNum = Math.max(0, parseFloat(String(t.fee ?? '').replace(',', '.')) || 0)
+        const row = {
+          id: t.id || newCalendarTradeId(),
+          type: t.type === 'loss' ? 'loss' : 'win',
+          amount
+        }
+        if (feeNum > 0) row.fee = feeNum
+        return row
+      })
+      .filter((t) => t && t.amount > 0)
+
+    if (cleaned.length === 0) return
 
     try {
       const db = getFirestore()
@@ -641,10 +809,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       const dayKey = selectedDay.toString()
       const updatedPerformances = {
         ...dailyPerformances,
-        [dayKey]: {
-          type: dayPerformanceForm.type,
-          amount: parseFloat(dayPerformanceForm.amount)
-        }
+        [dayKey]: { trades: cleaned }
       }
 
       await setDoc(doc(db, 'adminDailyPerformance', docId), {
@@ -658,7 +823,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       setDailyPerformances(updatedPerformances)
       setShowDayModal(false)
       setSelectedDay(null)
-      setDayPerformanceForm({ type: 'win', amount: '' })
+      setDayPerformanceTrades([])
     } catch (error) {
       console.error('Error saving daily performance:', error)
       setError('Failed to save daily performance')
@@ -693,7 +858,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       setDailyPerformances(updatedPerformances)
       setShowDayModal(false)
       setSelectedDay(null)
-      setDayPerformanceForm({ type: 'win', amount: '' })
+      setDayPerformanceTrades([])
     } catch (error) {
       console.error('Error deleting daily performance:', error)
       setError('Failed to delete daily performance')
@@ -764,9 +929,12 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     let totalPnL = 0
 
     const rowsHtml = entries.map(([day, perf]) => {
-      const amount = Number(perf.amount) || 0
-      const signedAmount = perf.type === 'loss' ? -amount : amount
+      const signedAmount = dayNetSigned(perf)
       totalPnL += signedAmount
+      const norm = normalizeDayPerformance(perf)
+      const n = norm.trades.length
+      const typeLabel =
+        n === 0 ? '—' : n === 1 ? (norm.trades[0].type === 'win' ? 'Win' : 'Loss') : `Net (${n} trades)`
 
       const date = new Date(calendarYear, calendarMonth, Number(day))
       const dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -774,7 +942,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       return `
         <tr>
           <td>${dateLabel}</td>
-          <td>${perf.type === 'win' ? 'Win' : 'Loss'}</td>
+          <td>${typeLabel}</td>
           <td style="text-align:right;">€${signedAmount >= 0 ? '+' : ''}${signedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
       `
@@ -933,6 +1101,112 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       Math.abs(currentProgressLabelPosition - TARGET_ONE_POSITION) <= rightEdgeOverlapThreshold
     )
 
+  const barTargetBlue =
+    progressPercentage > 0 ? Math.min(progressPercentage, firstTargetPosition) + 2.1 : 0
+  const barTargetGreen =
+    progressPercentage > firstTargetPosition
+      ? Math.min(progressPercentage - firstTargetPosition, 100 - firstTargetPosition)
+      : 0
+  const barTargetRed =
+    progressPercentage < 0 ? Math.min(Math.abs(progressPercentage), 100) : 0
+
+  /** Must match CSS `.progress-bar-fill` transition duration */
+  const BAR_SEGMENT_MS = 850
+
+  barTargetsRef.current = {
+    blue: barTargetBlue,
+    green: barTargetGreen,
+    red: barTargetRed,
+    progressPercentage,
+    firstTargetPosition
+  }
+
+  /** Month navigation only — avoids Firestore target updates cancelling the stagger */
+  useLayoutEffect(() => {
+    if (barMonthAnimCleanupRef.current) {
+      barMonthAnimCleanupRef.current()
+      barMonthAnimCleanupRef.current = null
+    }
+
+    suppressBarSyncRef.current = true
+    setProgressBarFill({ blue: 0, green: 0, red: 0 })
+
+    let cancelled = false
+    const timeouts = []
+    let raf1
+    let raf2
+
+    const cleanup = () => {
+      cancelled = true
+      timeouts.forEach(clearTimeout)
+      if (raf1 != null) cancelAnimationFrame(raf1)
+      if (raf2 != null) cancelAnimationFrame(raf2)
+    }
+    barMonthAnimCleanupRef.current = cleanup
+
+    const syncFillFromRef = () => {
+      const u = barTargetsRef.current
+      setProgressBarFill({
+        blue: u.progressPercentage < 0 ? 0 : u.blue,
+        green: u.progressPercentage > u.firstTargetPosition ? u.green : 0,
+        red: u.progressPercentage < 0 ? u.red : 0
+      })
+    }
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (cancelled) return
+        const t = barTargetsRef.current
+
+        if (t.progressPercentage < 0) {
+          setProgressBarFill({ blue: 0, green: 0, red: t.red })
+          timeouts.push(
+            setTimeout(() => {
+              if (cancelled) return
+              suppressBarSyncRef.current = false
+              syncFillFromRef()
+            }, BAR_SEGMENT_MS)
+          )
+          return
+        }
+
+        setProgressBarFill({ blue: t.blue, green: 0, red: 0 })
+
+        const needsGreen = t.green > 0.0001
+        if (needsGreen) {
+          timeouts.push(
+            setTimeout(() => {
+              if (cancelled) return
+              const u = barTargetsRef.current
+              setProgressBarFill({ blue: u.blue, green: u.green, red: 0 })
+            }, BAR_SEGMENT_MS)
+          )
+        }
+
+        const tailMs = needsGreen ? BAR_SEGMENT_MS * 2 : BAR_SEGMENT_MS
+        timeouts.push(
+          setTimeout(() => {
+            if (cancelled) return
+            suppressBarSyncRef.current = false
+            syncFillFromRef()
+          }, tailMs)
+        )
+      })
+    })
+
+    return cleanup
+  }, [calendarMonth, calendarYear])
+
+  /** Same-month updates (new trades, etc.) — skip during month-change animation */
+  useLayoutEffect(() => {
+    if (suppressBarSyncRef.current) return
+    setProgressBarFill({
+      blue: progressPercentage < 0 ? 0 : barTargetBlue,
+      green: progressPercentage > firstTargetPosition ? barTargetGreen : 0,
+      red: progressPercentage < 0 ? barTargetRed : 0
+    })
+  }, [barTargetBlue, barTargetGreen, barTargetRed, progressPercentage, firstTargetPosition])
+
   const pieSlices = buildPieSlices(currentBalancePieEntries, displayBalance, PIE_SLICE_COLORS)
   const pieAllocatedSum = currentBalancePieEntries.reduce(
     (s, e) => s + Math.max(0, Number(e.amount) || 0),
@@ -942,9 +1216,13 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const pieOverflow = displayBalance > 0 && pieAllocatedSum > displayBalance + 0.01
   const hoveredPieSlice =
     hoveredPieSegmentId != null ? pieSlices.find((s) => s.id === hoveredPieSegmentId) : null
-  const selectedPieEntry = selectedPieSegmentId
-    ? currentBalancePieEntries.find((e) => e.id === selectedPieSegmentId)
-    : null
+
+  const pieLegendRows = buildPieLegendRows(
+    pieSlices,
+    currentBalancePieEntries,
+    displayBalance,
+    pieAllocatedSum
+  )
 
   const updatePieEntry = (id, patch) => {
     setCurrentBalancePieEntries((prev) =>
@@ -954,17 +1232,23 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
   const removePieEntry = (id) => {
     setCurrentBalancePieEntries((prev) => prev.filter((e) => e.id !== id))
-    setSelectedPieSegmentId((s) => (s === id ? null : s))
     setHoveredPieSegmentId((h) => (h === id ? null : h))
   }
 
   const addPieSegment = () => {
     const id = newPieEntryId()
-    setCurrentBalancePieEntries((prev) => [
-      ...prev,
-      { id, name: `User ${prev.length + 1}`, amount: 0 }
-    ])
-    setSelectedPieSegmentId(id)
+    setCurrentBalancePieEntries((prev) => {
+      const nextIdx = prev.length
+      return [
+        ...prev,
+        {
+          id,
+          name: `User ${nextIdx + 1}`,
+          amount: 0,
+          color: PIE_SLICE_COLORS[nextIdx % PIE_SLICE_COLORS.length]
+        }
+      ]
+    })
   }
 
   const handleSaveCurrentBalancePie = async () => {
@@ -973,10 +1257,13 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     setError('')
     try {
       const db = getFirestore()
-      const normalized = currentBalancePieEntries.map((e) => ({
+      const normalized = currentBalancePieEntries.map((e, idx) => ({
         id: e.id,
         name: (e.name || '').trim() || 'User',
-        amount: Math.max(0, Number(e.amount) || 0)
+        amount: Math.max(0, Number(e.amount) || 0),
+        color: isHexColor(e.color)
+          ? e.color.trim()
+          : PIE_SLICE_COLORS[idx % PIE_SLICE_COLORS.length]
       }))
       await updateDoc(doc(db, 'users', user.uid), {
         adminOverviewCurrentBalancePie: {
@@ -985,6 +1272,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         }
       })
       setCurrentBalancePieEntries(normalized)
+      setPieChartEditorOpen(false)
+      setPieColorPickerOpenId(null)
     } catch (err) {
       console.error(err)
       setError('Failed to save current balance breakdown.')
@@ -998,9 +1287,24 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       prev.length > 0 ? prev : createDefaultTwoUserPieEntries(displayBalance)
     )
     setShowCurrentBalancePieModal(true)
-    setSelectedPieSegmentId(null)
+    setPieChartEditorOpen(false)
     setHoveredPieSegmentId(null)
+    setPieColorPickerOpenId(null)
   }
+
+  const selectedDayDateLabel =
+    selectedDay != null
+      ? new Date(calendarYear, calendarMonth, selectedDay).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric'
+        })
+      : ''
+
+  const dayModalHasValidTrade = dayPerformanceTrades.some((t) => {
+    const amt = parseFloat(String(t.amount).replace(',', '.')) || 0
+    return amt > 0 && (t.type === 'win' || t.type === 'loss')
+  })
 
   if (loading) {
     return (
@@ -1084,8 +1388,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             role="presentation"
             onClick={() => {
               setShowCurrentBalancePieModal(false)
-              setSelectedPieSegmentId(null)
+              setPieChartEditorOpen(false)
               setHoveredPieSegmentId(null)
+              setPieColorPickerOpenId(null)
             }}
           >
           <div
@@ -1102,8 +1407,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 className="investor-total-modal-close"
                 onClick={() => {
                   setShowCurrentBalancePieModal(false)
-                  setSelectedPieSegmentId(null)
+                  setPieChartEditorOpen(false)
                   setHoveredPieSegmentId(null)
+                  setPieColorPickerOpenId(null)
                 }}
                 aria-label="Close"
               >
@@ -1111,46 +1417,56 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               </button>
             </div>
             <div className="balance-pie-modal-body">
-              <p className="balance-pie-modal-hint">
-                Slice sizes follow each amount as a share of the current balance (€
-                {displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Hover a
-                slice for share of portfolio; click a colored slice to edit that entry.
-              </p>
               <div className="balance-pie-chart-block">
-                <div className="balance-pie-svg-wrap">
-                  <svg
-                    className="balance-pie-svg"
-                    viewBox="0 0 200 200"
-                    aria-label="Allocation pie chart"
+                <div className="balance-pie-chart-split">
+                  <div
+                    className={`balance-pie-svg-wrap balance-pie-svg-wrap--pie-only${
+                      pieChartEditorOpen ? '' : ' balance-pie-svg-wrap--clickable'
+                    }`}
+                    role="button"
+                    tabIndex={pieChartEditorOpen ? -1 : 0}
+                    aria-expanded={pieChartEditorOpen}
+                    aria-label="Click to edit allocation segments"
+                    onClick={() => setPieChartEditorOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setPieChartEditorOpen(true)
+                      }
+                    }}
                   >
-                    {pieSlices.length === 0 ? (
-                      <text x="100" y="100" textAnchor="middle" className="balance-pie-empty-label" fontSize="11" fill="#6b7280">
-                        Add segments below
-                      </text>
-                    ) : (
-                      pieSlices.map((slice) => (
-                        <path
-                          key={slice.id}
-                          d={slice.path}
-                          fill={slice.color}
-                          stroke="#ffffff"
-                          strokeWidth="1"
-                          className={`balance-pie-slice ${selectedPieSegmentId === slice.id ? 'balance-pie-slice-selected' : ''}`}
-                          style={{ cursor: slice.id === '__unallocated__' ? 'default' : 'pointer' }}
-                          onMouseEnter={() => setHoveredPieSegmentId(slice.id)}
-                          onMouseLeave={() => setHoveredPieSegmentId(null)}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (slice.id === '__unallocated__') {
-                              setSelectedPieSegmentId(null)
-                              return
-                            }
-                            setSelectedPieSegmentId(slice.id)
-                          }}
-                        />
-                      ))
-                    )}
-                  </svg>
+                    <svg
+                      className="balance-pie-svg"
+                      viewBox="0 0 200 200"
+                      aria-label="Allocation pie chart"
+                    >
+                      {pieSlices.length === 0 ? (
+                        <text
+                          x="100"
+                          y="100"
+                          textAnchor="middle"
+                          className="balance-pie-empty-label"
+                          fontSize="11"
+                          fill="#6b7280"
+                        >
+                          {pieChartEditorOpen ? 'No segments — use Add segment' : 'Click chart to edit segments'}
+                        </text>
+                      ) : (
+                        pieSlices.map((slice) => (
+                          <path
+                            key={slice.id}
+                            d={slice.path}
+                            fill={slice.color}
+                            stroke="#ffffff"
+                            strokeWidth="1"
+                            className="balance-pie-slice"
+                            style={{ cursor: slice.id === '__unallocated__' ? 'default' : 'pointer' }}
+                            onMouseEnter={() => setHoveredPieSegmentId(slice.id)}
+                            onMouseLeave={() => setHoveredPieSegmentId(null)}
+                          />
+                        ))
+                      )}
+                    </svg>
                   {hoveredPieSlice && displayBalance > 0 && (
                     <div className="balance-pie-hover-card" role="status">
                       {hoveredPieSlice.isRemainder ? (
@@ -1181,6 +1497,22 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                     </div>
                   )}
                 </div>
+                {pieLegendRows.length > 0 && (
+                  <div className="balance-pie-legend-column" aria-label="Allocation by segment">
+                    {pieLegendRows.map((row) => (
+                      <div
+                        key={row.key}
+                        className="balance-pie-legend-row"
+                        style={{ '--legend-accent': row.accent }}
+                      >
+                        <span className="balance-pie-legend-name">{row.name}</span>
+                        <span className="balance-pie-legend-amt">€{row.amtStr}</span>
+                        <span className="balance-pie-legend-pct">{row.pctStr}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                </div>
                 {pieOverflow && (
                   <p className="balance-pie-warning">
                     Allocated total exceeds current balance; slices show shares of the allocated sum.
@@ -1188,62 +1520,158 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 )}
               </div>
 
-              {selectedPieEntry && (
-                <div className="balance-pie-edit-panel">
-                  <span className="balance-pie-edit-title">Edit segment</span>
-                  <div className="balance-pie-edit-row">
-                    <label className="balance-pie-edit-label" htmlFor="pie-edit-name">
-                      Name
-                    </label>
-                    <input
-                      id="pie-edit-name"
-                      className="balance-pie-input"
-                      type="text"
-                      value={selectedPieEntry.name ?? ''}
-                      onChange={(e) => updatePieEntry(selectedPieEntry.id, { name: e.target.value })}
-                    />
+              {pieChartEditorOpen && (
+                <div className="balance-pie-edit-panel balance-pie-editor-full" onClick={(e) => e.stopPropagation()}>
+                  <div className="balance-pie-editor-header">
+                    <span className="balance-pie-edit-title">Segments</span>
+                    <button
+                      type="button"
+                      className="balance-pie-collapse-btn"
+                      onClick={() => {
+                        setPieChartEditorOpen(false)
+                        setPieColorPickerOpenId(null)
+                      }}
+                      aria-label="Close segment editor"
+                    >
+                      ×
+                    </button>
                   </div>
-                  <div className="balance-pie-edit-row">
-                    <label className="balance-pie-edit-label" htmlFor="pie-edit-amount">
-                      Amount (€)
-                    </label>
-                    <input
-                      id="pie-edit-amount"
-                      className="balance-pie-input"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={selectedPieEntry.amount === 0 ? '' : selectedPieEntry.amount}
-                      onChange={(e) =>
-                        updatePieEntry(selectedPieEntry.id, {
-                          amount: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
-                        })
-                      }
-                    />
+                  {currentBalancePieEntries.length === 0 ? (
+                    <p className="balance-pie-editor-empty">No segments yet. Add one below.</p>
+                  ) : (
+                    currentBalancePieEntries.map((entry, idx) => {
+                      const displayColor = isHexColor(entry.color)
+                        ? entry.color.trim()
+                        : PIE_SLICE_COLORS[idx % PIE_SLICE_COLORS.length]
+                      return (
+                        <div key={entry.id} className="balance-pie-segment-row">
+                          <div className="balance-pie-segment-field-row">
+                            <label className="balance-pie-edit-label" htmlFor={`pie-name-${entry.id}`}>
+                              Name
+                            </label>
+                            <input
+                              id={`pie-name-${entry.id}`}
+                              className="balance-pie-input"
+                              type="text"
+                              value={entry.name ?? ''}
+                              onChange={(e) => updatePieEntry(entry.id, { name: e.target.value })}
+                            />
+                            <div className="balance-pie-remove-cell">
+                              <button
+                                type="button"
+                                className="balance-pie-remove-icon-btn"
+                                onClick={() => {
+                                  removePieEntry(entry.id)
+                                  setPieColorPickerOpenId((openId) =>
+                                    openId === entry.id ? null : openId
+                                  )
+                                }}
+                                aria-label={`Remove ${entry.name || 'segment'}`}
+                              >
+                                <svg
+                                  className="balance-pie-remove-icon-svg"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  aria-hidden="true"
+                                >
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  <line x1="10" y1="11" x2="10" y2="17" />
+                                  <line x1="14" y1="11" x2="14" y2="17" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="balance-pie-segment-field-row">
+                            <label className="balance-pie-edit-label" htmlFor={`pie-amt-${entry.id}`}>
+                              Amount (€)
+                            </label>
+                            <input
+                              id={`pie-amt-${entry.id}`}
+                              className="balance-pie-input"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={entry.amount === 0 ? '' : entry.amount}
+                              onChange={(e) =>
+                                updatePieEntry(entry.id, {
+                                  amount: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                                })
+                              }
+                            />
+                            <div
+                              className="balance-pie-color-cell"
+                              data-pie-color-anchor
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                className="balance-pie-color-swatch-btn"
+                                style={{ backgroundColor: displayColor }}
+                                aria-expanded={pieColorPickerOpenId === entry.id}
+                                aria-haspopup="listbox"
+                                aria-label="Choose segment color"
+                                onClick={() =>
+                                  setPieColorPickerOpenId((id) => (id === entry.id ? null : entry.id))
+                                }
+                              />
+                              {pieColorPickerOpenId === entry.id && (
+                                <div
+                                  className="balance-pie-color-popover"
+                                  role="listbox"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <div className="balance-pie-color-palette">
+                                    {PIE_SLICE_COLORS.map((c) => (
+                                      <button
+                                        key={c}
+                                        type="button"
+                                        className="balance-pie-color-dot"
+                                        style={{ backgroundColor: c }}
+                                        aria-label={`Color ${c}`}
+                                        onClick={() => {
+                                          updatePieEntry(entry.id, { color: c })
+                                          setPieColorPickerOpenId(null)
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <label className="balance-pie-color-custom">
+                                    <span>Custom</span>
+                                    <input
+                                      type="color"
+                                      value={displayColor}
+                                      onChange={(e) => updatePieEntry(entry.id, { color: e.target.value })}
+                                    />
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                  <div className="balance-pie-actions">
+                    <button type="button" className="balance-pie-add-btn" onClick={addPieSegment}>
+                      Add segment
+                    </button>
+                    <button
+                      type="button"
+                      className="balance-pie-save-btn"
+                      onClick={handleSaveCurrentBalancePie}
+                      disabled={savingPieEntries}
+                    >
+                      {savingPieEntries ? 'Saving…' : 'Save'}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="balance-pie-remove-btn"
-                    onClick={() => removePieEntry(selectedPieEntry.id)}
-                  >
-                    Remove segment
-                  </button>
                 </div>
               )}
-
-              <div className="balance-pie-actions">
-                <button type="button" className="balance-pie-add-btn" onClick={addPieSegment}>
-                  Add segment
-                </button>
-                <button
-                  type="button"
-                  className="balance-pie-save-btn"
-                  onClick={handleSaveCurrentBalancePie}
-                  disabled={savingPieEntries}
-                >
-                  {savingPieEntries ? 'Saving…' : 'Save'}
-                </button>
-              </div>
 
               <div className="balance-pie-modal-footer-stats investor-total-modal-footer investor-total-modal-footer-stack">
                 <div className="investor-total-modal-footer-line">
@@ -1394,32 +1822,28 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               </div>
             )}
           </div>
-          <div className="progress-bar" key={progressBarKey}>
-            {/* Positive progress: blue up to investor target (1/3 of bar) */}
-            {progressPercentage > 0 && (
-              <>
-                <div 
-                  className="progress-bar-fill progress-bar-blue"
-                  style={{ width: `${Math.min(progressPercentage, firstTargetPosition) + 2.1}%` }}
-                ></div>
-                {/* Green from investor target to 7% target */}
-                {progressPercentage > firstTargetPosition && (
-                  <div 
-                    className="progress-bar-fill progress-bar-green"
-                    style={{ 
-                      width: `${Math.min(progressPercentage - firstTargetPosition, 100 - firstTargetPosition)}%`,
-                      left: `${firstTargetPosition}%`
-                    }}
-                  ></div>
-                )}
-              </>
+          <div className="progress-bar">
+            {/* Positive progress: blue first (left segment), then green — keep fills mounted so width transitions from 0 */}
+            {progressPercentage >= 0 && (
+              <div
+                className="progress-bar-fill progress-bar-blue"
+                style={{ width: `${progressBarFill.blue}%` }}
+              />
             )}
-            {/* Negative progress: red from start */}
+            {progressPercentage >= 0 && progressPercentage > firstTargetPosition && (
+              <div
+                className="progress-bar-fill progress-bar-green"
+                style={{
+                  width: `${progressBarFill.green}%`,
+                  left: `${firstTargetPosition}%`
+                }}
+              />
+            )}
             {progressPercentage < 0 && (
-              <div 
+              <div
                 className="progress-bar-fill progress-bar-red"
-                style={{ width: `${Math.min(Math.abs(progressPercentage), 100)}%` }}
-              ></div>
+                style={{ width: `${progressBarFill.red}%` }}
+              />
             )}
           </div>
         </div>
@@ -1464,25 +1888,32 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               const day = i + 1
               const dayKey = day.toString()
               const performance = dailyPerformances[dayKey]
+              const hasPerf = dayHasPerformanceData(performance)
+              const net = performance ? dayNetSigned(performance) : 0
+              const netClass = net > 0 ? 'day-win' : net < 0 ? 'day-loss' : hasPerf ? 'day-flat' : ''
               const isCurrent = isCurrentDay(day)
               
               return (
                 <div
                   key={day}
-                  className={`calendar-day ${isCurrent ? 'current-day' : ''} ${performance ? (performance.type === 'win' ? 'day-win' : 'day-loss') : ''} ${performance ? 'has-performance' : ''}`}
+                  className={`calendar-day ${isCurrent ? 'current-day' : ''} ${netClass} ${hasPerf ? 'has-performance' : ''}`}
                   onClick={() => {
                     if (!isAdmin2) handleDayClick(day)
                   }}
                 >
                   <span className="day-number">{day}</span>
-                  {performance && (
+                  {hasPerf && (
                     <>
                       <span className="day-performance day-performance-desktop">
-                        <span className="day-performance-sign">{performance.type === 'win' ? '+' : '-'}</span>
-                        {performance.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <span className="day-performance-sign">{net >= 0 ? '+' : '-'}</span>
+                        {Math.abs(net).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
-                      <span className="day-performance day-performance-mobile" aria-label={`Performance ${performance.type}`}>
-                        {formatMobilePerformanceAmount(performance.amount)}
+                      <span
+                        className="day-performance day-performance-mobile"
+                        aria-label={`Net performance ${net >= 0 ? 'positive' : 'negative'}`}
+                      >
+                        {net < 0 ? '−' : ''}
+                        {formatMobilePerformanceAmount(Math.abs(net))}
                       </span>
                     </>
                   )}
@@ -1506,61 +1937,183 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
         {/* Day Performance Modal */}
         {showDayModal && (
-          <div className="modal-overlay" onClick={() => setShowDayModal(false)}>
+          <div
+            className="modal-overlay"
+            onClick={() => {
+              setShowDayModal(false)
+              setDayPerformanceTrades([])
+            }}
+          >
             <div className="day-modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="day-modal-header">
-                <h3>Day {selectedDay} Performance</h3>
-                <button className="modal-close" onClick={() => setShowDayModal(false)}>×</button>
+                <div className="day-modal-header-text">
+                  <h3 className="day-modal-header-title">{selectedDayDateLabel}</h3>
+                  <p className="day-modal-header-sub">Performance</p>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() => {
+                    setShowDayModal(false)
+                    setDayPerformanceTrades([])
+                  }}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
               </div>
               <div className="day-modal-body">
-                <div className="form-group">
-                  <label>Type</label>
-                  <div className="performance-type-buttons">
-                    <button
-                      className={`type-button ${dayPerformanceForm.type === 'win' ? 'active' : ''}`}
-                      onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && setDayPerformanceForm({ ...dayPerformanceForm, type: 'win' })}
-                      disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
-                    >
-                      Win
-                    </button>
-                    <button
-                      className={`type-button ${dayPerformanceForm.type === 'loss' ? 'active' : ''}`}
-                      onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && setDayPerformanceForm({ ...dayPerformanceForm, type: 'loss' })}
-                      disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
-                    >
-                      Loss
-                    </button>
+                <p className="day-modal-trades-label">Trades for this day</p>
+                {dayPerformanceTrades.map((trade) => {
+                  const typeUnset = trade.type !== 'win' && trade.type !== 'loss'
+                  const admin3Lock = isAdmin3 || userStatuses?.includes('Admin 3')
+                  const showRemoveTrade =
+                    dayPerformanceTrades.length > 1 &&
+                    !typeUnset &&
+                    !admin3Lock
+                  return (
+                  <div key={trade.id} className="day-modal-trade-row">
+                    <div className="performance-type-buttons performance-type-buttons--inline day-modal-type-toggle">
+                      {typeUnset ? (
+                        <>
+                          <button
+                            type="button"
+                            className="type-button type-button-pill type-button--win"
+                            onClick={() => !admin3Lock && updateDayTrade(trade.id, { type: 'win' })}
+                            disabled={admin3Lock}
+                            aria-pressed="false"
+                          >
+                            Win
+                          </button>
+                          <button
+                            type="button"
+                            className="type-button type-button-pill type-button--loss"
+                            onClick={() => !admin3Lock && updateDayTrade(trade.id, { type: 'loss' })}
+                            disabled={admin3Lock}
+                            aria-pressed="false"
+                          >
+                            Loss
+                          </button>
+                        </>
+                      ) : trade.type === 'win' ? (
+                        <button
+                          type="button"
+                          className="type-button type-button-pill type-button--win active"
+                          onClick={() =>
+                            !admin3Lock && updateDayTrade(trade.id, { type: null })
+                          }
+                          disabled={admin3Lock}
+                          title={admin3Lock ? undefined : 'Click to change type'}
+                          aria-pressed="true"
+                        >
+                          Win
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="type-button type-button-pill type-button--loss active"
+                          onClick={() =>
+                            !admin3Lock && updateDayTrade(trade.id, { type: null })
+                          }
+                          disabled={admin3Lock}
+                          title={admin3Lock ? undefined : 'Click to change type'}
+                          aria-pressed="true"
+                        >
+                          Loss
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="form-input day-modal-input day-modal-input-amount"
+                      value={trade.amount}
+                      onChange={(e) =>
+                        !(isAdmin3 || userStatuses?.includes('Admin 3')) &&
+                        updateDayTrade(trade.id, { amount: e.target.value })
+                      }
+                      placeholder="Amount (€)"
+                      readOnly={isAdmin3 || userStatuses?.includes('Admin 3')}
+                      aria-label="Trade gross amount"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="form-input day-modal-input day-modal-input-fee"
+                      value={trade.fee ?? ''}
+                      onChange={(e) =>
+                        !(isAdmin3 || userStatuses?.includes('Admin 3')) &&
+                        updateDayTrade(trade.id, { fee: e.target.value })
+                      }
+                      placeholder="Fee (€)"
+                      readOnly={isAdmin3 || userStatuses?.includes('Admin 3')}
+                      aria-label="Trade fee, optional"
+                    />
+                    {showRemoveTrade && (
+                        <button
+                          type="button"
+                          className="day-modal-remove-trade"
+                          onClick={() => removeDayTradeRow(trade.id)}
+                          aria-label="Remove trade"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <line x1="10" y1="11" x2="10" y2="17" />
+                            <line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        </button>
+                      )}
                   </div>
-                </div>
-                <div className="form-group">
-                  <label>Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={dayPerformanceForm.amount}
-                    onChange={(e) => !(isAdmin3 || userStatuses?.includes('Admin 3')) && setDayPerformanceForm({ ...dayPerformanceForm, amount: e.target.value })}
-                    placeholder="Enter amount"
-                    className="form-input"
-                    readOnly={isAdmin3 || userStatuses?.includes('Admin 3')}
-                  />
-                </div>
+                  )
+                })}
+                {!(isAdmin3 || userStatuses?.includes('Admin 3')) && (
+                  <button type="button" className="day-modal-add-trade" onClick={addDayTradeRow}>
+                    + Add trade
+                  </button>
+                )}
               </div>
               <div className="day-modal-footer">
-                <button className="btn-secondary" onClick={() => setShowDayModal(false)}>
+                <button
+                  type="button"
+                  className="btn-secondary day-modal-btn-pill"
+                  onClick={() => {
+                    setShowDayModal(false)
+                    setDayPerformanceTrades([])
+                  }}
+                >
                   {(isAdmin3 || userStatuses?.includes('Admin 3')) ? 'Close' : 'Cancel'}
                 </button>
                 {!(isAdmin3 || userStatuses?.includes('Admin 3')) && (
                   <>
-                    {dailyPerformances[selectedDay?.toString()] && (
-                      <button className="btn-delete" onClick={handleDeleteDayPerformance}>
-                        Delete
-                      </button>
-                    )}
-                    <button 
-                      className="btn-primary" 
+                    {selectedDay != null &&
+                      dayHasPerformanceData(dailyPerformances[selectedDay.toString()]) && (
+                        <button
+                          type="button"
+                          className="btn-delete day-modal-btn-pill"
+                          onClick={handleDeleteDayPerformance}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    <button
+                      type="button"
+                      className="btn-primary day-modal-btn-pill"
                       onClick={handleSaveDayPerformance}
-                      disabled={!dayPerformanceForm.amount || parseFloat(dayPerformanceForm.amount) <= 0}
+                      disabled={!dayModalHasValidTrade}
                     >
                       Save
                     </button>
