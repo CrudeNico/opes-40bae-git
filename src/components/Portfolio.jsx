@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useId } from 'react'
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore'
 import './Portfolio.css'
 
@@ -32,6 +32,8 @@ function getInvestorProjectionInputs(investmentData) {
 const TRANCHE_PRIMARY = 'primary'
 const TRANCHE_SECONDARY = 'secondary'
 
+const HISTORICAL_LINE_GREEN = '#10b981'
+
 function sortMonthlyHistoryStatic(history) {
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -49,13 +51,16 @@ function monthlyHistoryNewestFirst(history) {
 }
 
 /** Compact € labels on chart (aligned with admin portfolio graph). */
+/** Portfolio graph y-axis & point labels: rounded, no decimals (€ / €Nk / €NM). */
 function formatChartCompact(num) {
-  if (num >= 1e6) return `€${(num / 1e6).toFixed(2)}M`
-  if (num >= 1e3) {
-    const k = num / 1e3
-    return `€${k.toFixed(1)}k`.replace('.0k', 'k')
+  const n = Math.max(0, Number(num) || 0)
+  if (n >= 1e6) return `€${Math.round(n / 1e6)}M`
+  if (n >= 1e3) {
+    const k = Math.round(n / 1000)
+    if (k >= 1000) return `€${Math.round(n / 1e6)}M`
+    return `€${k}k`
   }
-  return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `€${Math.round(n)}`
 }
 
 /** Slightly smooth an SVG line without changing point positions. */
@@ -346,6 +351,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
   const [loadingEdit, setLoadingEdit] = useState(false)
   /** 'total' | 'conservative' | 'moderate' — dual-tranche investors only */
   const [portfolioTrancheView, setPortfolioTrancheView] = useState('total')
+  const portfolioGraphFillUid = `pf${useId().replace(/:/g, '')}`
 
   useEffect(() => {
     checkInvestorStatus()
@@ -1342,6 +1348,24 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       (p, i) => !p.isHistorical || i === lastHistoricalIndex
     )
 
+    const historicalAreaProps =
+      historicalLinePoints.length >= 2
+        ? (() => {
+            const first = historicalLinePoints[0]
+            const last = historicalLinePoints[historicalLinePoints.length - 1]
+            const curveD = buildSmoothSvgPath(historicalLinePoints)
+            return {
+              d: `${curveD} L ${last.x} 350 L ${first.x} 350 Z`,
+              x1: first.x,
+              x2: last.x
+            }
+          })()
+        : null
+
+    const invHistHGradId = `${portfolioGraphFillUid}-inv-hist-h`
+    const invHistVFeatId = `${portfolioGraphFillUid}-inv-hist-vfeather`
+    const invHistMaskId = `${portfolioGraphFillUid}-inv-hist-feather-mask`
+
     const monthlyHistoryForMetrics = sortMonthlyHistory(graphHistory)
 
     const totalGain = monthlyHistoryForMetrics.reduce(
@@ -1802,6 +1826,44 @@ const Portfolio = ({ user, onStatusUpdate }) => {
           <div className="portfolio-graph-section portfolio-graph-section--minimal">
             <div className="graph-container graph-container--user-chart">
               <svg className="investment-graph" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+                {historicalAreaProps && (
+                  <defs>
+                    <linearGradient
+                      id={invHistHGradId}
+                      gradientUnits="userSpaceOnUse"
+                      x1={historicalAreaProps.x1}
+                      y1="350"
+                      x2={historicalAreaProps.x2}
+                      y2="350"
+                    >
+                      <stop offset="0%" stopColor={HISTORICAL_LINE_GREEN} stopOpacity="0.36" />
+                      <stop offset="50%" stopColor={HISTORICAL_LINE_GREEN} stopOpacity="0.21" />
+                      <stop offset="100%" stopColor={HISTORICAL_LINE_GREEN} stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient
+                      id={invHistVFeatId}
+                      gradientUnits="userSpaceOnUse"
+                      x1="0"
+                      y1="350"
+                      x2="0"
+                      y2="52"
+                    >
+                      <stop offset="0%" stopColor="white" stopOpacity="0" />
+                      <stop offset="35%" stopColor="white" stopOpacity="0.62" />
+                      <stop offset="100%" stopColor="white" stopOpacity="1" />
+                    </linearGradient>
+                    <mask
+                      id={invHistMaskId}
+                      maskUnits="userSpaceOnUse"
+                      x="0"
+                      y="0"
+                      width="800"
+                      height="400"
+                    >
+                      <rect x="0" y="0" width="800" height="400" fill={`url(#${invHistVFeatId})`} />
+                    </mask>
+                  </defs>
+                )}
                 {[0, 0.25, 0.5, 0.75, 1].map((ratio, gi) => {
                   const gy = 50 + ratio * 300
                   const value = minBalance + range * (1 - ratio)
@@ -1829,11 +1891,21 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     </g>
                   )
                 })}
+                {historicalAreaProps && (
+                  <path
+                    className="graph-historical-area-fill"
+                    d={historicalAreaProps.d}
+                    fill={`url(#${invHistHGradId})`}
+                    mask={`url(#${invHistMaskId})`}
+                    stroke="none"
+                    pointerEvents="none"
+                  />
+                )}
                 {projectionData.some((p) => p.isHistorical) && (
                   <path
                     d={buildSmoothSvgPath(historicalLinePoints)}
                     fill="none"
-                    stroke="#10b981"
+                    stroke={HISTORICAL_LINE_GREEN}
                     strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"

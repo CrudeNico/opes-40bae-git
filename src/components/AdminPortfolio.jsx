@@ -15,16 +15,16 @@ function formatCompact(num) {
   return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-/** Labels on the growth line: ≥€1k → rough €Nk (thousands rounded up, no decimals). */
-function formatGraphPointBalance(balance) {
-  const n = Math.max(0, Number(balance) || 0)
-  if (n >= 1e6) return formatCompact(n)
+/** Graph line labels & y-axis: whole € below 1k; €Nk / €NM with rounded thousands / millions (no decimals). */
+function formatGraphMoneyRounded(num) {
+  const n = Math.max(0, Number(num) || 0)
+  if (n >= 1e6) return `€${Math.round(n / 1e6)}M`
   if (n >= 1e3) {
-    const k = Math.ceil(n / 1000)
-    if (k >= 1000) return formatCompact(n)
+    const k = Math.round(n / 1000)
+    if (k >= 1000) return `€${Math.round(n / 1e6)}M`
     return `€${k}k`
   }
-  return formatCompact(n)
+  return `€${Math.round(n)}`
 }
 
 /** Nudge amount labels so they do not sit on the SVG curve (side + above/below). */
@@ -1566,7 +1566,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                       fontSize="12"
                       textAnchor="end"
                     >
-                      €{(value / 1000).toFixed(1)}k
+                      {formatGraphMoneyRounded(value)}
                     </text>
                   </g>
                 )
@@ -1635,7 +1635,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                         textAnchor="middle"
                         fontWeight="600"
                       >
-                        {formatGraphPointBalance(point.balance)}
+                        {formatGraphMoneyRounded(point.balance)}
                       </text>
                     )}
                     {showYearLabel && (
