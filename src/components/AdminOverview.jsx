@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, Timestamp, onSnapshot } from 'firebase/firestore'
+import { createPortal } from 'react-dom'
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, Timestamp, onSnapshot } from 'firebase/firestore'
 import {
   getAdminInvestorSummaryCurrentBalance,
   getLastTrancheEnding,
@@ -18,6 +19,128 @@ function normalizeOverviewKey(s) {
 }
 
 /** Excluded from “total investor accounts” sum (Marcos & Nicolás/Nicolas de Rodrigo + legacy emails). */
+const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
+
+function newPieEntryId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `pie-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+/** In-memory default so the pie is visible on first open (50/50 of current balance). */
+function createDefaultTwoUserPieEntries(displayBalance) {
+  const t = Math.max(0, Number(displayBalance) || 0)
+  if (t <= 0) {
+    return [
+      { id: newPieEntryId(), name: 'User 1', amount: 0 },
+      { id: newPieEntryId(), name: 'User 2', amount: 0 }
+    ]
+  }
+  const a = Math.round((t / 2) * 100) / 100
+  const b = Math.round((t - a) * 100) / 100
+  return [
+    { id: newPieEntryId(), name: 'User 1', amount: a },
+    { id: newPieEntryId(), name: 'User 2', amount: b }
+  ]
+}
+
+/** Pie slice path; angles in degrees, 0 = top, clockwise. */
+function pieSlicePath(cx, cy, r, startDeg, endDeg) {
+  const rad = Math.PI / 180
+  const x1 = cx + r * Math.sin(startDeg * rad)
+  const y1 = cy - r * Math.cos(startDeg * rad)
+  const x2 = cx + r * Math.sin(endDeg * rad)
+  const y2 = cy - r * Math.cos(endDeg * rad)
+  const sweep = endDeg - startDeg
+  const largeArc = sweep > 180 ? 1 : 0
+  return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
+}
+
+/**
+ * Build SVG arc slices: portions of displayBalance, remainder as gray when sum is below target.
+ * When sum exceeds target, slices fill the circle by share of sum (overflow).
+ */
+function buildPieSlices(entries, displayBalance, colors) {
+  const cx = 100
+  const cy = 100
+  const r = 88
+  const target = Math.max(0, Number(displayBalance) || 0)
+  const clean = (entries || []).map((e) => ({
+    ...e,
+    amount: Math.max(0, Number(e.amount) || 0)
+  }))
+  const sum = clean.reduce((s, e) => s + e.amount, 0)
+
+  const out = []
+  let angle = 0
+  let colorIdx = 0
+
+  if (target <= 0) {
+    if (sum <= 0) return []
+    for (const e of clean) {
+      if (e.amount <= 0) continue
+      const sweep = (e.amount / sum) * 360
+      out.push({
+        path: pieSlicePath(cx, cy, r, angle, angle + sweep),
+        id: e.id,
+        color: colors[colorIdx % colors.length],
+        entry: e,
+        pctOfTarget: 0,
+        isRemainder: false
+      })
+      angle += sweep
+      colorIdx += 1
+    }
+    return out
+  }
+
+  if (sum <= target) {
+    for (const e of clean) {
+      if (e.amount <= 0) continue
+      const sweep = (e.amount / target) * 360
+      out.push({
+        path: pieSlicePath(cx, cy, r, angle, angle + sweep),
+        id: e.id,
+        color: colors[colorIdx % colors.length],
+        entry: e,
+        pctOfTarget: (e.amount / target) * 100,
+        isRemainder: false
+      })
+      angle += sweep
+      colorIdx += 1
+    }
+    const remaining = target - sum
+    if (remaining > 0.0001) {
+      const sweep = (remaining / target) * 360
+      out.push({
+        path: pieSlicePath(cx, cy, r, angle, angle + sweep),
+        id: '__unallocated__',
+        color: '#e5e7eb',
+        entry: null,
+        pctOfTarget: (remaining / target) * 100,
+        isRemainder: true
+      })
+    }
+    return out
+  }
+
+  for (const e of clean) {
+    if (e.amount <= 0) continue
+    const sweep = (e.amount / sum) * 360
+    out.push({
+      path: pieSlicePath(cx, cy, r, angle, angle + sweep),
+      id: e.id,
+      color: colors[colorIdx % colors.length],
+      entry: e,
+      pctOfTarget: target > 0 ? (e.amount / target) * 100 : 0,
+      isRemainder: false
+    })
+    angle += sweep
+    colorIdx += 1
+  }
+  return out
+}
+
 function isExcludedFromInvestorOverviewTotal(email, displayName) {
   const em = normalizeOverviewKey(email)
   const nm = normalizeOverviewKey(displayName)
@@ -137,6 +260,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   /** { name, balance, monthlyTarget }[] for the total-investor modal (non–Admin 3 only). */
   const [investorTotalModalLines, setInvestorTotalModalLines] = useState([])
   const [showInvestorTotalModal, setShowInvestorTotalModal] = useState(false)
+  const [showCurrentBalancePieModal, setShowCurrentBalancePieModal] = useState(false)
+  const [currentBalancePieEntries, setCurrentBalancePieEntries] = useState([])
+  const [hoveredPieSegmentId, setHoveredPieSegmentId] = useState(null)
+  const [selectedPieSegmentId, setSelectedPieSegmentId] = useState(null)
+  const [savingPieEntries, setSavingPieEntries] = useState(false)
   const [pendingConsultations, setPendingConsultations] = useState(0)
   const [userMessageAlerts, setUserMessageAlerts] = useState(0)
   const [investorPayoutTarget, setInvestorPayoutTarget] = useState(0)
@@ -250,6 +378,19 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     return () => window.removeEventListener('keydown', onKey)
   }, [showInvestorTotalModal])
 
+  useEffect(() => {
+    if (!showCurrentBalancePieModal) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setShowCurrentBalancePieModal(false)
+        setSelectedPieSegmentId(null)
+        setHoveredPieSegmentId(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showCurrentBalancePieModal])
+
   const loadOverviewData = async () => {
     try {
       setLoading(true)
@@ -261,6 +402,20 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
         if (userDoc.exists()) {
           const userData = userDoc.data()
+          const pieSaved = userData.adminOverviewCurrentBalancePie
+          if (pieSaved?.entries && Array.isArray(pieSaved.entries)) {
+            setCurrentBalancePieEntries(
+              pieSaved.entries
+                .filter((e) => e && e.id)
+                .map((e) => ({
+                  id: String(e.id),
+                  name: typeof e.name === 'string' ? e.name : 'User',
+                  amount: Number(e.amount) || 0
+                }))
+            )
+          } else {
+            setCurrentBalancePieEntries([])
+          }
           const docStatuses = userData.statuses || []
           
           const isAdmin2Local = docStatuses && (docStatuses.includes('Admin 2') || docStatuses.includes('Relations'))
@@ -309,7 +464,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           }
           
           setPerformanceOwnerId(ownerId)
-          
+
           if (isAdmin3Local) {
             setCurrentBalance(ADMIN3_CURRENT_BALANCE)
           } else if (portfolioData) {
@@ -778,6 +933,75 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       Math.abs(currentProgressLabelPosition - TARGET_ONE_POSITION) <= rightEdgeOverlapThreshold
     )
 
+  const pieSlices = buildPieSlices(currentBalancePieEntries, displayBalance, PIE_SLICE_COLORS)
+  const pieAllocatedSum = currentBalancePieEntries.reduce(
+    (s, e) => s + Math.max(0, Number(e.amount) || 0),
+    0
+  )
+  const pieUnallocated = Math.max(0, displayBalance - pieAllocatedSum)
+  const pieOverflow = displayBalance > 0 && pieAllocatedSum > displayBalance + 0.01
+  const hoveredPieSlice =
+    hoveredPieSegmentId != null ? pieSlices.find((s) => s.id === hoveredPieSegmentId) : null
+  const selectedPieEntry = selectedPieSegmentId
+    ? currentBalancePieEntries.find((e) => e.id === selectedPieSegmentId)
+    : null
+
+  const updatePieEntry = (id, patch) => {
+    setCurrentBalancePieEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...patch } : e))
+    )
+  }
+
+  const removePieEntry = (id) => {
+    setCurrentBalancePieEntries((prev) => prev.filter((e) => e.id !== id))
+    setSelectedPieSegmentId((s) => (s === id ? null : s))
+    setHoveredPieSegmentId((h) => (h === id ? null : h))
+  }
+
+  const addPieSegment = () => {
+    const id = newPieEntryId()
+    setCurrentBalancePieEntries((prev) => [
+      ...prev,
+      { id, name: `User ${prev.length + 1}`, amount: 0 }
+    ])
+    setSelectedPieSegmentId(id)
+  }
+
+  const handleSaveCurrentBalancePie = async () => {
+    if (!user?.uid) return
+    setSavingPieEntries(true)
+    setError('')
+    try {
+      const db = getFirestore()
+      const normalized = currentBalancePieEntries.map((e) => ({
+        id: e.id,
+        name: (e.name || '').trim() || 'User',
+        amount: Math.max(0, Number(e.amount) || 0)
+      }))
+      await updateDoc(doc(db, 'users', user.uid), {
+        adminOverviewCurrentBalancePie: {
+          entries: normalized,
+          updatedAt: new Date().toISOString()
+        }
+      })
+      setCurrentBalancePieEntries(normalized)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to save current balance breakdown.')
+    } finally {
+      setSavingPieEntries(false)
+    }
+  }
+
+  const openBalancePieModal = () => {
+    setCurrentBalancePieEntries((prev) =>
+      prev.length > 0 ? prev : createDefaultTwoUserPieEntries(displayBalance)
+    )
+    setShowCurrentBalancePieModal(true)
+    setSelectedPieSegmentId(null)
+    setHoveredPieSegmentId(null)
+  }
+
   if (loading) {
     return (
       <div className="admin-overview-loading">
@@ -788,13 +1012,23 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
   return (
     <div className="admin-overview-container">
-      <h2 className="admin-overview-title">Overview</h2>
-      
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="overview-widgets-grid">
-        {/* Current Balance Widget */}
-        <div className="overview-widget">
+        {/* Current Balance Widget — opens allocation pie (enabled for all admins including Admin 3) */}
+        <div
+          className="overview-widget overview-widget-investor-total-click"
+          role="button"
+          tabIndex={0}
+          onClick={openBalancePieModal}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              openBalancePieModal()
+            }
+          }}
+          aria-label="Open current balance allocation pie chart"
+        >
           <div className="widget-header">
             <h3 className="widget-title">Current Balance</h3>
           </div>
@@ -841,6 +1075,215 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           <div className="widget-value">{userMessageAlerts}</div>
         </div>
       </div>
+
+      {showCurrentBalancePieModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="investor-total-modal-backdrop balance-pie-modal-backdrop"
+            role="presentation"
+            onClick={() => {
+              setShowCurrentBalancePieModal(false)
+              setSelectedPieSegmentId(null)
+              setHoveredPieSegmentId(null)
+            }}
+          >
+          <div
+            className="investor-total-modal balance-pie-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="balance-pie-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="investor-total-modal-header">
+              <h3 id="balance-pie-modal-title">Current balance allocation</h3>
+              <button
+                type="button"
+                className="investor-total-modal-close"
+                onClick={() => {
+                  setShowCurrentBalancePieModal(false)
+                  setSelectedPieSegmentId(null)
+                  setHoveredPieSegmentId(null)
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="balance-pie-modal-body">
+              <p className="balance-pie-modal-hint">
+                Slice sizes follow each amount as a share of the current balance (€
+                {displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Hover a
+                slice for share of portfolio; click a colored slice to edit that entry.
+              </p>
+              <div className="balance-pie-chart-block">
+                <div className="balance-pie-svg-wrap">
+                  <svg
+                    className="balance-pie-svg"
+                    viewBox="0 0 200 200"
+                    aria-label="Allocation pie chart"
+                  >
+                    {pieSlices.length === 0 ? (
+                      <text x="100" y="100" textAnchor="middle" className="balance-pie-empty-label" fontSize="11" fill="#6b7280">
+                        Add segments below
+                      </text>
+                    ) : (
+                      pieSlices.map((slice) => (
+                        <path
+                          key={slice.id}
+                          d={slice.path}
+                          fill={slice.color}
+                          stroke="#ffffff"
+                          strokeWidth="1"
+                          className={`balance-pie-slice ${selectedPieSegmentId === slice.id ? 'balance-pie-slice-selected' : ''}`}
+                          style={{ cursor: slice.id === '__unallocated__' ? 'default' : 'pointer' }}
+                          onMouseEnter={() => setHoveredPieSegmentId(slice.id)}
+                          onMouseLeave={() => setHoveredPieSegmentId(null)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (slice.id === '__unallocated__') {
+                              setSelectedPieSegmentId(null)
+                              return
+                            }
+                            setSelectedPieSegmentId(slice.id)
+                          }}
+                        />
+                      ))
+                    )}
+                  </svg>
+                  {hoveredPieSlice && displayBalance > 0 && (
+                    <div className="balance-pie-hover-card" role="status">
+                      {hoveredPieSlice.isRemainder ? (
+                        <>
+                          <strong>Unallocated</strong>
+                          <span>
+                            €
+                            {pieUnallocated.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}{' '}
+                            ({hoveredPieSlice.pctOfTarget.toFixed(1)}% of portfolio)
+                          </span>
+                        </>
+                      ) : hoveredPieSlice.entry ? (
+                        <>
+                          <strong>{hoveredPieSlice.entry.name || 'User'}</strong>
+                          <span>
+                            €
+                            {(hoveredPieSlice.entry.amount || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}{' '}
+                            ({hoveredPieSlice.pctOfTarget.toFixed(1)}% of portfolio)
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                {pieOverflow && (
+                  <p className="balance-pie-warning">
+                    Allocated total exceeds current balance; slices show shares of the allocated sum.
+                  </p>
+                )}
+              </div>
+
+              {selectedPieEntry && (
+                <div className="balance-pie-edit-panel">
+                  <span className="balance-pie-edit-title">Edit segment</span>
+                  <div className="balance-pie-edit-row">
+                    <label className="balance-pie-edit-label" htmlFor="pie-edit-name">
+                      Name
+                    </label>
+                    <input
+                      id="pie-edit-name"
+                      className="balance-pie-input"
+                      type="text"
+                      value={selectedPieEntry.name ?? ''}
+                      onChange={(e) => updatePieEntry(selectedPieEntry.id, { name: e.target.value })}
+                    />
+                  </div>
+                  <div className="balance-pie-edit-row">
+                    <label className="balance-pie-edit-label" htmlFor="pie-edit-amount">
+                      Amount (€)
+                    </label>
+                    <input
+                      id="pie-edit-amount"
+                      className="balance-pie-input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={selectedPieEntry.amount === 0 ? '' : selectedPieEntry.amount}
+                      onChange={(e) =>
+                        updatePieEntry(selectedPieEntry.id, {
+                          amount: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                        })
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="balance-pie-remove-btn"
+                    onClick={() => removePieEntry(selectedPieEntry.id)}
+                  >
+                    Remove segment
+                  </button>
+                </div>
+              )}
+
+              <div className="balance-pie-actions">
+                <button type="button" className="balance-pie-add-btn" onClick={addPieSegment}>
+                  Add segment
+                </button>
+                <button
+                  type="button"
+                  className="balance-pie-save-btn"
+                  onClick={handleSaveCurrentBalancePie}
+                  disabled={savingPieEntries}
+                >
+                  {savingPieEntries ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+
+              <div className="balance-pie-modal-footer-stats investor-total-modal-footer investor-total-modal-footer-stack">
+                <div className="investor-total-modal-footer-line">
+                  <span>Allocated sum</span>
+                  <span className="investor-total-modal-amount">
+                    €
+                    {pieAllocatedSum.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </span>
+                </div>
+                <div className="investor-total-modal-footer-line">
+                  <span>Current balance (target)</span>
+                  <span className="investor-total-modal-amount">
+                    €
+                    {displayBalance.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </span>
+                </div>
+                {!pieOverflow && pieUnallocated > 0.005 && (
+                  <div className="investor-total-modal-footer-line">
+                    <span>Unallocated</span>
+                    <span className="investor-total-modal-amount">
+                      €
+                      {pieUnallocated.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>,
+          document.body
+        )}
 
       {showInvestorTotalModal && (
         <div

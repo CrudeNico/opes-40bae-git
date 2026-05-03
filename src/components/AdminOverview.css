@@ -115,6 +115,11 @@
   padding: 1rem;
 }
 
+/* Pie modal renders in a portal; sit above admin chrome / sidebars */
+.investor-total-modal-backdrop.balance-pie-modal-backdrop {
+  z-index: 10050;
+}
+
 .investor-total-modal {
   background: #ffffff;
   border-radius: 0.75rem;
@@ -266,6 +271,171 @@
 
 .investor-total-modal-footer span:last-child {
   font-variant-numeric: tabular-nums;
+}
+
+/* Current balance pie modal (same shell as investor-total-modal) */
+.balance-pie-modal .investor-total-modal-list {
+  padding: 0;
+}
+
+.balance-pie-modal-body {
+  padding: 0 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: min(62vh, 480px);
+}
+
+.balance-pie-modal-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.balance-pie-chart-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.balance-pie-svg-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.balance-pie-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.balance-pie-slice-selected {
+  filter: brightness(0.92);
+  stroke: #1d4ed8 !important;
+  stroke-width: 2px !important;
+}
+
+.balance-pie-hover-card {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 10rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.balance-pie-hover-card strong {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.balance-pie-warning {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b45309;
+  text-align: center;
+}
+
+.balance-pie-edit-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+}
+
+.balance-pie-edit-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.balance-pie-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.balance-pie-edit-label {
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.balance-pie-input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.balance-pie-remove-btn {
+  margin-top: 0.25rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.balance-pie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-start;
+}
+
+.balance-pie-add-btn,
+.balance-pie-save-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: none;
+}
+
+.balance-pie-add-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.balance-pie-save-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.balance-pie-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.balance-pie-modal-footer-stats {
+  margin-top: 0.25rem;
 }
 
 /* Monthly Projection Widget */
@@ -529,6 +699,36 @@ html.dark-mode .widget-title {
 
 html.dark-mode .widget-value {
   color: #f9fafb;
+}
+
+html.dark-mode .balance-pie-modal-hint {
+  color: #9ca3af;
+}
+
+html.dark-mode .balance-pie-edit-panel {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .balance-pie-edit-title,
+html.dark-mode .balance-pie-edit-label {
+  color: #d1d5db;
+}
+
+html.dark-mode .balance-pie-input {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .balance-pie-add-btn {
+  background: #374151;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+html.dark-mode .balance-pie-warning {
+  color: #fbbf24;
 }
 
 html.dark-mode .investor-total-modal {

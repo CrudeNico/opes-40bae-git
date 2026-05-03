@@ -15,6 +15,7 @@ import {
 import './AdminInvestorsManagement.css'
 
 const PLACEHOLDER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
+const SPECIAL_DIFF_ONLY_INVESTOR_EMAIL = 'nicolas.fernandez@opessocius.support'
 
 const getProfilePlaceholder = (inv) => {
   if (inv?.profilePlaceholder) return inv.profilePlaceholder
@@ -54,6 +55,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
   const [editingRecord, setEditingRecord] = useState(null)
   const [editedRecordData, setEditedRecordData] = useState({})
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const [latestTotalInvestorAccounts, setLatestTotalInvestorAccounts] = useState(0)
+  const [latestTotalPortfolioBalance, setLatestTotalPortfolioBalance] = useState(0)
 
   useEffect(() => {
     loadInvestors()
@@ -72,10 +75,23 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     try {
       const db = getFirestore()
       const overrides = isAdmin3 && currentUser?.uid ? await getAdmin3Overrides(currentUser.uid) : {}
+      if (currentUser?.uid) {
+        const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid))
+        if (currentUserDoc.exists()) {
+          const currentUserData = currentUserDoc.data() || {}
+          const adminInvestmentData = currentUserData.investmentData || null
+          if (adminInvestmentData) {
+            setLatestTotalPortfolioBalance(
+              getAdminInvestorSummaryCurrentBalance(adminInvestmentData)
+            )
+          }
+        }
+      }
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
 
       const investorsList = []
+      let totalInvestorAccountsLatest = 0
       usersSnapshot.forEach((docSnapshot) => {
         const userData = docSnapshot.data()
         let statuses = userData.statuses || []
@@ -88,6 +104,14 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         const merged = { ...userData, statuses, investmentData, id: docSnapshot.id }
         if ((statuses.includes('Investor') || statuses.includes('Trader')) && investmentData && investmentData.status === 'approved') {
           investorsList.push(mergeUserWithOverride(merged, overrides[docSnapshot.id]))
+        }
+        if (
+          investmentData &&
+          investmentData.status === 'approved' &&
+          (statuses.includes('Investor') || statuses.includes('Trader')) &&
+          (userData.email || '').toLowerCase() !== SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
+        ) {
+          totalInvestorAccountsLatest += getAdminInvestorSummaryCurrentBalance(investmentData)
         }
       })
 
@@ -104,6 +128,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       })
 
       setInvestors(investorsList)
+      setLatestTotalInvestorAccounts(totalInvestorAccountsLatest)
     } catch (error) {
       console.error('Error loading investors:', error)
       setError('Failed to load investors. Please try again.')
@@ -606,7 +631,11 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       <div className="investor-balance">
                         <span className="balance-label">Balance:</span>
                         <span className="balance-value">
-                          €{getAdminInvestorSummaryCurrentBalance(investor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          €
+                          {(investor.email?.toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
+                            ? latestTotalPortfolioBalance - latestTotalInvestorAccounts
+                            : getAdminInvestorSummaryCurrentBalance(investor.investmentData)
+                          ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     )}
@@ -636,56 +665,69 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                 <div className="portfolio-summary-section">
                   <h3 className="section-title">Current Portfolio Summary</h3>
                   <div className="portfolio-summary-grid">
-                    <div className="summary-item">
-                      <span className="summary-label">Current Balance:</span>
-                      <span className="summary-value">€{getAdminInvestorSummaryCurrentBalance(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span className="summary-label">
-                        {selectedInvestor.investmentData.secondaryInvestment
-                          ? 'First tranche initial (Conservative, 2%):'
-                          : 'Initial investment:'}
-                      </span>
-                      <span className="summary-value">€{(selectedInvestor.investmentData.initialInvestment || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    {selectedInvestor.investmentData.secondaryInvestment && (
-                      <div className="summary-item">
-                        <span className="summary-label">Second tranche initial (Moderate, 4%):</span>
-                        <span className="summary-value">
-                          €
-                          {(selectedInvestor.investmentData.secondaryInvestment.initialInvestment || 0).toLocaleString(
-                            'en-US',
-                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                          )}
-                        </span>
-                      </div>
+                    {selectedInvestor.email?.toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL ? (
+                      <>
+                        <div className="summary-item">
+                          <span className="summary-label">Current Balance:</span>
+                          <span className="summary-value">
+                            €{(latestTotalPortfolioBalance - latestTotalInvestorAccounts).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="summary-item">
+                          <span className="summary-label">Current Balance:</span>
+                          <span className="summary-value">€{getAdminInvestorSummaryCurrentBalance(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">
+                            {selectedInvestor.investmentData.secondaryInvestment
+                              ? 'First tranche initial (Conservative, 2%):'
+                              : 'Initial investment:'}
+                          </span>
+                          <span className="summary-value">€{(selectedInvestor.investmentData.initialInvestment || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        {selectedInvestor.investmentData.secondaryInvestment && (
+                          <div className="summary-item">
+                            <span className="summary-label">Second tranche initial (Moderate, 4%):</span>
+                            <span className="summary-value">
+                              €
+                              {(selectedInvestor.investmentData.secondaryInvestment.initialInvestment || 0).toLocaleString(
+                                'en-US',
+                                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        {selectedInvestor.investmentData.secondaryInvestment && (
+                          <div className="summary-item">
+                            <span className="summary-label">Total initial (both tranches):</span>
+                            <span className="summary-value">
+                              €
+                              {getInvestorCombinedInitial(selectedInvestor.investmentData).toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        <div className="summary-item">
+                          <span className="summary-label">Total Deposits:</span>
+                          <span className="summary-value">€{getAdminInvestorSummaryTotalDeposits(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">Total Withdrawals:</span>
+                          <span className="summary-value">€{(selectedInvestor.investmentData.totalWithdrawals || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </>
                     )}
-                    {selectedInvestor.investmentData.secondaryInvestment && (
-                      <div className="summary-item">
-                        <span className="summary-label">Total initial (both tranches):</span>
-                        <span className="summary-value">
-                          €
-                          {getInvestorCombinedInitial(selectedInvestor.investmentData).toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    <div className="summary-item">
-                      <span className="summary-label">Total Deposits:</span>
-                      <span className="summary-value">€{getAdminInvestorSummaryTotalDeposits(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span className="summary-label">Total Withdrawals:</span>
-                      <span className="summary-value">€{(selectedInvestor.investmentData.totalWithdrawals || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
                   </div>
                 </div>
               )}
 
               {/* Action Buttons - hide for sample investors */}
-              {!selectedInvestor._isSample && (
+              {!selectedInvestor._isSample && selectedInvestor.email?.toLowerCase() !== SPECIAL_DIFF_ONLY_INVESTOR_EMAIL && (
               <div className="action-buttons">
                 <button
                   onClick={() => {

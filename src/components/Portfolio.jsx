@@ -58,6 +58,27 @@ function formatChartCompact(num) {
   return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+/** Slightly smooth an SVG line without changing point positions. */
+function buildSmoothSvgPath(points, tension = 0.15, leadingPoint = null) {
+  if (!points || points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+
+  let d = `M ${points[0].x} ${points[0].y}`
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] || leadingPoint || points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] || p2
+    const cp1x = p1.x + ((p2.x - p0.x) * tension)
+    const cp1y = p1.y + ((p2.y - p0.y) * tension)
+    const cp2x = p2.x - ((p3.x - p1.x) * tension)
+    const cp2y = p2.y - ((p3.y - p1.y) * tension)
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+  }
+  return d
+}
+
 /** Calendar position for adaptive x-axis tick spacing. */
 function portfolioPointToSerialMonth(p) {
   if (p == null || p.year == null) return null
@@ -1294,6 +1315,32 @@ const Portfolio = ({ user, onStatusUpdate }) => {
 
     const xAxisTickIndices = getPortfolioXAxisTickIndices(projectionData)
     const xAxisYearOnly = portfolioXAxisUsesYearLabels(projectionData)
+    const projectedLinePoints = projectionData.map((point, index) => {
+      const totalPoints = projectionData.length
+      const x = 50 + index * (700 / Math.max(totalPoints - 1, 1))
+      const y = 350 - ((point.balance - minBalance) / range) * 300
+      return { ...point, index, x, y }
+    })
+    const historicalLinePoints = projectedLinePoints.filter((p) => p.isHistorical)
+    const lastHistoricalIndex = projectedLinePoints
+      .map((p, i) => (p.isHistorical ? i : -1))
+      .filter((i) => i >= 0)
+      .pop()
+    const secondLastHistoricalIndex =
+      lastHistoricalIndex != null && lastHistoricalIndex > 0
+        ? projectedLinePoints
+            .slice(0, lastHistoricalIndex)
+            .map((p, i) => (p.isHistorical ? i : -1))
+            .filter((i) => i >= 0)
+            .pop()
+        : null
+    const projectionLeadingPoint =
+      secondLastHistoricalIndex != null
+        ? projectedLinePoints[secondLastHistoricalIndex]
+        : null
+    const futureLinePoints = projectedLinePoints.filter(
+      (p, i) => !p.isHistorical || i === lastHistoricalIndex
+    )
 
     const monthlyHistoryForMetrics = sortMonthlyHistory(graphHistory)
 
@@ -1410,7 +1457,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     className={portfolioTrancheView === 'conservative' ? 'active' : ''}
                     onClick={() => setPortfolioTrancheView('conservative')}
                   >
-                    2% (Conservative)
+                    2% Conservative
                   </button>
                   <button
                     type="button"
@@ -1419,7 +1466,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                     className={portfolioTrancheView === 'moderate' ? 'active' : ''}
                     onClick={() => setPortfolioTrancheView('moderate')}
                   >
-                    4% (Moderate)
+                    4% Moderate
                   </button>
                 </div>
               )}
@@ -1783,41 +1830,25 @@ const Portfolio = ({ user, onStatusUpdate }) => {
                   )
                 })}
                 {projectionData.some((p) => p.isHistorical) && (
-                  <polyline
-                    points={projectionData
-                      .map((point, index) => {
-                        const totalPoints = projectionData.length
-                        const x = 50 + index * (700 / Math.max(totalPoints - 1, 1))
-                        const y = 350 - ((point.balance - minBalance) / range) * 300
-                        return point.isHistorical ? `${x},${y}` : null
-                      })
-                      .filter((p) => p !== null)
-                      .join(' ')}
+                  <path
+                    d={buildSmoothSvgPath(historicalLinePoints)}
                     fill="none"
                     stroke="#10b981"
                     strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 )}
 
                 {projectionData.some((p) => !p.isHistorical) && (
-                  <polyline
-                    points={projectionData
-                      .map((point, index) => {
-                        const totalPoints = projectionData.length
-                        const x = 50 + index * (700 / Math.max(totalPoints - 1, 1))
-                        const y = 350 - ((point.balance - minBalance) / range) * 300
-                        const lastHistoricalIndex = projectionData
-                          .map((p, i) => (p.isHistorical ? i : -1))
-                          .filter((i) => i >= 0)
-                          .pop()
-                        return !point.isHistorical || index === lastHistoricalIndex ? `${x},${y}` : null
-                      })
-                      .filter((p) => p !== null)
-                      .join(' ')}
+                  <path
+                    d={buildSmoothSvgPath(futureLinePoints, 0.15, projectionLeadingPoint)}
                     fill="none"
                     stroke="#3b82f6"
                     strokeWidth="3"
                     strokeDasharray="5,5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 )}
 

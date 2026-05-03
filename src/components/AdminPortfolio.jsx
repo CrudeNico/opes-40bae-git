@@ -15,6 +15,27 @@ function formatCompact(num) {
   return `€${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+/** Slightly smooth an SVG line without changing point positions. */
+function buildSmoothSvgPath(points, tension = 0.15, leadingPoint = null) {
+  if (!points || points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+
+  let d = `M ${points[0].x} ${points[0].y}`
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] || leadingPoint || points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] || p2
+    const cp1x = p1.x + ((p2.x - p0.x) * tension)
+    const cp1y = p1.y + ((p2.y - p0.y) * tension)
+    const cp2x = p2.x - ((p3.x - p1.x) * tension)
+    const cp2y = p2.y - ((p3.y - p1.y) * tension)
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+  }
+  return d
+}
+
 function createSeededRandom(seed) {
   return function() {
     seed = Math.imul(1103515245, seed) + 12345
@@ -887,8 +908,11 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const currentBalance = portfolioData.currentBalance || initialInvestment
   const totalDeposits = portfolioData.totalDeposits || initialInvestment
   const totalWithdrawals = portfolioData.totalWithdrawals || 0
-  // Ensure monthly history is sorted chronologically for display
+  // Chronological order for calculations; table shows newest months first
   const monthlyHistory = sortMonthlyHistory(portfolioData.monthlyHistory || [])
+  const monthlyHistoryNewestFirst = monthlyHistory
+    .map((record, originalIndex) => ({ record, originalIndex }))
+    .reverse()
 
   // Calculate metrics
   const totalGain = monthlyHistory.reduce((sum, record) => {
@@ -1016,6 +1040,25 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const maxBalance = Math.max(...projectionData.map(d => d.balance))
   const minBalance = Math.min(...projectionData.map(d => d.balance))
   const range = maxBalance - minBalance || 1
+  const graphLinePoints = projectionData.map((point, index) => {
+    const totalPoints = projectionData.length
+    const x = 50 + (index * (700 / Math.max(totalPoints - 1, 1)))
+    const y = 350 - ((point.balance - minBalance) / range * 300)
+    return { ...point, index, x, y }
+  })
+  const historicalLinePoints = graphLinePoints.filter((p) => p.isHistorical)
+  const lastHistoricalIndex = graphLinePoints.map((p, i) => p.isHistorical ? i : -1).filter(i => i >= 0).pop()
+  const secondLastHistoricalIndex =
+    lastHistoricalIndex != null && lastHistoricalIndex > 0
+      ? graphLinePoints
+          .slice(0, lastHistoricalIndex)
+          .map((p, i) => (p.isHistorical ? i : -1))
+          .filter((i) => i >= 0)
+          .pop()
+      : null
+  const projectionLeadingPoint =
+    secondLastHistoricalIndex != null ? graphLinePoints[secondLastHistoricalIndex] : null
+  const projectionLinePoints = graphLinePoints.filter((p, i) => !p.isHistorical || i === lastHistoricalIndex)
 
   // First point of each year for x-axis labels (one label per year)
   const yearLabelIndices = {}
@@ -1444,33 +1487,26 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
               
               {/* Historical line */}
               {projectionData.some(p => p.isHistorical) && (
-                <polyline
-                  points={projectionData.map((point, index) => {
-                    const totalPoints = projectionData.length
-                    const x = 50 + (index * (700 / Math.max(totalPoints - 1, 1)))
-                    const y = 350 - ((point.balance - minBalance) / range * 300)
-                    return point.isHistorical ? `${x},${y}` : null
-                  }).filter(p => p !== null).join(' ')}
+                <path
+                  d={buildSmoothSvgPath(historicalLinePoints)}
                   fill="none"
                   stroke="#10b981"
                   strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               )}
               
               {/* Projection line */}
               {projectionData.some(p => !p.isHistorical) && (
-                <polyline
-                  points={projectionData.map((point, index) => {
-                    const totalPoints = projectionData.length
-                    const x = 50 + (index * (700 / Math.max(totalPoints - 1, 1)))
-                    const y = 350 - ((point.balance - minBalance) / range * 300)
-                    const lastHistoricalIndex = projectionData.map((p, i) => p.isHistorical ? i : -1).filter(i => i >= 0).pop()
-                    return (!point.isHistorical || index === lastHistoricalIndex) ? `${x},${y}` : null
-                  }).filter(p => p !== null).join(' ')}
+                <path
+                  d={buildSmoothSvgPath(projectionLinePoints, 0.15, projectionLeadingPoint)}
                   fill="none"
                   stroke="#3b82f6"
                   strokeWidth="3"
                   strokeDasharray="5,5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               )}
               
@@ -1635,8 +1671,11 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                   <div>Ending Balance</div>
                   {canAddPerformance && <div>Actions</div>}
                 </div>
-                {monthlyHistory.map((record, index) => (
-                  <div key={index} className={`history-row ${editingRecordIndex === index ? 'editing' : ''}`}>
+                {monthlyHistoryNewestFirst.map(({ record, originalIndex }) => (
+                  <div
+                    key={`${originalIndex}-${record.month}-${record.year}`}
+                    className={`history-row ${editingRecordIndex === originalIndex ? 'editing' : ''}`}
+                  >
                     <div>{record.month} {record.year}</div>
                     <div>{record.percentageGrowth}%</div>
                     <div>€{record.growthAmount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</div>
@@ -1647,8 +1686,8 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                       <div>
                         <button
                           className="btn-edit-record"
-                          onClick={() => handleEditRecord(index)}
-                          disabled={editingRecordIndex !== null && editingRecordIndex !== index}
+                          onClick={() => handleEditRecord(originalIndex)}
+                          disabled={editingRecordIndex !== null && editingRecordIndex !== originalIndex}
                         >
                           Edit
                         </button>
