@@ -339,6 +339,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     month: '',
     year: '',
     percentageGrowth: '',
+    growthAmountExact: '',
     depositAmount: '',
     depositDate: '',
     withdrawalAmount: '',
@@ -367,6 +368,19 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isAdmin2, isAdmin3])
+
+  useEffect(() => {
+    if (!showAddPerformance) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowAddPerformance(false)
+        setError('')
+        setSuccess('')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [showAddPerformance])
 
   // Helper function to sort monthly history chronologically
   const sortMonthlyHistory = (history) => {
@@ -502,10 +516,16 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setMonthlyUpdate(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setMonthlyUpdate(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'percentageGrowth' && String(value).trim() !== '') {
+        next.growthAmountExact = ''
+      }
+      if (name === 'growthAmountExact' && String(value).trim() !== '') {
+        next.percentageGrowth = ''
+      }
+      return next
+    })
   }
 
   const handleEditInputChange = (e) => {
@@ -814,9 +834,31 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         return amount * (percentageGrowth / 100) * proratedRatio
       }
 
-      // Calculate new balance based on percentage growth
-      const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
-      const growthAmount = currentBalance * (percentageGrowth / 100)
+      const pctStr = String(monthlyUpdate.percentageGrowth ?? '').trim()
+      const exactStr = String(monthlyUpdate.growthAmountExact ?? '').trim()
+      const hasExactGrowth = exactStr !== ''
+      const hasPctGrowth = pctStr !== ''
+
+      if (!hasExactGrowth && !hasPctGrowth) {
+        setError('Enter either a growth percentage or an exact growth amount (€).')
+        return
+      }
+
+      let percentageGrowth
+      let growthAmount
+      if (hasExactGrowth) {
+        growthAmount = parseFloat(exactStr)
+        if (!Number.isFinite(growthAmount)) {
+          setError('Invalid growth amount.')
+          return
+        }
+        percentageGrowth =
+          currentBalance > 0 ? (growthAmount / currentBalance) * 100 : 0
+      } else {
+        percentageGrowth = parseFloat(pctStr) || 0
+        growthAmount = currentBalance * (percentageGrowth / 100)
+      }
+
       let newBalance = currentBalance + growthAmount
 
       // Add deposit if provided
@@ -894,6 +936,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         month: '',
         year: '',
         percentageGrowth: '',
+        growthAmountExact: '',
         depositAmount: '',
         depositDate: '',
         withdrawalAmount: '',
@@ -1115,31 +1158,25 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const histVFeatId = `${graphAreaFillUid}-hist-vfeather`
   const histMaskId = `${graphAreaFillUid}-hist-feather-mask`
 
+  const showPortfolioChartInWidget =
+    !canAddPerformance || editingRecordIndex !== null || !showAddPerformance
+
+  const openAddPerformanceFromChart = () => {
+    if (!canAddPerformance || editingRecordIndex !== null) return
+    setShowAddPerformance(true)
+    setError('')
+    setSuccess('')
+  }
+
+  const closeAddPerformanceToChart = () => {
+    setShowAddPerformance(false)
+    setError('')
+    setSuccess('')
+  }
+
   return (
     <div className="admin-portfolio-container">
       <div className="admin-portfolio-content">
-        <div className="admin-portfolio-header">
-          <h2 className="admin-portfolio-title">Admin Portfolio</h2>
-          {/* Only show Add Performance button if user has permission */}
-          {canAddPerformance && (
-            <button 
-              className="btn-add-performance"
-              onClick={() => {
-                if (editingRecordIndex === null) {
-                  setShowAddPerformance(!showAddPerformance)
-                  if (showAddPerformance) {
-                    setError('')
-                    setSuccess('')
-                  }
-                }
-              }}
-              disabled={editingRecordIndex !== null}
-            >
-              {showAddPerformance ? 'Cancel' : '+ Add Monthly Performance'}
-            </button>
-          )}
-        </div>
-
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
@@ -1275,236 +1312,37 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           </div>
         )}
 
-        {/* Add Performance Form - Only show if user has permission */}
-        {showAddPerformance && canAddPerformance && editingRecordIndex === null && (
-          <div className="add-performance-section">
-            <h3 className="section-title">Add Monthly Performance</h3>
-            <form onSubmit={handleAddPerformance} className="performance-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="month">Month *</label>
-                  <select
-                    id="month"
-                    name="month"
-                    value={monthlyUpdate.month}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Month</option>
-                    <option value="January">January</option>
-                    <option value="February">February</option>
-                    <option value="March">March</option>
-                    <option value="April">April</option>
-                    <option value="May">May</option>
-                    <option value="June">June</option>
-                    <option value="July">July</option>
-                    <option value="August">August</option>
-                    <option value="September">September</option>
-                    <option value="October">October</option>
-                    <option value="November">November</option>
-                    <option value="December">December</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="year">Year *</label>
-                  <input
-                    type="number"
-                    id="year"
-                    name="year"
-                    value={monthlyUpdate.year}
-                    onChange={handleInputChange}
-                    min="2020"
-                    max={new Date().getFullYear() + 1}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="percentageGrowth">Growth Percentage (%) *</label>
-                  <input
-                    type="number"
-                    id="percentageGrowth"
-                    name="percentageGrowth"
-                    value={monthlyUpdate.percentageGrowth}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="depositAmount">Deposit Amount (Optional)</label>
-                  <input
-                    type="number"
-                    id="depositAmount"
-                    name="depositAmount"
-                    value={monthlyUpdate.depositAmount}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="depositDate">Deposit Date (Optional)</label>
-                  <input
-                    type="date"
-                    id="depositDate"
-                    name="depositDate"
-                    value={monthlyUpdate.depositDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="withdrawalAmount">Withdrawal Amount (Optional)</label>
-                  <input
-                    type="number"
-                    id="withdrawalAmount"
-                    name="withdrawalAmount"
-                    value={monthlyUpdate.withdrawalAmount}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="withdrawalDate">Withdrawal Date (Optional)</label>
-                  <input
-                    type="date"
-                    id="withdrawalDate"
-                    name="withdrawalDate"
-                    value={monthlyUpdate.withdrawalDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              {/* Update Preview */}
-              {monthlyUpdate.month && monthlyUpdate.year && monthlyUpdate.percentageGrowth && (() => {
-                // Helper functions for calculations
-                const getDaysInMonth = (month, year) => {
-                  const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
-                                     'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
-                  return new Date(year, monthIndex + 1, 0).getDate()
+        {/* Chart widget: click chart to add monthly performance; click outside the form (shell) to return */}
+        <div
+          className={`portfolio-graph-section${
+            showPortfolioChartInWidget && canAddPerformance && editingRecordIndex === null
+              ? ' portfolio-graph-section--chart-opens-add'
+              : ''
+          }${!showPortfolioChartInWidget ? ' portfolio-graph-section--add-form-open' : ''}`}
+        >
+          {showPortfolioChartInWidget ? (
+            <div
+              className={`graph-container${
+                canAddPerformance && editingRecordIndex === null
+                  ? ' graph-container--open-add-on-click'
+                  : ''
+              }`}
+              onClick={openAddPerformanceFromChart}
+              onKeyDown={(e) => {
+                if (!canAddPerformance || editingRecordIndex !== null) return
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  openAddPerformanceFromChart()
                 }
-
-                const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
-                  if (!date || !month || !year || amount === 0) return 0
-                  const depositDate = new Date(date)
-                  const dayOfMonth = depositDate.getDate()
-                  const daysInMonth = getDaysInMonth(month, parseInt(year))
-                  let daysRemaining = daysInMonth - dayOfMonth + 1
-                  if (dayOfMonth === daysInMonth) {
-                    daysRemaining = 0
-                  }
-                  const proratedRatio = daysRemaining / daysInMonth
-                  return amount * (percentageGrowth / 100) * proratedRatio
-                }
-
-                const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
-                  if (!date || !month || !year || amount === 0) return 0
-                  const withdrawalDate = new Date(date)
-                  const dayOfMonth = withdrawalDate.getDate()
-                  const daysInMonth = getDaysInMonth(month, parseInt(year))
-                  const daysRemaining = daysInMonth - dayOfMonth
-                  const proratedRatio = daysRemaining / daysInMonth
-                  return amount * (percentageGrowth / 100) * proratedRatio
-                }
-
-                const startingBalance = currentBalance
-                const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
-                const baseGrowth = startingBalance * (percentageGrowth / 100)
-                const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
-                const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
-                
-                const depositGrowth = calculateProratedGrowth(
-                  depositAmount, 
-                  percentageGrowth, 
-                  monthlyUpdate.depositDate, 
-                  monthlyUpdate.month, 
-                  monthlyUpdate.year
-                )
-                
-                const withdrawalGrowth = calculateWithdrawalGrowthLoss(
-                  withdrawalAmount, 
-                  percentageGrowth, 
-                  monthlyUpdate.withdrawalDate, 
-                  monthlyUpdate.month, 
-                  monthlyUpdate.year
-                )
-                
-                const finalBalance = startingBalance + baseGrowth + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
-
-                return (
-                  <div className="update-preview">
-                    <h5>Update Preview:</h5>
-                    <div className="preview-grid">
-                      <div className="preview-item">
-                        <span>Starting Balance:</span>
-                        <span>€{startingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="preview-item">
-                        <span>Growth ({percentageGrowth}%):</span>
-                        <span>€{baseGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      {depositAmount > 0 && (
-                        <>
-                          <div className="preview-item">
-                            <span>Deposit:</span>
-                            <span>+€{depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                          {depositGrowth > 0 && (
-                            <div className="preview-item">
-                              <span>Deposit Growth:</span>
-                              <span>+€{depositGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {withdrawalAmount > 0 && (
-                        <>
-                          <div className="preview-item">
-                            <span>Withdrawal:</span>
-                            <span>-€{withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                          {withdrawalGrowth > 0 && (
-                            <div className="preview-item">
-                              <span>Withdrawal Growth Loss:</span>
-                              <span>-€{withdrawalGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                      <div className="preview-item preview-total">
-                        <span>Final Balance:</span>
-                        <span>€{finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-
-              <button
-                type="submit"
-                className="btn-submit"
-                disabled={loadingMonthlyUpdate || !monthlyUpdate.month || !monthlyUpdate.year || !monthlyUpdate.percentageGrowth}
-              >
-                {loadingMonthlyUpdate ? 'Saving...' : 'Save Monthly Performance'}
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Investment Graph */}
-        <div className="portfolio-graph-section">
-          <div className="graph-container">
+              }}
+              role={canAddPerformance && editingRecordIndex === null ? 'button' : undefined}
+              tabIndex={canAddPerformance && editingRecordIndex === null ? 0 : undefined}
+              aria-label={
+                canAddPerformance && editingRecordIndex === null
+                  ? 'Performance chart — open add monthly performance'
+                  : undefined
+              }
+            >
             <svg className="investment-graph" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
               {historicalAreaProps && (
                 <defs>
@@ -1655,7 +1493,330 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
               })}
               
             </svg>
-          </div>
+            </div>
+          ) : (
+            <div
+              className="admin-portfolio-add-widget-shell"
+              onClick={closeAddPerformanceToChart}
+              role="presentation"
+            >
+              <div
+                className="add-performance-section add-performance-section--in-chart-widget"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <form onSubmit={handleAddPerformance} className="performance-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="month">Select Month</label>
+                      <select
+                        id="month"
+                        name="month"
+                        value={monthlyUpdate.month}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">—</option>
+                        <option value="January">January</option>
+                        <option value="February">February</option>
+                        <option value="March">March</option>
+                        <option value="April">April</option>
+                        <option value="May">May</option>
+                        <option value="June">June</option>
+                        <option value="July">July</option>
+                        <option value="August">August</option>
+                        <option value="September">September</option>
+                        <option value="October">October</option>
+                        <option value="November">November</option>
+                        <option value="December">December</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="year">Select Year</label>
+                      <input
+                        type="number"
+                        id="year"
+                        name="year"
+                        value={monthlyUpdate.year}
+                        onChange={handleInputChange}
+                        min="2020"
+                        max={new Date().getFullYear() + 1}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="percentageGrowth">Growth Rate</label>
+                      <input
+                        type="number"
+                        id="percentageGrowth"
+                        name="percentageGrowth"
+                        value={monthlyUpdate.percentageGrowth}
+                        onChange={handleInputChange}
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="depositAmount">Deposit Amount</label>
+                      <input
+                        type="number"
+                        id="depositAmount"
+                        name="depositAmount"
+                        value={monthlyUpdate.depositAmount}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="depositDate">Deposit Date</label>
+                      <input
+                        type="date"
+                        id="depositDate"
+                        name="depositDate"
+                        value={monthlyUpdate.depositDate}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="growthAmountExact">Growth amount</label>
+                      <input
+                        type="number"
+                        id="growthAmountExact"
+                        name="growthAmountExact"
+                        value={monthlyUpdate.growthAmountExact}
+                        onChange={handleInputChange}
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="withdrawalAmount">Withdrawal Amount</label>
+                      <input
+                        type="number"
+                        id="withdrawalAmount"
+                        name="withdrawalAmount"
+                        value={monthlyUpdate.withdrawalAmount}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="withdrawalDate">Withdrawal Date</label>
+                      <input
+                        type="date"
+                        id="withdrawalDate"
+                        name="withdrawalDate"
+                        value={monthlyUpdate.withdrawalDate}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+
+                    <div className="form-group form-group--monthly-save">
+                      <span className="form-group--monthly-save__label-spacer" aria-hidden="true" />
+                      <button
+                        id="save-monthly-widget"
+                        type="submit"
+                        className="btn-submit btn-submit--monthly-widget"
+                        aria-label="Save monthly performance"
+                        disabled={
+                          loadingMonthlyUpdate ||
+                          !monthlyUpdate.month ||
+                          !monthlyUpdate.year ||
+                          (!String(monthlyUpdate.percentageGrowth ?? '').trim() &&
+                            !String(monthlyUpdate.growthAmountExact ?? '').trim())
+                        }
+                      >
+                        {loadingMonthlyUpdate ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {monthlyUpdate.month &&
+                    monthlyUpdate.year &&
+                    (String(monthlyUpdate.percentageGrowth ?? '').trim() ||
+                      String(monthlyUpdate.growthAmountExact ?? '').trim()) &&
+                    (() => {
+                    const getDaysInMonth = (month, year) => {
+                      const monthIndex = [
+                        'January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'
+                      ].indexOf(month)
+                      return new Date(year, monthIndex + 1, 0).getDate()
+                    }
+
+                    const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+                      if (!date || !month || !year || amount === 0) return 0
+                      const depositDate = new Date(date)
+                      const dayOfMonth = depositDate.getDate()
+                      const daysInMonth = getDaysInMonth(month, parseInt(year))
+                      let daysRemaining = daysInMonth - dayOfMonth + 1
+                      if (dayOfMonth === daysInMonth) {
+                        daysRemaining = 0
+                      }
+                      const proratedRatio = daysRemaining / daysInMonth
+                      return amount * (percentageGrowth / 100) * proratedRatio
+                    }
+
+                    const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+                      if (!date || !month || !year || amount === 0) return 0
+                      const withdrawalDate = new Date(date)
+                      const dayOfMonth = withdrawalDate.getDate()
+                      const daysInMonth = getDaysInMonth(month, parseInt(year))
+                      const daysRemaining = daysInMonth - dayOfMonth
+                      const proratedRatio = daysRemaining / daysInMonth
+                      return amount * (percentageGrowth / 100) * proratedRatio
+                    }
+
+                    const startingBalance = currentBalance
+                    const previewExactStr = String(monthlyUpdate.growthAmountExact ?? '').trim()
+                    const previewPctStr = String(monthlyUpdate.percentageGrowth ?? '').trim()
+                    const previewHasExact = previewExactStr !== ''
+                    let percentageGrowth
+                    let baseGrowth
+                    if (previewHasExact) {
+                      baseGrowth = parseFloat(previewExactStr) || 0
+                      percentageGrowth =
+                        startingBalance > 0 ? (baseGrowth / startingBalance) * 100 : 0
+                    } else {
+                      percentageGrowth = parseFloat(previewPctStr) || 0
+                      baseGrowth = startingBalance * (percentageGrowth / 100)
+                    }
+                    const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
+                    const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
+
+                    const depositGrowth = calculateProratedGrowth(
+                      depositAmount,
+                      percentageGrowth,
+                      monthlyUpdate.depositDate,
+                      monthlyUpdate.month,
+                      monthlyUpdate.year
+                    )
+
+                    const withdrawalGrowth = calculateWithdrawalGrowthLoss(
+                      withdrawalAmount,
+                      percentageGrowth,
+                      monthlyUpdate.withdrawalDate,
+                      monthlyUpdate.month,
+                      monthlyUpdate.year
+                    )
+
+                    const finalBalance =
+                      startingBalance +
+                      baseGrowth +
+                      depositAmount +
+                      depositGrowth -
+                      withdrawalAmount -
+                      withdrawalGrowth
+
+                    return (
+                      <div className="update-preview">
+                        <h5>Update Preview:</h5>
+                        <div className="preview-grid">
+                          <div className="preview-item">
+                            <span>Starting Balance:</span>
+                            <span>
+                              €
+                              {startingBalance.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                          </div>
+                          <div className="preview-item">
+                            <span>
+                              {previewHasExact
+                                ? `Growth (exact €, ≈${percentageGrowth.toFixed(2)}%):`
+                                : `Growth (${percentageGrowth}%):`}
+                            </span>
+                            <span>
+                              €
+                              {baseGrowth.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                          </div>
+                          {depositAmount > 0 && (
+                            <>
+                              <div className="preview-item">
+                                <span>Deposit:</span>
+                                <span>
+                                  +€
+                                  {depositAmount.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                  })}
+                                </span>
+                              </div>
+                              {depositGrowth > 0 && (
+                                <div className="preview-item">
+                                  <span>Deposit Growth:</span>
+                                  <span>
+                                    +€
+                                    {depositGrowth.toLocaleString('en-US', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {withdrawalAmount > 0 && (
+                            <>
+                              <div className="preview-item">
+                                <span>Withdrawal:</span>
+                                <span>
+                                  -€
+                                  {withdrawalAmount.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                  })}
+                                </span>
+                              </div>
+                              {withdrawalGrowth > 0 && (
+                                <div className="preview-item">
+                                  <span>Withdrawal Growth Loss:</span>
+                                  <span>
+                                    -€
+                                    {withdrawalGrowth.toLocaleString('en-US', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <div className="preview-item preview-total">
+                            <span>Final Balance:</span>
+                            <span>
+                              €
+                              {finalBalance.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                </form>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Metrics Grid */}

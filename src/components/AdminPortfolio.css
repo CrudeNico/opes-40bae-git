@@ -223,6 +223,74 @@
   margin-bottom: 3rem;
 }
 
+.portfolio-graph-section--chart-opens-add .graph-container--open-add-on-click {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portfolio-graph-section--chart-opens-add .graph-container--open-add-on-click:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.portfolio-graph-section--add-form-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.admin-portfolio-add-widget-shell {
+  flex: 1;
+  width: 100%;
+  min-height: 22rem;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.admin-portfolio-add-widget-shell .add-performance-section--in-chart-widget {
+  cursor: default;
+}
+
+.add-performance-section--in-chart-widget {
+  margin-bottom: 0;
+}
+
+.form-group--monthly-save__label-spacer {
+  display: block;
+  min-height: 1.35rem;
+}
+
+/* Chart-widget monthly form: Save aligned with inputs, squared corners like fields */
+.add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget {
+  width: 100%;
+  border-radius: 0.5rem;
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transform: none;
+  margin-top: 0.5rem;
+}
+
+.add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget:hover:not(:disabled) {
+  transform: none;
+}
+
+.add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget:focus-visible {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-portfolio-content .add-performance-section--in-chart-widget .btn-submit.btn-submit--monthly-widget {
+  border-radius: 0.5rem;
+}
+
 .graph-container {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -496,10 +564,6 @@
     gap: 1rem;
   }
 
-  .portfolio-graph-section {
-    display: none;
-  }
-
   .portfolio-metrics-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -662,6 +726,32 @@ html.dark-mode .section-subtitle {
 html.dark-mode .graph-container {
   background: #1f2937;
   border-color: #374151;
+}
+
+html.dark-mode .portfolio-graph-section--chart-opens-add .graph-container--open-add-on-click:hover {
+  border-color: #4b5563;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+html.dark-mode .admin-portfolio-add-widget-shell {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .admin-portfolio-content .add-performance-section--in-chart-widget .btn-submit.btn-submit--monthly-widget {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+html.dark-mode .admin-portfolio-content .add-performance-section--in-chart-widget .btn-submit.btn-submit--monthly-widget:hover:not(:disabled) {
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+html.dark-mode .add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget:focus-visible {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 html.dark-mode .graph-legend {
