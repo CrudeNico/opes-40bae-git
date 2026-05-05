@@ -1,10 +1,115 @@
 import React, { useState, useEffect, useId } from 'react'
 import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore'
 import { getAdmin3Overrides, saveAdmin3UserOverride } from '../utils/admin3Overrides'
-import { getInvestorCombinedInitial } from '../utils/investorDualTranche'
+import {
+  getAdminInvestorSummaryCurrentBalance,
+  getInvestorCombinedInitial,
+  getLastTrancheEnding,
+  TRANCHE_PRIMARY,
+  TRANCHE_SECONDARY
+} from '../utils/investorDualTranche'
 import './AdminPortfolio.css'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
+
+const normalizePortfolioKey = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+
+const isExcludedFromPortfolioInvestorTotal = (email, displayName) => {
+  const em = normalizePortfolioKey(email)
+  const nm = normalizePortfolioKey(displayName)
+  const excludedEmails = [
+    'nicolas.fernandez@opessocius.support',
+    'marcoscollab@gmail.com',
+    'ndrf1806@gmail.com'
+  ]
+  if (excludedEmails.includes(em)) return true
+  const excludedNames = ['marcos de rodrigo', 'nicolas de rodrigo']
+  return excludedNames.includes(nm)
+}
+
+const isClaraPayoutInvestor = (email, displayName) => {
+  const em = String(email || '').toLowerCase()
+  const nm = String(displayName || '').toLowerCase()
+  return em.includes('clara') || nm.includes('clara perez ramirez') || nm.includes('clara perez')
+}
+
+const hasSecondaryTrancheForTarget = (investmentData) => {
+  const s = Number(investmentData?.secondaryInvestment?.initialInvestment)
+  return Number.isFinite(s) && s > 0
+}
+
+const getPreviousMonthContext = (referenceDate = new Date()) => {
+  const d = new Date(referenceDate)
+  d.setMonth(d.getMonth() - 1)
+  return { monthName: MONTH_NAMES[d.getMonth()], year: d.getFullYear() }
+}
+
+const monthlyHistoryRecordsForMonth = (monthlyHistory, monthName, year) =>
+  (monthlyHistory || []).filter((r) => r.month === monthName && parseInt(String(r.year), 10) === year)
+
+const payoutFromPreviousMonthRecords = (records) => {
+  let sum = 0
+  let hasValue = false
+  for (const r of records) {
+    const eb = Number(r.endingBalance)
+    const pg = Number(r.percentageGrowth)
+    if (!Number.isFinite(eb) || !Number.isFinite(pg)) continue
+    sum += eb * (pg / 100)
+    hasValue = true
+  }
+  return hasValue ? sum : null
+}
+
+const monthlyTargetAndRateForPayout = (investmentData, email, displayName, prevCtx) => {
+  if (!investmentData) return 0
+  const prevRecords = monthlyHistoryRecordsForMonth(investmentData.monthlyHistory, prevCtx.monthName, prevCtx.year)
+  const fromHistory = payoutFromPreviousMonthRecords(prevRecords)
+  if (fromHistory != null) return fromHistory
+
+  if (isClaraPayoutInvestor(email, displayName)) {
+    const combined = getAdminInvestorSummaryCurrentBalance(investmentData)
+    return combined * 0.03
+  }
+
+  if (hasSecondaryTrancheForTarget(investmentData)) {
+    const mh = investmentData.monthlyHistory || []
+    const pInit = Number(investmentData.initialInvestment) || 0
+    const sInit = Number(investmentData.secondaryInvestment?.initialInvestment) || 0
+    const primaryBal = getLastTrancheEnding(mh, TRANCHE_PRIMARY, pInit)
+    const secondaryBal = getLastTrancheEnding(mh, TRANCHE_SECONDARY, sInit)
+    return primaryBal * 0.02 + secondaryBal * 0.04
+  }
+
+  const balance = getAdminInvestorSummaryCurrentBalance(investmentData)
+  const rate =
+    investmentData.monthlyReturnRate != null && Number.isFinite(Number(investmentData.monthlyReturnRate))
+      ? Number(investmentData.monthlyReturnRate)
+      : investmentData.riskTolerance === 'conservative'
+        ? 0.02
+        : 0.04
+  return balance * rate
+}
+
+const polarToCartesian = (cx, cy, r, deg) => {
+  const rad = (deg - 90) * (Math.PI / 180)
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+const pieSlicePath = (cx, cy, r, startDeg, endDeg) => {
+  if (endDeg - startDeg >= 359.999) {
+    return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`
+  }
+  const start = polarToCartesian(cx, cy, r, endDeg)
+  const end = polarToCartesian(cx, cy, r, startDeg)
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0
+  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y} Z`
+}
 
 function formatCompact(num) {
   if (num >= 1e6) return `€${(num / 1e6).toFixed(2)}M`
@@ -360,6 +465,10 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
   const [loadingInvestorAccounts, setLoadingInvestorAccounts] = useState(true)
   const [portfolioOwnerId, setPortfolioOwnerId] = useState(null)
+  const [activeTopMetricWidget, setActiveTopMetricWidget] = useState(null)
+  const [investorBreakdownRows, setInvestorBreakdownRows] = useState([])
+  const [investorTotalModalLines, setInvestorTotalModalLines] = useState([])
+  const [allApprovedAccountRows, setAllApprovedAccountRows] = useState([])
 
   useEffect(() => {
     if (user) {
@@ -381,6 +490,17 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [showAddPerformance])
+
+  useEffect(() => {
+    if (!activeTopMetricWidget) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setActiveTopMetricWidget(null)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeTopMetricWidget])
 
   // Helper function to sort monthly history chronologically
   const sortMonthlyHistory = (history) => {
@@ -408,52 +528,94 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
       
+      const prevMonthCtx = getPreviousMonthContext()
       let total = 0
+      const investorRows = []
+      const modalLines = []
+      const allApprovedRows = []
       usersSnapshot.forEach((docSnapshot) => {
         const userData = docSnapshot.data()
         const statuses = userData.statuses || []
         const email = userData.email || ''
         const displayName = userData.displayName || ''
-        
-        // Exclude specific users
+
+        // For current-balance allocation + initial-investment detail, include all approved Investor/Trader accounts.
         if (
-          email === 'nicolas.fernandez@opessocius.support' || 
-          displayName === 'Nicolas De Rodrigo' ||
-          email === 'marcoscollab@gmail.com' ||
-          displayName === 'Marcos De Rodrigo' ||
-          email === 'ndrf1806@gmail.com' ||
-          displayName === 'Nicolas'
+          (statuses.includes('Investor') || statuses.includes('Trader')) &&
+          userData.investmentData &&
+          userData.investmentData.status === 'approved'
         ) {
+          const invAll = userData.investmentData
+          const safeInitialAll = Number(getInvestorCombinedInitial(invAll)) || 0
+          const safeDepositsAll = Number(invAll.totalDeposits ?? safeInitialAll) || 0
+          const safeWithdrawalsAll = Number(invAll.totalWithdrawals ?? 0) || 0
+          const safeCurrentAll = Number(getAdminInvestorSummaryCurrentBalance(invAll)) || 0
+          allApprovedRows.push({
+            id: docSnapshot.id,
+            name: (displayName && displayName.trim()) || email || 'Unnamed investor',
+            initialInvestment: safeInitialAll,
+            totalDeposits: safeDepositsAll,
+            totalWithdrawals: safeWithdrawalsAll,
+            currentBalance: safeCurrentAll,
+            growth: safeCurrentAll - safeDepositsAll + safeWithdrawalsAll
+          })
+        }
+        
+        if (isExcludedFromPortfolioInvestorTotal(email, displayName)) {
           return
         }
         
-        // Only count investors or traders with approved investment accounts
-        if ((statuses.includes('Investor') || statuses.includes('Trader')) && userData.investmentData && userData.investmentData.status === 'approved') {
+        // Mirror overview total-investor rules: approved Investor accounts only.
+        if (statuses.includes('Investor') && userData.investmentData && userData.investmentData.status === 'approved') {
           const investmentData = userData.investmentData
+          const safeInitial = Number(getInvestorCombinedInitial(investmentData)) || 0
+          const safeDeposits = Number(investmentData.totalDeposits ?? safeInitial) || 0
+          const safeWithdrawals = Number(investmentData.totalWithdrawals ?? 0) || 0
+          const safeCurrentBalance = Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
+          const monthlyTarget = Number(
+            monthlyTargetAndRateForPayout(investmentData, email, displayName, prevMonthCtx)
+          ) || 0
           
-          // Get the most current ending capital
-          // First check if there's a currentBalance
-          if (investmentData.currentBalance) {
-            total += investmentData.currentBalance
-          } else if (investmentData.monthlyHistory && investmentData.monthlyHistory.length > 0) {
-            // If no currentBalance, get the last endingBalance from monthly history
-            const sortedHistory = sortMonthlyHistory(investmentData.monthlyHistory)
-            const lastRecord = sortedHistory[sortedHistory.length - 1]
-            if (lastRecord && lastRecord.endingBalance) {
-              total += lastRecord.endingBalance
-            } else {
-              total += getInvestorCombinedInitial(investmentData)
-            }
-          } else {
-            total += getInvestorCombinedInitial(investmentData)
-          }
+          total += safeCurrentBalance
+
+          investorRows.push({
+            id: docSnapshot.id,
+            name: (displayName && displayName.trim()) || email || 'Unnamed investor',
+            initialInvestment: safeInitial,
+            totalDeposits: safeDeposits,
+            totalWithdrawals: safeWithdrawals,
+            currentBalance: safeCurrentBalance,
+            growth: safeCurrentBalance - safeDeposits + safeWithdrawals
+          })
+
+          modalLines.push({
+            id: docSnapshot.id,
+            name: (displayName && displayName.trim()) || 'Unnamed investor',
+            balance: safeCurrentBalance,
+            monthlyTarget
+          })
         }
       })
       
+      const sortedInvestorRows = investorRows.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+      const sortedModalLines = modalLines.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+      const sortedAllApprovedRows = allApprovedRows.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
       setTotalInvestorAccounts(total)
+      setInvestorBreakdownRows(sortedInvestorRows)
+      setInvestorTotalModalLines(sortedModalLines)
+      setAllApprovedAccountRows(sortedAllApprovedRows)
     } catch (error) {
       console.error('Error loading total investor accounts:', error)
       setTotalInvestorAccounts(0)
+      setInvestorBreakdownRows([])
+      setInvestorTotalModalLines([])
+      setAllApprovedAccountRows([])
     } finally {
       setLoadingInvestorAccounts(false)
     }
@@ -1174,6 +1336,318 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     setSuccess('')
   }
 
+  const topMetricWidgets = {
+    currentBalance: { title: 'Current Balance' },
+    totalGain: { title: 'Total Gain' },
+    totalInvestorAccounts: { title: 'Total Investor Acc' },
+    averageMonthlyInput: { title: 'Avg Monthly Input' },
+    totalDeposits: { title: 'Total Deposits' },
+    totalWithdrawals: { title: 'Total Withdrawals' },
+    initialInvestment: { title: 'Initial Investment' },
+    totalPercentageGain: { title: 'Total % Gain' }
+  }
+
+  const openTopMetricWidget = (widgetKey) => {
+    setActiveTopMetricWidget(widgetKey)
+  }
+
+  const selectedTopMetricWidget = activeTopMetricWidget
+    ? topMetricWidgets[activeTopMetricWidget]
+    : null
+
+  const formatCurrency = (value) =>
+    `€${(Number(value) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const getSortableDateValue = (rawDate, fallbackMonth, fallbackYear) => {
+    if (rawDate) {
+      const parsed = new Date(rawDate)
+      if (!Number.isNaN(parsed.getTime())) return parsed.getTime()
+    }
+    const monthIndex = MONTH_NAMES.indexOf(fallbackMonth)
+    if (monthIndex >= 0 && fallbackYear) {
+      return new Date(Number(fallbackYear), monthIndex, 1).getTime()
+    }
+    return 0
+  }
+
+  const formatDisplayDate = (rawDate, fallbackMonth, fallbackYear) => {
+    if (rawDate) {
+      const parsed = new Date(rawDate)
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      }
+    }
+    if (fallbackMonth && fallbackYear) return `${fallbackMonth} ${fallbackYear}`
+    return 'N/A'
+  }
+
+  const depositRows = monthlyHistoryNewestFirst
+    .filter(({ record }) => (Number(record.depositAmount) || 0) > 0)
+    .map(({ record, originalIndex }) => ({
+      id: `deposit-${originalIndex}-${record.month}-${record.year}`,
+      dateLabel: formatDisplayDate(record.depositDate, record.month, record.year),
+      amount: Number(record.depositAmount) || 0
+    }))
+
+  const withdrawalRows = monthlyHistoryNewestFirst
+    .filter(({ record }) => (Number(record.withdrawalAmount) || 0) > 0)
+    .map(({ record, originalIndex }) => ({
+      id: `withdrawal-${originalIndex}-${record.month}-${record.year}`,
+      dateLabel: formatDisplayDate(record.withdrawalDate, record.month, record.year),
+      amount: Number(record.withdrawalAmount) || 0
+    }))
+
+  const monthlyGainRows = monthlyHistory
+    .map((record, index) => ({
+      id: `gain-${index}-${record.month}-${record.year}`,
+      label: `${record.month} ${record.year}`,
+      gainAmount: Number(record.growthAmount) || 0,
+      percentGain: Number(record.percentageGrowth) || 0,
+      monthlyInput: Number(record.depositAmount) || 0
+    }))
+    .filter((row) => row.label.trim())
+
+  const highestPercentageMonth = monthlyGainRows.reduce(
+    (best, row) => (best == null || row.percentGain > best.percentGain ? row : best),
+    null
+  )
+  const lowestPercentageMonth = monthlyGainRows.reduce(
+    (best, row) => (best == null || row.percentGain < best.percentGain ? row : best),
+    null
+  )
+  const averagePercentGain =
+    monthlyGainRows.length > 0
+      ? monthlyGainRows.reduce((sum, row) => sum + row.percentGain, 0) / monthlyGainRows.length
+      : 0
+
+  const highestMonthlyInput = monthlyGainRows.reduce(
+    (best, row) => (best == null || row.monthlyInput > best.monthlyInput ? row : best),
+    null
+  )
+  const highestMonthlyGain = monthlyGainRows.reduce(
+    (best, row) => (best == null || row.gainAmount > best.gainAmount ? row : best),
+    null
+  )
+  const lowestMonthlyGain = monthlyGainRows.reduce(
+    (best, row) => (best == null || row.gainAmount < best.gainAmount ? row : best),
+    null
+  )
+  const averageMonthlyGain =
+    monthlyGainRows.length > 0
+      ? monthlyGainRows.reduce((sum, row) => sum + row.gainAmount, 0) / monthlyGainRows.length
+      : 0
+
+  const currentBalanceAllocationRows = allApprovedAccountRows
+    .map((row) => ({
+      ...row,
+      share: currentBalance > 0 ? (row.currentBalance / currentBalance) * 100 : 0
+    }))
+    .sort((a, b) => b.currentBalance - a.currentBalance)
+    .map((row, index) => ({
+      ...row,
+      color: PIE_SLICE_COLORS[index % PIE_SLICE_COLORS.length]
+    }))
+
+  const pieAllocationRows = currentBalanceAllocationRows.filter((row) => row.currentBalance > 0)
+  const pieTotal = pieAllocationRows.reduce((sum, row) => sum + row.currentBalance, 0)
+  let pieAngle = -90
+  const pieSlices = pieAllocationRows.map((row) => {
+    const sweep = pieTotal > 0 ? (row.currentBalance / pieTotal) * 360 : 0
+    const start = pieAngle
+    const end = pieAngle + sweep
+    pieAngle = end
+    return { ...row, path: pieSlicePath(90, 90, 78, start, end) }
+  })
+
+  const initialInvestmentRows = [
+    {
+      id: 'portfolio-main',
+      name: 'Main Portfolio',
+      initialInvestment,
+      totalDeposits,
+      totalWithdrawals,
+      currentBalance,
+      growth: currentBalance - totalDeposits + totalWithdrawals
+    },
+    ...allApprovedAccountRows
+  ]
+
+  const renderTopMetricWidgetBody = () => {
+    if (!activeTopMetricWidget) return null
+    if (activeTopMetricWidget === 'currentBalance') {
+      return (
+        <div className="portfolio-widget-content-stack">
+          <div className="portfolio-balance-pie-layout">
+            <div className="portfolio-balance-pie-svg-wrap">
+              <svg viewBox="0 0 180 180" className="portfolio-balance-pie-svg" aria-label="Current balance allocation pie chart">
+                <circle cx="90" cy="90" r="78" fill="#f3f4f6" />
+                {pieSlices.map((slice) => (
+                  <path key={slice.id} d={slice.path} fill={slice.color} stroke="#ffffff" strokeWidth="1.5" />
+                ))}
+              </svg>
+            </div>
+            <div className="portfolio-balance-pie-legend">
+              {currentBalanceAllocationRows.map((row) => (
+                <div className="portfolio-balance-pie-legend-row" key={row.id}>
+                  <span className="portfolio-balance-pie-dot" style={{ backgroundColor: row.color }} />
+                  <span className="portfolio-balance-pie-name">{row.name}</span>
+                  <span className="portfolio-balance-pie-amount">{formatCurrency(row.currentBalance)}</span>
+                  <span className="portfolio-balance-pie-pct">{row.share.toFixed(2)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTopMetricWidget === 'totalInvestorAccounts') {
+      return (
+        <div className="portfolio-widget-content-stack">
+          <div className="portfolio-widget-overview-grid">
+            <span className="portfolio-widget-overview-colh">Investor</span>
+            <span className="portfolio-widget-overview-colh portfolio-widget-overview-colh-num">Balance</span>
+            <span className="portfolio-widget-overview-colh portfolio-widget-overview-colh-num">Monthly target</span>
+            {investorTotalModalLines.map((row) => (
+              <React.Fragment key={row.id}>
+                <span className="portfolio-widget-overview-name">{row.name}</span>
+                <span className="portfolio-widget-overview-amount">{formatCurrency(row.balance)}</span>
+                <span className="portfolio-widget-overview-target">{formatCurrency(row.monthlyTarget)}</span>
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="portfolio-widget-overview-footer">
+            <div className="portfolio-widget-overview-footer-line">
+              <span>Total</span>
+              <strong>{formatCurrency(investorTotalModalLines.reduce((s, r) => s + r.balance, 0))}</strong>
+            </div>
+            <div className="portfolio-widget-overview-footer-line">
+              <span>Monthly payout target</span>
+              <strong className="portfolio-widget-overview-target">
+                {formatCurrency(investorTotalModalLines.reduce((s, r) => s + r.monthlyTarget, 0))}
+              </strong>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTopMetricWidget === 'totalDeposits' || activeTopMetricWidget === 'totalWithdrawals') {
+      const rows = activeTopMetricWidget === 'totalDeposits' ? depositRows : withdrawalRows
+      const amountHeader = activeTopMetricWidget === 'totalDeposits' ? 'Deposit Amount' : 'Withdrawal Amount'
+      return (
+        <div className="portfolio-widget-content-stack">
+          <div className="portfolio-widget-table-wrap">
+            <table className="portfolio-widget-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>{amountHeader}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.dateLabel}</td>
+                    <td>{formatCurrency(row.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTopMetricWidget === 'initialInvestment') {
+      return (
+        <div className="portfolio-widget-content-stack">
+          <div className="portfolio-widget-table-wrap">
+            <table className="portfolio-widget-table">
+              <thead>
+                <tr>
+                  <th>Investor</th>
+                  <th>Initial</th>
+                  <th>Deposits</th>
+                  <th>Withdrawals</th>
+                  <th>Current</th>
+                  <th>Growth</th>
+                </tr>
+              </thead>
+              <tbody>
+                {initialInvestmentRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.name}</td>
+                    <td>{formatCurrency(row.initialInvestment)}</td>
+                    <td>{formatCurrency(row.totalDeposits)}</td>
+                    <td>{formatCurrency(row.totalWithdrawals)}</td>
+                    <td>{formatCurrency(row.currentBalance)}</td>
+                    <td>{formatCurrency(row.growth)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTopMetricWidget === 'totalPercentageGain') {
+      return (
+        <div className="portfolio-widget-stat-grid">
+          <div className="portfolio-widget-stat-item portfolio-widget-stat-item--green-tint">
+            <span>Highest Month</span>
+            <strong>{highestPercentageMonth ? `${highestPercentageMonth.label} (${highestPercentageMonth.percentGain.toFixed(2)}%)` : 'N/A'}</strong>
+          </div>
+          <div className="portfolio-widget-stat-item portfolio-widget-stat-item--red-tint">
+            <span>Lowest Month</span>
+            <strong>{lowestPercentageMonth ? `${lowestPercentageMonth.label} (${lowestPercentageMonth.percentGain.toFixed(2)}%)` : 'N/A'}</strong>
+          </div>
+          <div className="portfolio-widget-stat-item portfolio-widget-stat-item--blue-tint">
+            <span>Average % Gain</span>
+            <strong>{averagePercentGain.toFixed(2)}%</strong>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTopMetricWidget === 'averageMonthlyInput') {
+      return (
+        <div className="portfolio-widget-stat-grid">
+          <div className="portfolio-widget-stat-item">
+            <span>Highest Amount</span>
+            <strong>{highestMonthlyInput ? `${formatCurrency(highestMonthlyInput.monthlyInput)} (${highestMonthlyInput.label})` : 'N/A'}</strong>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeTopMetricWidget === 'totalGain') {
+      return (
+        <div className="portfolio-widget-stat-grid">
+          <div className="portfolio-widget-stat-item">
+            <span>Total Gain</span>
+            <strong>{formatCurrency(totalGain)}</strong>
+          </div>
+          <div className="portfolio-widget-stat-item portfolio-widget-stat-item--red-tint">
+            <span>Lowest Monthly Gain</span>
+            <strong>{lowestMonthlyGain ? `${formatCurrency(lowestMonthlyGain.gainAmount)} (${lowestMonthlyGain.label})` : 'N/A'}</strong>
+          </div>
+          <div className="portfolio-widget-stat-item portfolio-widget-stat-item--blue-tint">
+            <span>Average Monthly Gain</span>
+            <strong>{formatCurrency(averageMonthlyGain)}</strong>
+          </div>
+          <div className="portfolio-widget-stat-item portfolio-widget-stat-item--green-tint">
+            <span>Highest Monthly Gain</span>
+            <strong>{highestMonthlyGain ? `${formatCurrency(highestMonthlyGain.gainAmount)} (${highestMonthlyGain.label})` : 'N/A'}</strong>
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
   return (
     <div className="admin-portfolio-container">
       <div className="admin-portfolio-content">
@@ -1314,7 +1788,19 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
         {/* Metrics Grid */}
         <div className="portfolio-metrics-grid">
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('currentBalance')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('currentBalance')
+              }
+            }}
+            aria-label="Open Current Balance widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 7.756a4.5 4.5 0 1 0 0 8.488M7.5 10.5h5.25m-5.25 3h5.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -1326,7 +1812,19 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('totalGain')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('totalGain')
+              }
+            }}
+            aria-label="Open Total Gain widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
@@ -1341,33 +1839,69 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('totalInvestorAccounts')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('totalInvestorAccounts')
+              }
+            }}
+            aria-label="Open Total Investor Accounts widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
               </svg>
             </div>
             <div className="metric-content">
-              <h4 className="metric-label">Total Investor Accounts</h4>
+              <h4 className="metric-label">Total Investor Acc</h4>
               <p className="metric-value">
                 {loadingInvestorAccounts ? 'Loading...' : formatCompact(isAdmin3 ? 1850000 : totalInvestorAccounts)}
               </p>
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('averageMonthlyInput')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('averageMonthlyInput')
+              }
+            }}
+            aria-label="Open Average Monthly Input widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
             </div>
             <div className="metric-content">
-              <h4 className="metric-label">Average Monthly Input</h4>
+              <h4 className="metric-label">Avg Monthly Input</h4>
               <p className="metric-value">{formatCompact(averageMonthlyInput)}</p>
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('totalDeposits')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('totalDeposits')
+              }
+            }}
+            aria-label="Open Total Deposits widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
@@ -1379,7 +1913,19 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('totalWithdrawals')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('totalWithdrawals')
+              }
+            }}
+            aria-label="Open Total Withdrawals widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
@@ -1391,7 +1937,19 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('initialInvestment')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('initialInvestment')
+              }
+            }}
+            aria-label="Open Initial Investment widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" />
@@ -1403,7 +1961,19 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           </div>
 
-          <div className="metric-card">
+          <div
+            className="metric-card metric-card--top-widget"
+            role="button"
+            tabIndex={0}
+            onClick={() => openTopMetricWidget('totalPercentageGain')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openTopMetricWidget('totalPercentageGain')
+              }
+            }}
+            aria-label="Open Total percent gain widget"
+          >
             <div className="metric-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.99 14.993 6-6m6 3.001c0 1.268-.63 2.39-1.593 3.069a3.746 3.746 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043 3.745 3.745 0 0 1-3.068 1.593c-1.268 0-2.39-.63-3.068-1.593a3.745 3.745 0 0 1-3.296-1.043 3.746 3.746 0 0 1-1.043-3.297 3.746 3.746 0 0 1-1.593-3.068c0-1.268.63-2.39 1.593-3.068a3.746 3.746 0 0 1 1.043-3.297 3.745 3.745 0 0 1 3.296-1.042 3.745 3.745 0 0 1 3.068-1.594c1.268 0 2.39.63 3.068 1.593a3.745 3.745 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.297 3.746 3.746 0 0 1 1.593 3.068ZM9.74 9.743h.008v.007H9.74v-.007Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm4.125 4.5h.008v.008h-.008v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
@@ -1417,6 +1987,41 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           </div>
         </div>
+
+        {selectedTopMetricWidget && (
+          <div
+            className="portfolio-top-widget-modal-backdrop"
+            role="presentation"
+            onClick={() => setActiveTopMetricWidget(null)}
+          >
+            <div
+              className={`portfolio-top-widget-modal${
+                activeTopMetricWidget === 'initialInvestment'
+                  ? ' portfolio-top-widget-modal--wide'
+                  : ''
+              }`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="portfolio-top-widget-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="portfolio-top-widget-modal-header">
+                <h3 id="portfolio-top-widget-title">{selectedTopMetricWidget.title}</h3>
+                <button
+                  type="button"
+                  className="portfolio-top-widget-modal-close"
+                  onClick={() => setActiveTopMetricWidget(null)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="portfolio-top-widget-modal-body">
+                {renderTopMetricWidgetBody()}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Chart widget: click chart to add monthly performance; click outside the form (shell) to return */}
         <div
