@@ -9,6 +9,23 @@ import './AdminUsersManagement.css'
 
 /** Admins may correct submitted investment details within this window from submission (or approval if no submission date). */
 const INVESTMENT_ADMIN_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+const STATUS_SHORT_LABELS = {
+  Admin: 'Admin',
+  'Admin 2': 'Admin 2',
+  'Admin 3': 'Admin 3',
+  Investor: 'INV',
+  Trader: 'TRD',
+  Learner: 'LRN',
+  Community: 'COM'
+}
+const USER_LIST_FILTER_OPTIONS = [
+  { key: 'admin', label: 'ADM' },
+  { key: 'investor', label: 'INV' },
+  { key: 'pending', label: 'PND' },
+  { key: 'learner', label: 'LRN' },
+  { key: 'community', label: 'COM' },
+  { key: 'trader', label: 'TRD' }
+]
 
 function getInvestmentRecordStartMs(investmentData) {
   if (!investmentData) return null
@@ -63,6 +80,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   const [editedProfile, setEditedProfile] = useState({ displayName: '', email: '', profileImageUrl: '' })
   const [dismissedNewUserFlags, setDismissedNewUserFlags] = useState({})
   const [dismissedFlagsHydrated, setDismissedFlagsHydrated] = useState(false)
+  const [activeUserFilters, setActiveUserFilters] = useState([])
   
   const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Learner', 'Community']
   const placeholderColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
@@ -126,6 +144,30 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   }
 
   const isPendingUser = (user) => user?.investmentData?.status === 'pending'
+
+  const toggleUserFilter = (filterKey) => {
+    setActiveUserFilters((prev) =>
+      prev.includes(filterKey) ? prev.filter((f) => f !== filterKey) : [...prev, filterKey]
+    )
+  }
+
+  const doesUserMatchFilter = (user, filterKey) => {
+    const statuses = user?.statuses || []
+    if (filterKey === 'pending') return isPendingUser(user)
+    if (filterKey === 'admin') {
+      return statuses.includes('Admin') || statuses.includes('Admin 2') || statuses.includes('Admin 3')
+    }
+    if (filterKey === 'investor') return statuses.includes('Investor')
+    if (filterKey === 'learner') return statuses.includes('Learner')
+    if (filterKey === 'community') return statuses.includes('Community')
+    if (filterKey === 'trader') return statuses.includes('Trader')
+    return false
+  }
+
+  const visibleUsers =
+    activeUserFilters.length === 0
+      ? users
+      : users.filter((u) => activeUserFilters.some((f) => doesUserMatchFilter(u, f)))
 
   useEffect(() => {
     if (selectedUser) {
@@ -750,12 +792,27 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
       <div className="users-layout">
         {/* Users List */}
         <div className="users-list-panel">
-          <h2 className="panel-title">All Users</h2>
+          <div className="users-filter-bar">
+            {USER_LIST_FILTER_OPTIONS.map((filter) => {
+              const isActive = activeUserFilters.includes(filter.key)
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={`users-filter-chip ${isActive ? 'active' : ''}`}
+                  onClick={() => toggleUserFilter(filter.key)}
+                  aria-pressed={isActive}
+                >
+                  {filter.label}
+                </button>
+              )
+            })}
+          </div>
           <div className="users-list">
-            {users.length === 0 ? (
+            {visibleUsers.length === 0 ? (
               <p className="no-users">No users found</p>
             ) : (
-              users.map((user) => (
+              visibleUsers.map((user) => (
                 <div
                   key={user.id}
                   className={`user-card ${selectedUser?.id === user.id ? 'selected' : ''}`}
@@ -796,8 +853,13 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                       {[...new Set(user.statuses || [])].map((status) => {
                         const statusClass = status.toLowerCase().replace(/\s+/g, '-')
                         return (
-                          <span key={status} className={`user-status-badge status-${statusClass}`}>
-                            {status}
+                          <span
+                            key={status}
+                            className={`user-status-badge status-${statusClass}`}
+                            title={status}
+                            aria-label={status}
+                          >
+                            {STATUS_SHORT_LABELS[status] || status}
                           </span>
                         )
                       })}
@@ -806,17 +868,6 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                           Pending
                         </span>
                       )}
-                      {user.investmentData &&
-                        user.investmentData.status === 'pending' &&
-                        user.investmentData.accountType !== 'Trader' &&
-                        !user.investmentData.secondaryInvestment && (
-                          <span
-                            className="user-status-badge status-pending-single-tranche"
-                            title="Pending investment with one tranche only (no second tranche requested)"
-                          >
-                            Single tranche
-                          </span>
-                        )}
                       {user.investmentData?.status === 'approved' &&
                         (user.statuses || []).includes('Investor') &&
                         isWithinAdminInvestmentEditWindow(user.investmentData) && (
@@ -824,7 +875,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                             className="user-status-badge status-investment-editable"
                             title="Investment details can still be corrected by an admin (30 days from submission or approval date)"
                           >
-                            Editable investment
+                            Edit
                           </span>
                         )}
                     </div>
