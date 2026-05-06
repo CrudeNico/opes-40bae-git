@@ -506,6 +506,113 @@
   transform: translateY(-1px);
 }
 
+/* Inline edit widget (replaces old popup modal) */
+.investor-edit-record-inline {
+  margin-top: 1.25rem;
+  width: 100%;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+
+.investor-edit-record-widget {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.investor-edit-record-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.investor-edit-record-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.investor-edit-record-close {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  min-width: 2rem;
+  min-height: 2rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  flex-shrink: 0;
+}
+
+.investor-edit-record-close:hover:not(:disabled) {
+  color: #111827;
+}
+
+.investor-edit-record-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.investor-edit-record-close:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.investor-edit-record-widget .monthly-update-form .form-row {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.form-group--monthly-save__label-spacer {
+  display: block;
+  min-height: 1.35rem;
+}
+
+.form-group--edit-spacer {
+  pointer-events: none;
+}
+
+.add-performance-section--investor-monthly .monthly-update-form .form-row {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.investor-monthly-save-group .btn-submit--investor-monthly-save {
+  width: 100%;
+  border-radius: 0.3rem !important;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  transform: none;
+  margin-top: 0.4rem;
+}
+
+.investor-monthly-save-group .btn-submit--investor-monthly-save:hover:not(:disabled) {
+  transform: none;
+}
+
+.investor-edit-record-actions .btn-submit--edit-record {
+  width: 100%;
+  border-radius: 0.3rem !important;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  transform: none;
+  margin-top: 0.4rem;
+}
+
+.investor-edit-record-actions .btn-submit--edit-record:hover:not(:disabled) {
+  transform: none;
+}
+
 .alert {
   padding: 1rem 1.5rem;
   border-radius: 0.5rem;
@@ -644,6 +751,14 @@
   }
 
   .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .investor-edit-record-widget .monthly-update-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .add-performance-section--investor-monthly .monthly-update-form .form-row {
     grid-template-columns: 1fr;
   }
 
@@ -866,6 +981,23 @@ html.dark-mode .alert-success {
   background: #14532d;
   color: #bbf7d0;
   border-color: #166534;
+}
+
+html.dark-mode .investor-edit-record-inline {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .investor-edit-record-header h3 {
+  color: #f9fafb;
+}
+
+html.dark-mode .investor-edit-record-close {
+  color: #9ca3af;
+}
+
+html.dark-mode .investor-edit-record-close:hover:not(:disabled) {
+  color: #f9fafb;
 }
 
 html.dark-mode .modal-content {

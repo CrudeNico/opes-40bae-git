@@ -58,6 +58,14 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
   const [latestTotalInvestorAccounts, setLatestTotalInvestorAccounts] = useState(0)
   const [latestTotalPortfolioBalance, setLatestTotalPortfolioBalance] = useState(0)
 
+  const getInvestorDisplayBalance = (investor) => {
+    const email = (investor?.email || '').toLowerCase()
+    if (email === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) {
+      return latestTotalPortfolioBalance - latestTotalInvestorAccounts
+    }
+    return getAdminInvestorSummaryCurrentBalance(investor?.investmentData)
+  }
+
   useEffect(() => {
     loadInvestors()
   }, [])
@@ -75,15 +83,15 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     try {
       const db = getFirestore()
       const overrides = isAdmin3 && currentUser?.uid ? await getAdmin3Overrides(currentUser.uid) : {}
+      let totalPortfolioBalanceLatest = 0
       if (currentUser?.uid) {
         const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid))
         if (currentUserDoc.exists()) {
           const currentUserData = currentUserDoc.data() || {}
           const adminInvestmentData = currentUserData.investmentData || null
           if (adminInvestmentData) {
-            setLatestTotalPortfolioBalance(
-              getAdminInvestorSummaryCurrentBalance(adminInvestmentData)
-            )
+            totalPortfolioBalanceLatest = getAdminInvestorSummaryCurrentBalance(adminInvestmentData)
+            setLatestTotalPortfolioBalance(totalPortfolioBalanceLatest)
           }
         }
       }
@@ -122,9 +130,17 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         })
       }
 
-      // Sort by display name
+      // Sort by displayed balance (highest to lowest)
       investorsList.sort((a, b) => {
-        return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '')
+        const aEmail = (a?.email || '').toLowerCase()
+        const bEmail = (b?.email || '').toLowerCase()
+        const aBalance = aEmail === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
+          ? totalPortfolioBalanceLatest - totalInvestorAccountsLatest
+          : getAdminInvestorSummaryCurrentBalance(a?.investmentData)
+        const bBalance = bEmail === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
+          ? totalPortfolioBalanceLatest - totalInvestorAccountsLatest
+          : getAdminInvestorSummaryCurrentBalance(b?.investmentData)
+        return bBalance - aBalance
       })
 
       setInvestors(investorsList)
@@ -145,6 +161,11 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     setEditedRecordData({})
   }
 
+  const closeEditingRecord = () => {
+    setEditingRecord(null)
+    setEditedRecordData({})
+  }
+
   const handleRecordClick = (record, index) => {
     // Prevent Admin 2 from editing records
     if (!canEditPerformance) return
@@ -159,7 +180,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       withdrawalAmount: record.withdrawalAmount?.toString() || '',
       withdrawalDate: record.withdrawalDate || ''
     })
-    setShowViewPerformance(false)
+    setShowViewPerformance(true)
     setShowAddPerformance(false)
   }
 
@@ -601,7 +622,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       <div className="investors-layout">
         {/* Investors List */}
         <div className="investors-list-panel">
-          <h2 className="panel-title">Investors</h2>
           <div className="investors-list">
             {investors.length === 0 ? (
               <p className="no-investors">No investors found</p>
@@ -632,10 +652,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         <span className="balance-label">Balance:</span>
                         <span className="balance-value">
                           €
-                          {(investor.email?.toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
-                            ? latestTotalPortfolioBalance - latestTotalInvestorAccounts
-                            : getAdminInvestorSummaryCurrentBalance(investor.investmentData)
-                          ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {getInvestorDisplayBalance(investor).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
                         </span>
                       </div>
                     )}
@@ -757,6 +777,138 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
               </div>
               )}
 
+              {/* Edit Record Widget - Only show for admins with full permissions */}
+              {editingRecord && canEditPerformance && (
+                <div className="investor-edit-record-inline">
+                  <div className="add-performance-section investor-edit-record-widget">
+                    <div className="investor-edit-record-header">
+                      <h3>Edit Monthly Record</h3>
+                      <button
+                        type="button"
+                        className="investor-edit-record-close"
+                        onClick={closeEditingRecord}
+                        aria-label="Close"
+                        disabled={loadingEdit}
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div className="monthly-update-form">
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Month</label>
+                          <select
+                            className="form-input"
+                            value={editedRecordData.month}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, month: e.target.value })}
+                          >
+                            <option value="">Select Month</option>
+                            <option value="January">January</option>
+                            <option value="February">February</option>
+                            <option value="March">March</option>
+                            <option value="April">April</option>
+                            <option value="May">May</option>
+                            <option value="June">June</option>
+                            <option value="July">July</option>
+                            <option value="August">August</option>
+                            <option value="September">September</option>
+                            <option value="October">October</option>
+                            <option value="November">November</option>
+                            <option value="December">December</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Year</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={editedRecordData.year}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, year: e.target.value })}
+                            placeholder="2024"
+                            min="2020"
+                            max="2100"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Percentage Growth (%)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={editedRecordData.percentageGrowth}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, percentageGrowth: e.target.value })}
+                            placeholder="2.0"
+                            step="0.01"
+                            min="-100"
+                            max="100"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Deposit Amount (€)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={editedRecordData.depositAmount}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, depositAmount: e.target.value })}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Deposit Date</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={editedRecordData.depositDate}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, depositDate: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-group form-group--edit-spacer" aria-hidden="true" />
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label className="form-label">Withdrawal Amount (€)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={editedRecordData.withdrawalAmount}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalAmount: e.target.value })}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Withdrawal Date</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={editedRecordData.withdrawalDate}
+                            onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalDate: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-group investor-edit-record-actions">
+                          <span className="form-group--monthly-save__label-spacer" aria-hidden="true" />
+                          <button
+                            type="button"
+                            onClick={handleUpdateRecord}
+                            disabled={loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth}
+                            className="btn-submit btn-submit--edit-record"
+                          >
+                            {loadingEdit ? 'Updating...' : 'Update Record'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* View Performance Table */}
               {showViewPerformance && selectedInvestor.investmentData && (
                 <div className="performance-view-section">
@@ -788,7 +940,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                                 <div>Withdrawal</div>
                                 <div>Ending Balance</div>
                               </div>
-                              {rows.map(({ record, index }) => (
+                              {rows
+                                .slice()
+                                .reverse()
+                                .map(({ record, index }) => (
                                 <div
                                   key={`${title}-${index}`}
                                   className={`history-row ${canEditPerformance ? 'clickable' : ''}`}
@@ -831,7 +986,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                                     })}
                                   </div>
                                 </div>
-                              ))}
+                                ))}
                             </div>
                           ) : (
                             <p className="no-history no-history-tranche">No entries for this tranche yet.</p>
@@ -858,7 +1013,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         <div>Withdrawal</div>
                         <div>Ending Balance</div>
                       </div>
-                      {selectedInvestor.investmentData.monthlyHistory.map((record, index) => (
+                      {selectedInvestor.investmentData.monthlyHistory
+                        .map((record, index) => ({ record, index }))
+                        .reverse()
+                        .map(({ record, index }) => (
                         <div
                           key={index}
                           className={`history-row ${canEditPerformance ? 'clickable' : ''}`}
@@ -899,7 +1057,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                             })}
                           </div>
                         </div>
-                      ))}
+                        ))}
                     </div>
                   ) : (
                     <p className="no-history">No performance history recorded yet.</p>
@@ -909,7 +1067,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
 
               {/* Add Performance Form - Only show for admins with full permissions, and not for Traders */}
               {showAddPerformance && canAddPerformance && !(selectedInvestor.statuses && selectedInvestor.statuses.includes('Trader')) && (
-                <div className="add-performance-section">
+                <div className="add-performance-section add-performance-section--investor-monthly">
                   <div className="monthly-update-form">
                     {selectedInvestor.investmentData?.secondaryInvestment && (
                       <div className="form-row">
@@ -963,9 +1121,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           max="2100"
                         />
                       </div>
-                    </div>
-
-                    <div className="form-row">
                       <div className="form-group">
                         <label className="form-label">Percentage Growth (%)</label>
                         <input
@@ -1008,6 +1163,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, depositDate: e.target.value })}
                         />
                       </div>
+                      <div className="form-group form-group--edit-spacer" aria-hidden="true" />
                     </div>
 
                     <div className="form-row">
@@ -1031,6 +1187,17 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           value={monthlyUpdate.withdrawalDate}
                           onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, withdrawalDate: e.target.value })}
                         />
+                      </div>
+                      <div className="form-group investor-monthly-save-group">
+                        <span className="form-group--monthly-save__label-spacer" aria-hidden="true" />
+                        <button
+                          type="button"
+                          onClick={handleAddPerformance}
+                          disabled={loadingMonthlyUpdate || !monthlyUpdate.month || !monthlyUpdate.year || !monthlyUpdate.percentageGrowth}
+                          className="btn-submit btn-submit--investor-monthly-save"
+                        >
+                          {loadingMonthlyUpdate ? 'Saving...' : 'Save Monthly Update'}
+                        </button>
                       </div>
                     </div>
 
@@ -1150,166 +1317,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       )
                     })()}
 
-                    <button
-                      onClick={handleAddPerformance}
-                      disabled={loadingMonthlyUpdate || !monthlyUpdate.month || !monthlyUpdate.year || !monthlyUpdate.percentageGrowth}
-                      className="btn-submit"
-                    >
-                      {loadingMonthlyUpdate ? 'Saving...' : 'Save Monthly Update'}
-                    </button>
                   </div>
                 </div>
               )}
 
-              {/* Edit Record Modal - Only show for admins with full permissions */}
-              {editingRecord && canEditPerformance && (
-                <div className="edit-record-modal">
-                  <div className="modal-backdrop" onClick={() => {
-                    setEditingRecord(null)
-                    setEditedRecordData({})
-                  }}></div>
-                  <div className="modal-content">
-                    <div className="modal-header">
-                      <h3>Edit Monthly Record</h3>
-                      <button 
-                        className="modal-close"
-                        onClick={() => {
-                          setEditingRecord(null)
-                          setEditedRecordData({})
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    
-                    {error && <div className="alert alert-error">{error}</div>}
-                    {success && <div className="alert alert-success">{success}</div>}
-
-                    <div className="edit-record-form">
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">Month</label>
-                          <select
-                            className="form-input"
-                            value={editedRecordData.month}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, month: e.target.value })}
-                          >
-                            <option value="">Select Month</option>
-                            <option value="January">January</option>
-                            <option value="February">February</option>
-                            <option value="March">March</option>
-                            <option value="April">April</option>
-                            <option value="May">May</option>
-                            <option value="June">June</option>
-                            <option value="July">July</option>
-                            <option value="August">August</option>
-                            <option value="September">September</option>
-                            <option value="October">October</option>
-                            <option value="November">November</option>
-                            <option value="December">December</option>
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Year</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={editedRecordData.year}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, year: e.target.value })}
-                            placeholder="2024"
-                            min="2020"
-                            max="2100"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">Percentage Growth (%)</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={editedRecordData.percentageGrowth}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, percentageGrowth: e.target.value })}
-                            placeholder="2.0"
-                            step="0.01"
-                            min="-100"
-                            max="100"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">Deposit Amount (€)</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={editedRecordData.depositAmount}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, depositAmount: e.target.value })}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Deposit Date</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            value={editedRecordData.depositDate}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, depositDate: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">Withdrawal Amount (€)</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={editedRecordData.withdrawalAmount}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalAmount: e.target.value })}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Withdrawal Date</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            value={editedRecordData.withdrawalDate}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalDate: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="modal-actions">
-                        <button
-                          onClick={() => {
-                            setEditingRecord(null)
-                            setEditedRecordData({})
-                          }}
-                          className="btn-cancel"
-                          disabled={loadingEdit}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleUpdateRecord}
-                          disabled={loadingEdit || !editedRecordData.month || !editedRecordData.year || !editedRecordData.percentageGrowth}
-                          className="btn-submit"
-                        >
-                          {loadingEdit ? 'Updating...' : 'Update Record'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div className="no-selection">

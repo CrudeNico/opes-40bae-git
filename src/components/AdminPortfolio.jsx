@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react'
+import React, { useState, useEffect, useId, useRef, useCallback } from 'react'
 import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore'
 import { getAdmin3Overrides, saveAdmin3UserOverride } from '../utils/admin3Overrides'
 import {
@@ -12,6 +12,9 @@ import './AdminPortfolio.css'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
+
+/** Same as AdminInvestorsManagement: this account’s “current balance” is portfolio minus all other approved investor/trader balances. */
+const SPECIAL_DIFF_ONLY_INVESTOR_EMAIL = 'nicolas.fernandez@opessocius.support'
 
 const normalizePortfolioKey = (value) =>
   String(value || '')
@@ -456,12 +459,31 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     month: '',
     year: '',
     percentageGrowth: '',
+    growthAmountExact: '',
     depositAmount: '',
     depositDate: '',
     withdrawalAmount: '',
     withdrawalDate: ''
   })
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const portfolioEditBelowChartRef = useRef(null)
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingRecordIndex(null)
+    setEditFormData({
+      month: '',
+      year: '',
+      percentageGrowth: '',
+      growthAmountExact: '',
+      depositAmount: '',
+      depositDate: '',
+      withdrawalAmount: '',
+      withdrawalDate: ''
+    })
+    setError('')
+    setSuccess('')
+  }, [])
+
   const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
   const [loadingInvestorAccounts, setLoadingInvestorAccounts] = useState(true)
   const [portfolioOwnerId, setPortfolioOwnerId] = useState(null)
@@ -490,6 +512,20 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [showAddPerformance])
+
+  useEffect(() => {
+    if (editingRecordIndex === null) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') handleCancelEdit()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editingRecordIndex, handleCancelEdit])
+
+  useEffect(() => {
+    if (editingRecordIndex === null) return
+    portfolioEditBelowChartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [editingRecordIndex])
 
   useEffect(() => {
     if (!activeTopMetricWidget) return
@@ -525,8 +561,54 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const loadTotalInvestorAccounts = async () => {
     try {
       const db = getFirestore()
+      const overrides = isAdmin3 && user?.uid ? await getAdmin3Overrides(user.uid) : {}
+
+      const mergeUserForInvestorView = (docSnapshot) => {
+        const userData = docSnapshot.data()
+        let statuses = userData.statuses || []
+        let investmentData = userData.investmentData || null
+        const ov = overrides[docSnapshot.id]
+        if (ov) {
+          if (ov.statuses !== undefined) statuses = ov.statuses
+          if (ov.investmentData !== undefined) investmentData = ov.investmentData
+        }
+        return {
+          userData,
+          statuses,
+          investmentData,
+          email: userData.email || '',
+          displayName: userData.displayName || ''
+        }
+      }
+
+      let portfolioAdminSummaryBalance = 0
+      if (user?.uid) {
+        const adminDocSnap = await getDoc(doc(db, 'users', user.uid))
+        if (adminDocSnap.exists()) {
+          let inv = adminDocSnap.data()?.investmentData || null
+          if (overrides[user.uid]?.investmentData !== undefined) {
+            inv = overrides[user.uid].investmentData
+          }
+          if (inv) portfolioAdminSummaryBalance = Number(getAdminInvestorSummaryCurrentBalance(inv)) || 0
+        }
+      }
+
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
+
+      let totalApprovedBalExcludingSpecial = 0
+      usersSnapshot.forEach((docSnapshot) => {
+        const { statuses, investmentData, email } = mergeUserForInvestorView(docSnapshot)
+        if ((email || '').toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) return
+        if (
+          investmentData &&
+          investmentData.status === 'approved' &&
+          (statuses.includes('Investor') || statuses.includes('Trader'))
+        ) {
+          totalApprovedBalExcludingSpecial +=
+            Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
+        }
+      })
       
       const prevMonthCtx = getPreviousMonthContext()
       let total = 0
@@ -534,22 +616,24 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       const modalLines = []
       const allApprovedRows = []
       usersSnapshot.forEach((docSnapshot) => {
-        const userData = docSnapshot.data()
-        const statuses = userData.statuses || []
-        const email = userData.email || ''
-        const displayName = userData.displayName || ''
+        const { userData, statuses, investmentData, email, displayName } = mergeUserForInvestorView(docSnapshot)
 
         // For current-balance allocation + initial-investment detail, include all approved Investor/Trader accounts.
         if (
           (statuses.includes('Investor') || statuses.includes('Trader')) &&
-          userData.investmentData &&
-          userData.investmentData.status === 'approved'
+          investmentData &&
+          investmentData.status === 'approved'
         ) {
-          const invAll = userData.investmentData
+          const invAll = investmentData
           const safeInitialAll = Number(getInvestorCombinedInitial(invAll)) || 0
           const safeDepositsAll = Number(invAll.totalDeposits ?? safeInitialAll) || 0
           const safeWithdrawalsAll = Number(invAll.totalWithdrawals ?? 0) || 0
-          const safeCurrentAll = Number(getAdminInvestorSummaryCurrentBalance(invAll)) || 0
+          let safeCurrentAll = Number(getAdminInvestorSummaryCurrentBalance(invAll)) || 0
+          if ((email || '').toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) {
+            safeCurrentAll =
+              portfolioAdminSummaryBalance -
+              totalApprovedBalExcludingSpecial
+          }
           allApprovedRows.push({
             id: docSnapshot.id,
             name: (displayName && displayName.trim()) || email || 'Unnamed investor',
@@ -566,12 +650,16 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         }
         
         // Mirror overview total-investor rules: approved Investor accounts only.
-        if (statuses.includes('Investor') && userData.investmentData && userData.investmentData.status === 'approved') {
-          const investmentData = userData.investmentData
+        if (statuses.includes('Investor') && investmentData && investmentData.status === 'approved') {
           const safeInitial = Number(getInvestorCombinedInitial(investmentData)) || 0
           const safeDeposits = Number(investmentData.totalDeposits ?? safeInitial) || 0
           const safeWithdrawals = Number(investmentData.totalWithdrawals ?? 0) || 0
-          const safeCurrentBalance = Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
+          let safeCurrentBalance = Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
+          if ((email || '').toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) {
+            safeCurrentBalance =
+              portfolioAdminSummaryBalance -
+              totalApprovedBalExcludingSpecial
+          }
           const monthlyTarget = Number(
             monthlyTargetAndRateForPayout(investmentData, email, displayName, prevMonthCtx)
           ) || 0
@@ -692,10 +780,16 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
   const handleEditInputChange = (e) => {
     const { name, value } = e.target
-    setEditFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setEditFormData((prev) => {
+      const next = { ...prev, [name]: value }
+      if (name === 'percentageGrowth' && String(value).trim() !== '') {
+        next.growthAmountExact = ''
+      }
+      if (name === 'growthAmountExact' && String(value).trim() !== '') {
+        next.percentageGrowth = ''
+      }
+      return next
+    })
   }
 
   const handleEditRecord = (index) => {
@@ -708,29 +802,15 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     setEditFormData({
       month: record.month || '',
       year: record.year || '',
-      percentageGrowth: record.percentageGrowth || '',
-      depositAmount: record.depositAmount || '',
+      percentageGrowth: record.percentageGrowth != null ? String(record.percentageGrowth) : '',
+      growthAmountExact: '',
+      depositAmount: record.depositAmount != null ? String(record.depositAmount) : '',
       depositDate: record.depositDate || '',
-      withdrawalAmount: record.withdrawalAmount || '',
+      withdrawalAmount: record.withdrawalAmount != null ? String(record.withdrawalAmount) : '',
       withdrawalDate: record.withdrawalDate || ''
     })
     setEditingRecordIndex(index)
     setShowAddPerformance(false)
-  }
-
-  const handleCancelEdit = () => {
-    setEditingRecordIndex(null)
-    setEditFormData({
-      month: '',
-      year: '',
-      percentageGrowth: '',
-      depositAmount: '',
-      depositDate: '',
-      withdrawalAmount: '',
-      withdrawalDate: ''
-    })
-    setError('')
-    setSuccess('')
   }
 
   const handleSaveEdit = async (e) => {
@@ -797,9 +877,29 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         startingBalance = existingHistory[editingRecordIndex - 1].endingBalance || startingBalance
       }
 
-      // Calculate new values for the edited record
-      const percentageGrowth = parseFloat(editFormData.percentageGrowth) || 0
-      const growthAmount = startingBalance * (percentageGrowth / 100)
+      const pctStr = String(editFormData.percentageGrowth ?? '').trim()
+      const exactStr = String(editFormData.growthAmountExact ?? '').trim()
+      const hasExactGrowth = exactStr !== ''
+      const hasPctGrowth = pctStr !== ''
+
+      if (!hasExactGrowth && !hasPctGrowth) {
+        setError('Enter either a growth percentage or an exact growth amount (€).')
+        return
+      }
+
+      let percentageGrowth
+      let growthAmount
+      if (hasExactGrowth) {
+        growthAmount = parseFloat(exactStr.replace(',', '.'))
+        if (!Number.isFinite(growthAmount)) {
+          setError('Invalid growth amount.')
+          return
+        }
+        percentageGrowth = startingBalance > 0 ? (growthAmount / startingBalance) * 100 : 0
+      } else {
+        percentageGrowth = parseFloat(pctStr) || 0
+        growthAmount = startingBalance * (percentageGrowth / 100)
+      }
       const depositAmount = parseFloat(editFormData.depositAmount) || 0
       const withdrawalAmount = parseFloat(editFormData.withdrawalAmount) || 0
       
@@ -915,6 +1015,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         month: '',
         year: '',
         percentageGrowth: '',
+        growthAmountExact: '',
         depositAmount: '',
         depositDate: '',
         withdrawalAmount: '',
@@ -1653,138 +1754,6 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       <div className="admin-portfolio-content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
-
-        {/* Edit Performance Form - Only show if user has permission and a record is being edited */}
-        {editingRecordIndex !== null && canAddPerformance && (
-          <div className="add-performance-section edit-performance-section">
-            <h3 className="section-title">Edit Monthly Performance - {monthlyHistory[editingRecordIndex]?.month} {monthlyHistory[editingRecordIndex]?.year}</h3>
-            <form onSubmit={handleSaveEdit} className="performance-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="edit-month">Month *</label>
-                  <select
-                    id="edit-month"
-                    name="month"
-                    value={editFormData.month}
-                    onChange={handleEditInputChange}
-                    required
-                  >
-                    <option value="">Select Month</option>
-                    <option value="January">January</option>
-                    <option value="February">February</option>
-                    <option value="March">March</option>
-                    <option value="April">April</option>
-                    <option value="May">May</option>
-                    <option value="June">June</option>
-                    <option value="July">July</option>
-                    <option value="August">August</option>
-                    <option value="September">September</option>
-                    <option value="October">October</option>
-                    <option value="November">November</option>
-                    <option value="December">December</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-year">Year *</label>
-                  <input
-                    type="number"
-                    id="edit-year"
-                    name="year"
-                    value={editFormData.year}
-                    onChange={handleEditInputChange}
-                    min="2020"
-                    max={new Date().getFullYear() + 1}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-percentageGrowth">Growth Percentage (%) *</label>
-                  <input
-                    type="number"
-                    id="edit-percentageGrowth"
-                    name="percentageGrowth"
-                    value={editFormData.percentageGrowth}
-                    onChange={handleEditInputChange}
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="edit-depositAmount">Deposit Amount (Optional)</label>
-                  <input
-                    type="number"
-                    id="edit-depositAmount"
-                    name="depositAmount"
-                    value={editFormData.depositAmount}
-                    onChange={handleEditInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-depositDate">Deposit Date (Optional)</label>
-                  <input
-                    type="date"
-                    id="edit-depositDate"
-                    name="depositDate"
-                    value={editFormData.depositDate}
-                    onChange={handleEditInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="edit-withdrawalAmount">Withdrawal Amount (Optional)</label>
-                  <input
-                    type="number"
-                    id="edit-withdrawalAmount"
-                    name="withdrawalAmount"
-                    value={editFormData.withdrawalAmount}
-                    onChange={handleEditInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-withdrawalDate">Withdrawal Date (Optional)</label>
-                  <input
-                    type="date"
-                    id="edit-withdrawalDate"
-                    name="withdrawalDate"
-                    value={editFormData.withdrawalDate}
-                    onChange={handleEditInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn-cancel"
-                  onClick={handleCancelEdit}
-                  disabled={loadingEdit}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-submit"
-                  disabled={loadingEdit}
-                >
-                  {loadingEdit ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Metrics Grid */}
         <div className="portfolio-metrics-grid">
@@ -2529,6 +2498,165 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
           )}
         </div>
+
+        {editingRecordIndex !== null && canAddPerformance && (
+          <div
+            ref={portfolioEditBelowChartRef}
+            className="portfolio-edit-below-chart"
+          >
+            <div className="add-performance-section add-performance-section--in-chart-widget add-performance-section--edit-monthly-widget">
+              <div className="portfolio-edit-monthly-header">
+                <span className="portfolio-edit-monthly-title">Edit monthly performance</span>
+                <button
+                  type="button"
+                  className="portfolio-edit-monthly-close"
+                  aria-label="Close"
+                  onClick={handleCancelEdit}
+                  disabled={loadingEdit}
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={handleSaveEdit} className="performance-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="edit-month">Select Month</label>
+                    <select
+                      id="edit-month"
+                      name="month"
+                      value={editFormData.month}
+                      onChange={handleEditInputChange}
+                      required
+                    >
+                      <option value="">—</option>
+                      <option value="January">January</option>
+                      <option value="February">February</option>
+                      <option value="March">March</option>
+                      <option value="April">April</option>
+                      <option value="May">May</option>
+                      <option value="June">June</option>
+                      <option value="July">July</option>
+                      <option value="August">August</option>
+                      <option value="September">September</option>
+                      <option value="October">October</option>
+                      <option value="November">November</option>
+                      <option value="December">December</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-year">Select Year</label>
+                    <input
+                      type="number"
+                      id="edit-year"
+                      name="year"
+                      value={editFormData.year}
+                      onChange={handleEditInputChange}
+                      min="2020"
+                      max={new Date().getFullYear() + 1}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-percentageGrowth">Growth Rate</label>
+                    <input
+                      type="number"
+                      id="edit-percentageGrowth"
+                      name="percentageGrowth"
+                      value={editFormData.percentageGrowth}
+                      onChange={handleEditInputChange}
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="edit-depositAmount">Deposit Amount</label>
+                    <input
+                      type="number"
+                      id="edit-depositAmount"
+                      name="depositAmount"
+                      value={editFormData.depositAmount}
+                      onChange={handleEditInputChange}
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-depositDate">Deposit Date</label>
+                    <input
+                      type="date"
+                      id="edit-depositDate"
+                      name="depositDate"
+                      value={editFormData.depositDate}
+                      onChange={handleEditInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-growthAmountExact">Growth amount</label>
+                    <input
+                      type="number"
+                      id="edit-growthAmountExact"
+                      name="growthAmountExact"
+                      value={editFormData.growthAmountExact}
+                      onChange={handleEditInputChange}
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="edit-withdrawalAmount">Withdrawal Amount</label>
+                    <input
+                      type="number"
+                      id="edit-withdrawalAmount"
+                      name="withdrawalAmount"
+                      value={editFormData.withdrawalAmount}
+                      onChange={handleEditInputChange}
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="edit-withdrawalDate">Withdrawal Date</label>
+                    <input
+                      type="date"
+                      id="edit-withdrawalDate"
+                      name="withdrawalDate"
+                      value={editFormData.withdrawalDate}
+                      onChange={handleEditInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group form-group--monthly-save">
+                    <span className="form-group--monthly-save__label-spacer" aria-hidden="true" />
+                    <button
+                      id="save-edit-monthly-widget"
+                      type="submit"
+                      className="btn-submit btn-submit--monthly-widget"
+                      aria-label="Save monthly performance"
+                      disabled={
+                        loadingEdit ||
+                        !String(editFormData.month ?? '').trim() ||
+                        !String(editFormData.year ?? '').trim() ||
+                        (!String(editFormData.percentageGrowth ?? '').trim() &&
+                          !String(editFormData.growthAmountExact ?? '').trim())
+                      }
+                    >
+                      {loadingEdit ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Monthly History Section */}
         {monthlyHistory.length > 0 && (
