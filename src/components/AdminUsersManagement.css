@@ -103,6 +103,7 @@
   transition: all 0.2s ease;
   background: #ffffff;
   position: relative;
+  overflow: hidden;
 }
 
 .user-card:hover {
@@ -114,6 +115,16 @@
   background: #eff6ff;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.user-card-terminated-overlay {
+  position: absolute;
+  inset: 0;
+  background: #9ca3af;
+  opacity: 0.7;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .user-card-image {
@@ -338,6 +349,11 @@
   color: #ffffff;
 }
 
+.user-status-badge.status-terminated {
+  background: #9ca3af;
+  color: #ffffff;
+}
+
 .user-status-badge.status-pending-single-tranche {
   background: #fef3c7;
   color: #92400e;
@@ -467,6 +483,179 @@
 .user-header-actions .btn-edit:hover:not(:disabled) {
   background: #f9fafb;
   border-color: #9ca3af;
+}
+
+.user-header-actions .btn-uninvest {
+  padding: 0.5rem 1rem;
+  background: #e5e7eb;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.user-header-actions .btn-uninvest:hover:not(:disabled) {
+  background: #d1d5db;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.user-header-actions .btn-uninvest.active {
+  background: #d1d5db;
+  border-color: #9ca3af;
+  color: #1f2937;
+}
+
+.user-header-actions .btn-reinvest {
+  padding: 0.5rem 1rem;
+  background: #e5e7eb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.user-header-actions .btn-reinvest:hover:not(:disabled) {
+  background: #d1d5db;
+  border-color: #9ca3af;
+  color: #1f2937;
+}
+
+.user-header-actions .btn-reinvest:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.uninvest-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.uninvest-confirm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.uninvest-confirm-text {
+  flex: 1;
+  font-size: 0.95rem;
+  color: #374151;
+  line-height: 1.45;
+}
+
+.uninvest-confirm-checkbox-input {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: #374151;
+  cursor: pointer;
+}
+
+.uninvest-date-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uninvest-date-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.uninvest-date-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 0.625rem;
+  max-width: 22rem;
+}
+
+.uninvest-date-input-wrap {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.uninvest-date-input {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 2.375rem;
+  padding: 0 0.625rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+/* Click anywhere on the date box to open the calendar (WebKit) */
+.uninvest-date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.uninvest-date-controls .btn-download-termination-pdf {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 2.375rem;
+  padding: 0 0.625rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.uninvest-date-controls .btn-download-termination-pdf:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-uninvest-confirm {
+  padding: 0.75rem 1rem;
+  background: #1f2937;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-uninvest-confirm:hover:not(:disabled) {
+  background: #111827;
+}
+
+.btn-uninvest-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .user-info-avatar {
@@ -1126,6 +1315,15 @@ html.dark-mode .user-card-email {
   color: #d1d5db;
 }
 
+html.dark-mode .user-card-terminated-overlay {
+  background: #6b7280;
+}
+
+html.dark-mode .user-status-badge.status-terminated {
+  background: #6b7280;
+  color: #f3f4f6;
+}
+
 html.dark-mode .no-users {
   color: #9ca3af;
 }
@@ -1368,5 +1566,61 @@ html.dark-mode .history-row {
 
 html.dark-mode .history-row:hover {
   background: #374151;
+}
+
+html.dark-mode .user-header-actions .btn-uninvest {
+  background: #374151;
+  color: #d1d5db;
+  border-color: #4b5563;
+}
+
+html.dark-mode .user-header-actions .btn-uninvest:hover:not(:disabled) {
+  background: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .uninvest-confirm-row {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .uninvest-confirm-text,
+html.dark-mode .uninvest-date-label {
+  color: #f9fafb;
+}
+
+html.dark-mode .user-header-actions .btn-uninvest.active {
+  background: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .user-header-actions .btn-reinvest {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+html.dark-mode .user-header-actions .btn-reinvest:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark-mode .uninvest-date-controls .btn-download-termination-pdf {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+html.dark-mode .uninvest-date-controls .btn-download-termination-pdf:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
+}
+
+html.dark-mode .btn-uninvest-confirm {
+  background: #f9fafb;
+  color: #111827;
+}
+
+html.dark-mode .btn-uninvest-confirm:hover:not(:disabled) {
+  background: #e5e7eb;
 }
 

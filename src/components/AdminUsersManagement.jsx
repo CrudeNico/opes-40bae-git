@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { getAdmin3Overrides, saveAdmin3UserOverride, mergeUserWithOverride } from '../utils/admin3Overrides'
 import { generateAdmin3SampleUsers } from '../utils/admin3SampleUsers'
 import { computeDualTrancheSumBalance, getInvestorCombinedInitial } from '../utils/investorDualTranche'
+import { downloadInvestorTerminationReport } from '../utils/generateInvestorTerminationReport'
 import { functions as firebaseFunctions } from '../firebase/config'
 import './AdminUsersManagement.css'
 
@@ -48,6 +49,34 @@ function formatAdminInvestmentEditDeadline(investmentData) {
   return end.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function isInvestmentTerminated(user) {
+  return user?.investmentData?.status === 'terminated'
+}
+
+function getInvestmentStatusBeforeTermination(investmentData) {
+  if (!investmentData) return 'approved'
+  if (
+    investmentData.statusBeforeTermination === 'approved' ||
+    investmentData.statusBeforeTermination === 'pending'
+  ) {
+    return investmentData.statusBeforeTermination
+  }
+  return investmentData.approvedAt ? 'approved' : 'pending'
+}
+
+function buildReinvestedInvestmentData(investmentData) {
+  const restoredStatus = getInvestmentStatusBeforeTermination(investmentData)
+  const updated = {
+    ...investmentData,
+    status: restoredStatus,
+    updatedAt: new Date().toISOString()
+  }
+  delete updated.statusBeforeTermination
+  delete updated.terminationDate
+  delete updated.terminatedAt
+  return updated
+}
+
 const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) => {
   const isAdmin2 = currentUserStatuses && (currentUserStatuses.includes('Admin 2') || currentUserStatuses.includes('Relations'))
   const isAdmin3 = currentUserStatuses && currentUserStatuses.includes('Admin 3')
@@ -74,6 +103,8 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   const [loadingSave, setLoadingSave] = useState(false)
   const [loadingApprove, setLoadingApprove] = useState(false)
   const [loadingEliminate, setLoadingEliminate] = useState(false)
+  const [loadingUninvest, setLoadingUninvest] = useState(false)
+  const [loadingReinvest, setLoadingReinvest] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [editingProfile, setEditingProfile] = useState(false)
@@ -81,7 +112,11 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   const [dismissedNewUserFlags, setDismissedNewUserFlags] = useState({})
   const [dismissedFlagsHydrated, setDismissedFlagsHydrated] = useState(false)
   const [activeUserFilters, setActiveUserFilters] = useState([])
-  
+  const [showUninvestPanel, setShowUninvestPanel] = useState(false)
+  const [uninvestConfirmed, setUninvestConfirmed] = useState(false)
+  const [uninvestTerminationDate, setUninvestTerminationDate] = useState('')
+  const uninvestDateInputRef = useRef(null)
+
   const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Learner', 'Community']
   const placeholderColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
   const NEW_USER_FLAGS_STORAGE_KEY = 'adminUsersDismissedNewFlags'
@@ -91,6 +126,152 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
     const statuses = Array.isArray(user.statuses) ? user.statuses.filter(Boolean) : []
     const isPending = user.investmentData?.status === 'pending'
     return isPending || statuses.length === 0
+  }
+
+  const userHasInvestment = (user) => {
+    const inv = user?.investmentData
+    return inv && (inv.status === 'approved' || inv.status === 'pending')
+  }
+
+  const canShowUninvest = (user) =>
+    canEditInvestments &&
+    !isAdmin2 &&
+    userHasInvestment(user) &&
+    !isInvestmentTerminated(user) &&
+    !user?._isSample
+
+  const canShowReinvest = (user) =>
+    canEditInvestments && !isAdmin2 && isInvestmentTerminated(user) && !user?._isSample
+
+  const closeUninvestPanel = () => {
+    setShowUninvestPanel(false)
+    setUninvestConfirmed(false)
+    setUninvestTerminationDate('')
+  }
+
+  const openUninvestPanel = () => {
+    setEditingProfile(false)
+    setShowUninvestPanel(true)
+  }
+
+  const openUninvestDatePicker = () => {
+    const input = uninvestDateInputRef.current
+    if (!input) return
+    input.focus()
+    try {
+      if (typeof input.showPicker === 'function') {
+        input.showPicker()
+      }
+    } catch {
+      // showPicker may throw if not triggered by a direct user gesture in some browsers
+    }
+  }
+
+  const handleDownloadTerminationPdf = () => {
+    if (!selectedUser || !investmentData) return
+    downloadInvestorTerminationReport({
+      user: selectedUser,
+      investmentData,
+      terminationDate: uninvestTerminationDate
+    })
+  }
+
+  const handleUninvestFinalConfirm = async () => {
+    if (!selectedUser || !investmentData || !uninvestConfirmed || !uninvestTerminationDate) return
+    if (!canEditInvestments) {
+      setError('You do not have permission to terminate investments.')
+      return
+    }
+
+    setLoadingUninvest(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const updatedInvestmentData = {
+        ...investmentData,
+        statusBeforeTermination: investmentData.status,
+        status: 'terminated',
+        terminationDate: uninvestTerminationDate,
+        terminatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedUser.id, {
+          investmentData: updatedInvestmentData
+        })
+      } else {
+        await updateDoc(doc(db, 'users', selectedUser.id), {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      const updatedUser = { ...selectedUser, investmentData: updatedInvestmentData }
+      setSelectedUser(updatedUser)
+      setInvestmentData(updatedInvestmentData)
+      setUsers((prev) =>
+        sortUsersList(
+          prev.map((u) =>
+            u.id === selectedUser.id ? { ...u, investmentData: updatedInvestmentData } : u
+          )
+        )
+      )
+      closeUninvestPanel()
+    } catch (err) {
+      console.error('Error terminating investment:', err)
+      setError('Failed to terminate investment. Please try again.')
+    } finally {
+      setLoadingUninvest(false)
+    }
+  }
+
+  const handleReinvest = async () => {
+    if (!selectedUser || !investmentData || !isInvestmentTerminated(selectedUser)) return
+    if (!canEditInvestments) {
+      setError('You do not have permission to reinvest users.')
+      return
+    }
+
+    setLoadingReinvest(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const updatedInvestmentData = buildReinvestedInvestmentData(investmentData)
+
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedUser.id, {
+          investmentData: updatedInvestmentData
+        })
+      } else {
+        await updateDoc(doc(db, 'users', selectedUser.id), {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      const updatedUser = { ...selectedUser, investmentData: updatedInvestmentData }
+      setSelectedUser(updatedUser)
+      setInvestmentData(updatedInvestmentData)
+      setEditedInvestmentData(updatedInvestmentData)
+      setUsers((prev) =>
+        sortUsersList(
+          prev.map((u) =>
+            u.id === selectedUser.id ? { ...u, investmentData: updatedInvestmentData } : u
+          )
+        )
+      )
+      closeUninvestPanel()
+    } catch (err) {
+      console.error('Error reinstating investment:', err)
+      setError('Failed to reinvest user. Please try again.')
+    } finally {
+      setLoadingReinvest(false)
+    }
   }
 
   const getProfilePlaceholder = (u) => {
@@ -149,6 +330,31 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
     setActiveUserFilters((prev) =>
       prev.includes(filterKey) ? prev.filter((f) => f !== filterKey) : [...prev, filterKey]
     )
+  }
+
+  const sortUsersList = (list) => {
+    return [...list].sort((a, b) => {
+      const aTerminated = isInvestmentTerminated(a)
+      const bTerminated = isInvestmentTerminated(b)
+      if (aTerminated && !bTerminated) return 1
+      if (!aTerminated && bTerminated) return -1
+
+      const aIsNew = isNewUser(a)
+      const bIsNew = isNewUser(b)
+      const aIsPending = isPendingUser(a)
+      const bIsPending = isPendingUser(b)
+      const aIsAdmin = (a.statuses || []).includes('Admin')
+      const bIsAdmin = (b.statuses || []).includes('Admin')
+
+      if (aIsNew && !bIsNew) return -1
+      if (!aIsNew && bIsNew) return 1
+
+      if (aIsAdmin && !bIsAdmin) return -1
+      if (!aIsAdmin && bIsAdmin) return 1
+      if (aIsPending && !bIsPending) return -1
+      if (!aIsPending && bIsPending) return 1
+      return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '')
+    })
   }
 
   const doesUserMatchFilter = (user, filterKey) => {
@@ -212,6 +418,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         email: selectedUser.email || '',
         profileImageUrl: selectedUser.profileImageUrl || ''
       })
+      closeUninvestPanel()
     }
   }, [selectedUser])
 
@@ -256,26 +463,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         })
       }
 
-      // Sort users: new users first, then pending investors, then admins, then by display name
-      usersList.sort((a, b) => {
-        const aIsNew = isNewUser(a)
-        const bIsNew = isNewUser(b)
-        const aIsPending = isPendingUser(a)
-        const bIsPending = isPendingUser(b)
-        const aIsAdmin = (a.statuses || []).includes('Admin')
-        const bIsAdmin = (b.statuses || []).includes('Admin')
-
-        if (aIsNew && !bIsNew) return -1
-        if (!aIsNew && bIsNew) return 1
-
-        if (aIsAdmin && !bIsAdmin) return -1
-        if (!aIsAdmin && bIsAdmin) return 1
-        if (aIsPending && !bIsPending) return -1
-        if (!aIsPending && bIsPending) return 1
-        return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '')
-      })
-
-      setUsers(usersList)
+      setUsers(sortUsersList(usersList))
     } catch (error) {
       console.error('Error loading users:', error)
       console.error('Error code:', error.code)
@@ -815,9 +1003,12 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
               visibleUsers.map((user) => (
                 <div
                   key={user.id}
-                  className={`user-card ${selectedUser?.id === user.id ? 'selected' : ''}`}
+                  className={`user-card${selectedUser?.id === user.id ? ' selected' : ''}`}
                   onClick={() => handleUserSelect(user)}
                 >
+                  {isInvestmentTerminated(user) && (
+                    <div className="user-card-terminated-overlay" aria-hidden="true" />
+                  )}
                   <div className="user-card-image">
                     {!isAdmin3 && user.profileImageUrl ? (
                       <img src={user.profileImageUrl} alt={user.displayName || user.email} />
@@ -868,6 +1059,11 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                           Pending
                         </span>
                       )}
+                      {isInvestmentTerminated(user) && (
+                        <span className="user-status-badge status-terminated" title="Investment terminated">
+                          Terminated
+                        </span>
+                      )}
                       {user.investmentData?.status === 'approved' &&
                         (user.statuses || []).includes('Investor') &&
                         isWithinAdminInvestmentEditWindow(user.investmentData) && (
@@ -899,8 +1095,34 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                   <h3 className="section-title">User Information</h3>
                   <div className="user-header-actions">
                     {(canModifyStatuses || isAdmin3) && (
-                      <button type="button" onClick={() => setEditingProfile(true)} className="btn-edit">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeUninvestPanel()
+                          setEditingProfile(true)
+                        }}
+                        className="btn-edit"
+                      >
                         Edit Profile
+                      </button>
+                    )}
+                    {canShowUninvest(selectedUser) && (
+                      <button
+                        type="button"
+                        className={`btn-uninvest${showUninvestPanel ? ' active' : ''}`}
+                        onClick={() => (showUninvestPanel ? closeUninvestPanel() : openUninvestPanel())}
+                      >
+                        Uninvest
+                      </button>
+                    )}
+                    {canShowReinvest(selectedUser) && (
+                      <button
+                        type="button"
+                        className="btn-reinvest"
+                        onClick={handleReinvest}
+                        disabled={loadingReinvest}
+                      >
+                        {loadingReinvest ? 'Reinvesting...' : 'Reinvest'}
                       </button>
                     )}
                     {canEliminateUser(selectedUser) && (
@@ -915,7 +1137,72 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
                     )}
                   </div>
                 </div>
-                {!editingProfile ? (
+                {showUninvestPanel && canShowUninvest(selectedUser) ? (
+                  <div className="uninvest-inline">
+                    <div className="uninvest-confirm-row">
+                      <span className="uninvest-confirm-text">
+                        Are you sure you want to terminate the investment?
+                      </span>
+                      <input
+                        type="checkbox"
+                        className="uninvest-confirm-checkbox-input"
+                        checked={uninvestConfirmed}
+                        onChange={(e) => setUninvestConfirmed(e.target.checked)}
+                        aria-label="Confirm termination"
+                      />
+                    </div>
+                    <div className="uninvest-date-section">
+                      <span className="uninvest-date-label">Termination date</span>
+                      <div className="uninvest-date-controls">
+                        <div
+                          className="uninvest-date-input-wrap"
+                          role="button"
+                          tabIndex={0}
+                          onClick={openUninvestDatePicker}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              openUninvestDatePicker()
+                            }
+                          }}
+                        >
+                          <input
+                            ref={uninvestDateInputRef}
+                            id="uninvest-termination-date"
+                            type="date"
+                            className="form-input uninvest-date-input"
+                            value={uninvestTerminationDate}
+                            onChange={(e) => setUninvestTerminationDate(e.target.value)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openUninvestDatePicker()
+                            }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-download-termination-pdf"
+                          onClick={handleDownloadTerminationPdf}
+                        >
+                          Download PDF
+                        </button>
+                      </div>
+                    </div>
+                    <div className="investment-edit-actions">
+                      <button type="button" onClick={closeUninvestPanel} className="btn-cancel">
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-uninvest-confirm"
+                        onClick={handleUninvestFinalConfirm}
+                        disabled={loadingUninvest || !uninvestConfirmed || !uninvestTerminationDate}
+                      >
+                        {loadingUninvest ? 'Confirming...' : 'Confirm'}
+                      </button>
+                    </div>
+                  </div>
+                ) : !editingProfile ? (
                   <div className="user-info-display">
                     <div className="user-info-avatar">
                       {!isAdmin3 && selectedUser.profileImageUrl ? (
@@ -982,7 +1269,9 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
 
               {/* Investment / Tracking Data Section */}
               {investmentData &&
-                (investmentData.status === 'pending' || investmentData.status === 'approved') && (
+                (investmentData.status === 'pending' ||
+                  investmentData.status === 'approved' ||
+                  investmentData.status === 'terminated') && (
                 <div
                   className={`user-detail-section investment-section${
                     investmentData.status === 'approved' ? ' investment-section-approved' : ''
@@ -1362,6 +1651,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
           )}
         </div>
       </div>
+
     </div>
   )
 }
