@@ -156,6 +156,54 @@
   color: #374151;
 }
 
+.form-group--cashflow {
+  gap: 0.65rem;
+}
+
+.cashflow-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.cashflow-entry-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.cashflow-entry-actions {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.cashflow-entry-action-btn {
+  width: 1.35rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.3rem;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.cashflow-entry-action-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
 .form-group input,
 .form-group select {
   padding: 0.75rem 1rem;
@@ -322,13 +370,7 @@
   margin-bottom: 0;
 }
 
-.form-group--monthly-save__label-spacer {
-  display: block;
-  min-height: 1.35rem;
-}
-
-/* Chart-widget monthly form: Save aligned with inputs, squared corners like fields */
-.add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget {
+.form-group--growth-save .btn-submit--monthly-widget {
   width: 100%;
   border-radius: 0.5rem;
   align-self: stretch;
@@ -340,11 +382,11 @@
   margin-top: 0.5rem;
 }
 
-.add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget:hover:not(:disabled) {
+.form-group--growth-save .btn-submit--monthly-widget:hover:not(:disabled) {
   transform: none;
 }
 
-.add-performance-section--in-chart-widget .form-group--monthly-save .btn-submit--monthly-widget:focus-visible {
+.form-group--growth-save .btn-submit--monthly-widget:focus-visible {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -352,6 +394,10 @@
 
 .admin-portfolio-content .add-performance-section--in-chart-widget .btn-submit.btn-submit--monthly-widget {
   border-radius: 0.5rem;
+}
+
+.add-performance-section--in-chart-widget .form-group--cashflow input {
+  padding: 0.62rem 0.7rem;
 }
 
 .graph-container {
@@ -1079,6 +1125,17 @@ html.dark-mode .form-group select:focus {
 html.dark-mode .form-group select option {
   background: #111827;
   color: #f9fafb;
+}
+
+html.dark-mode .cashflow-entry-action-btn {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .cashflow-entry-action-btn:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
 }
 
 html.dark-mode .section-subtitle {

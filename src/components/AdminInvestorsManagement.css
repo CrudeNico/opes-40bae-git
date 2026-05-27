@@ -393,6 +393,54 @@
   gap: 0.5rem;
 }
 
+.form-group--cashflow {
+  gap: 0.65rem;
+}
+
+.cashflow-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.cashflow-entry-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.cashflow-entry-actions {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.cashflow-entry-action-btn {
+  width: 1.35rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.3rem;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.cashflow-entry-action-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
 .form-label {
   font-size: 0.9rem;
   font-weight: 500;
@@ -587,17 +635,33 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.add-performance-section--investor-monthly .monthly-update-form .form-row.investor-cashflow-row {
+  grid-template-columns: 1fr 1fr;
+}
+
+.investor-edit-record-widget .monthly-update-form .form-row.investor-cashflow-row {
+  grid-template-columns: 1fr 1fr;
+}
+
 .investor-monthly-save-group .btn-submit--investor-monthly-save {
   width: 100%;
   border-radius: 0.3rem !important;
   box-sizing: border-box;
   padding: 0.75rem 1rem;
   transform: none;
-  margin-top: 0.4rem;
+  margin-top: 0;
 }
 
 .investor-monthly-save-group .btn-submit--investor-monthly-save:hover:not(:disabled) {
   transform: none;
+}
+
+.investor-monthly-save-row {
+  grid-template-columns: 1fr !important;
+}
+
+.investor-monthly-save-row .investor-monthly-save-group {
+  max-width: 320px;
 }
 
 .investor-edit-record-actions .btn-submit--edit-record {
@@ -942,6 +1006,17 @@ html.dark-mode select.form-input:focus {
 html.dark-mode select.form-input option {
   background: #111827;
   color: #f9fafb;
+}
+
+html.dark-mode .cashflow-entry-action-btn {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark-mode .cashflow-entry-action-btn:hover:not(:disabled) {
+  background: #4b5563;
+  border-color: #6b7280;
 }
 
 html.dark-mode .form-help {

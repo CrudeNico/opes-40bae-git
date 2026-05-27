@@ -49,6 +49,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     depositDate: '',
     withdrawalAmount: '',
     withdrawalDate: '',
+    depositEntries: [{ amount: '', date: '' }],
+    withdrawalEntries: [{ amount: '', date: '' }],
     performanceScope: 'primary'
   })
   const [loadingMonthlyUpdate, setLoadingMonthlyUpdate] = useState(false)
@@ -166,11 +168,147 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     setEditedRecordData({})
   }
 
+  const handleEditCashflowEntryChange = (type, index, field, value) => {
+    setEditedRecordData((prev) => {
+      const key = type === 'deposit' ? 'depositEntries' : 'withdrawalEntries'
+      const entries = [...(prev[key] || [{ amount: '', date: '' }])]
+      if (!entries[index]) entries[index] = { amount: '', date: '' }
+      entries[index] = { ...entries[index], [field]: value }
+      const first = entries[0] || { amount: '', date: '' }
+      const next = { ...prev, [key]: entries }
+      if (type === 'deposit') {
+        next.depositAmount = first.amount || ''
+        next.depositDate = first.date || ''
+      } else {
+        next.withdrawalAmount = first.amount || ''
+        next.withdrawalDate = first.date || ''
+      }
+      return next
+    })
+  }
+
+  const handleAddEditCashflowEntry = (type) => {
+    setEditedRecordData((prev) => {
+      const key = type === 'deposit' ? 'depositEntries' : 'withdrawalEntries'
+      return {
+        ...prev,
+        [key]: [...(prev[key] || [{ amount: '', date: '' }]), { amount: '', date: '' }]
+      }
+    })
+  }
+
+  const handleRemoveEditCashflowEntry = (type, index) => {
+    setEditedRecordData((prev) => {
+      const key = type === 'deposit' ? 'depositEntries' : 'withdrawalEntries'
+      const currentEntries = prev[key] || [{ amount: '', date: '' }]
+      if (currentEntries.length <= 1) return prev
+      const entries = currentEntries.filter((_, i) => i !== index)
+      const first = entries[0] || { amount: '', date: '' }
+      const next = { ...prev, [key]: entries }
+      if (type === 'deposit') {
+        next.depositAmount = first.amount || ''
+        next.depositDate = first.date || ''
+      } else {
+        next.withdrawalAmount = first.amount || ''
+        next.withdrawalDate = first.date || ''
+      }
+      return next
+    })
+  }
+
+  const handleMonthlyUpdateFieldChange = (field, value) => {
+    setMonthlyUpdate((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'depositAmount' || field === 'depositDate') {
+        const entries = [...(prev.depositEntries || [{ amount: '', date: '' }])]
+        if (!entries[0]) entries[0] = { amount: '', date: '' }
+        if (field === 'depositAmount') entries[0].amount = value
+        if (field === 'depositDate') entries[0].date = value
+        next.depositEntries = entries
+      }
+      if (field === 'withdrawalAmount' || field === 'withdrawalDate') {
+        const entries = [...(prev.withdrawalEntries || [{ amount: '', date: '' }])]
+        if (!entries[0]) entries[0] = { amount: '', date: '' }
+        if (field === 'withdrawalAmount') entries[0].amount = value
+        if (field === 'withdrawalDate') entries[0].date = value
+        next.withdrawalEntries = entries
+      }
+      return next
+    })
+  }
+
+  const handleMonthlyCashflowEntryChange = (type, index, field, value) => {
+    setMonthlyUpdate((prev) => {
+      const key = type === 'deposit' ? 'depositEntries' : 'withdrawalEntries'
+      const entries = [...(prev[key] || [{ amount: '', date: '' }])]
+      if (!entries[index]) entries[index] = { amount: '', date: '' }
+      entries[index] = { ...entries[index], [field]: value }
+      const first = entries[0] || { amount: '', date: '' }
+      const next = { ...prev, [key]: entries }
+      if (type === 'deposit') {
+        next.depositAmount = first.amount || ''
+        next.depositDate = first.date || ''
+      } else {
+        next.withdrawalAmount = first.amount || ''
+        next.withdrawalDate = first.date || ''
+      }
+      return next
+    })
+  }
+
+  const handleAddMonthlyCashflowEntry = (type) => {
+    setMonthlyUpdate((prev) => {
+      const key = type === 'deposit' ? 'depositEntries' : 'withdrawalEntries'
+      return {
+        ...prev,
+        [key]: [...(prev[key] || [{ amount: '', date: '' }]), { amount: '', date: '' }]
+      }
+    })
+  }
+
+  const handleRemoveMonthlyCashflowEntry = (type, index) => {
+    setMonthlyUpdate((prev) => {
+      const key = type === 'deposit' ? 'depositEntries' : 'withdrawalEntries'
+      const currentEntries = prev[key] || [{ amount: '', date: '' }]
+      if (currentEntries.length <= 1) return prev
+      const entries = currentEntries.filter((_, i) => i !== index)
+      const first = entries[0] || { amount: '', date: '' }
+      const next = { ...prev, [key]: entries }
+      if (type === 'deposit') {
+        next.depositAmount = first.amount || ''
+        next.depositDate = first.date || ''
+      } else {
+        next.withdrawalAmount = first.amount || ''
+        next.withdrawalDate = first.date || ''
+      }
+      return next
+    })
+  }
+
   const handleRecordClick = (record, index) => {
     // Prevent Admin 2 from editing records
     if (!canEditPerformance) return
     
     setEditingRecord({ ...record, index })
+    const recordDepositEntries = Array.isArray(record.depositEntries) && record.depositEntries.length > 0
+      ? record.depositEntries.map((entry) => ({
+          amount: entry?.amount != null ? String(entry.amount) : '',
+          date: entry?.date || ''
+        }))
+      : [{
+          amount: record.depositAmount?.toString() || '',
+          date: record.depositDate || ''
+        }]
+    const recordWithdrawalEntries = Array.isArray(record.withdrawalEntries) && record.withdrawalEntries.length > 0
+      ? record.withdrawalEntries.map((entry) => ({
+          amount: entry?.amount != null ? String(entry.amount) : '',
+          date: entry?.date || ''
+        }))
+      : [{
+          amount: record.withdrawalAmount?.toString() || '',
+          date: record.withdrawalDate || ''
+        }]
+
     setEditedRecordData({
       month: record.month,
       year: record.year.toString(),
@@ -178,7 +316,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       depositAmount: record.depositAmount?.toString() || '',
       depositDate: record.depositDate || '',
       withdrawalAmount: record.withdrawalAmount?.toString() || '',
-      withdrawalDate: record.withdrawalDate || ''
+      withdrawalDate: record.withdrawalDate || '',
+      depositEntries: recordDepositEntries,
+      withdrawalEntries: recordWithdrawalEntries
     })
     setShowViewPerformance(true)
     setShowAddPerformance(false)
@@ -260,24 +400,35 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       const growthAmount = startingBalance * (percentageGrowth / 100)
       let newBalance = startingBalance + growthAmount
 
-      const depositAmount = parseFloat(editedRecordData.depositAmount) || 0
-      const depositGrowth = calculateProratedGrowth(
-        depositAmount, 
-        percentageGrowth, 
-        editedRecordData.depositDate, 
-        editedRecordData.month, 
-        editedRecordData.year
-      )
+      const normalizedDepositEntries = (editedRecordData.depositEntries || [])
+        .map((entry) => ({ amount: parseFloat(entry?.amount) || 0, date: entry?.date || null }))
+        .filter((entry) => entry.amount > 0 || entry.date)
+      const normalizedWithdrawalEntries = (editedRecordData.withdrawalEntries || [])
+        .map((entry) => ({ amount: parseFloat(entry?.amount) || 0, date: entry?.date || null }))
+        .filter((entry) => entry.amount > 0 || entry.date)
+
+      const depositAmount = normalizedDepositEntries.reduce((sum, entry) => sum + entry.amount, 0)
+      const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
+        sum + calculateProratedGrowth(
+          entry.amount,
+          percentageGrowth,
+          entry.date,
+          editedRecordData.month,
+          editedRecordData.year
+        )
+      ), 0)
       newBalance += depositAmount + depositGrowth
 
-      const withdrawalAmount = parseFloat(editedRecordData.withdrawalAmount) || 0
-      const withdrawalGrowthLoss = calculateWithdrawalGrowthLoss(
-        withdrawalAmount, 
-        percentageGrowth, 
-        editedRecordData.withdrawalDate, 
-        editedRecordData.month, 
-        editedRecordData.year
-      )
+      const withdrawalAmount = normalizedWithdrawalEntries.reduce((sum, entry) => sum + entry.amount, 0)
+      const withdrawalGrowthLoss = normalizedWithdrawalEntries.reduce((sum, entry) => (
+        sum + calculateWithdrawalGrowthLoss(
+          entry.amount,
+          percentageGrowth,
+          entry.date,
+          editedRecordData.month,
+          editedRecordData.year
+        )
+      ), 0)
       newBalance -= withdrawalAmount + withdrawalGrowthLoss
 
       // Update the record
@@ -291,9 +442,11 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         startingBalance: startingBalance,
         endingBalance: newBalance,
         depositAmount: depositAmount,
-        depositDate: editedRecordData.depositDate || null,
+        depositDate: normalizedDepositEntries[0]?.date || null,
         withdrawalAmount: withdrawalAmount,
-        withdrawalDate: editedRecordData.withdrawalDate || null,
+        withdrawalDate: normalizedWithdrawalEntries[0]?.date || null,
+        depositEntries: normalizedDepositEntries,
+        withdrawalEntries: normalizedWithdrawalEntries,
         updatedAt: new Date().toISOString(),
         ...(editingRecord.tranche ? { tranche: editingRecord.tranche } : {})
       }
@@ -313,33 +466,47 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         const monthGrowth = runningBalance * (currentRecord.percentageGrowth / 100)
         runningBalance = runningBalance + monthGrowth
         
-        // Add deposits and withdrawals for this month
-        if (currentRecord.depositAmount > 0 && currentRecord.depositDate) {
-          const depGrowth = calculateProratedGrowth(
-            currentRecord.depositAmount,
+        const depEntries = Array.isArray(currentRecord.depositEntries) && currentRecord.depositEntries.length > 0
+          ? currentRecord.depositEntries
+          : [{ amount: currentRecord.depositAmount || 0, date: currentRecord.depositDate || null }]
+        const wdEntries = Array.isArray(currentRecord.withdrawalEntries) && currentRecord.withdrawalEntries.length > 0
+          ? currentRecord.withdrawalEntries
+          : [{ amount: currentRecord.withdrawalAmount || 0, date: currentRecord.withdrawalDate || null }]
+        const depAmount = depEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+        const wdAmount = wdEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+        const depGrowth = depEntries.reduce((sum, entry) => (
+          sum + calculateProratedGrowth(
+            Number(entry.amount) || 0,
             currentRecord.percentageGrowth,
-            currentRecord.depositDate,
+            entry.date,
             currentRecord.month,
             currentRecord.year
           )
-          runningBalance += currentRecord.depositAmount + depGrowth
-        }
-        
-        if (currentRecord.withdrawalAmount > 0 && currentRecord.withdrawalDate) {
-          const wdGrowth = calculateWithdrawalGrowthLoss(
-            currentRecord.withdrawalAmount,
+        ), 0)
+        const wdGrowth = wdEntries.reduce((sum, entry) => (
+          sum + calculateWithdrawalGrowthLoss(
+            Number(entry.amount) || 0,
             currentRecord.percentageGrowth,
-            currentRecord.withdrawalDate,
+            entry.date,
             currentRecord.month,
             currentRecord.year
           )
-          runningBalance -= currentRecord.withdrawalAmount + wdGrowth
-        }
+        ), 0)
+        runningBalance += depAmount + depGrowth
+        runningBalance -= wdAmount + wdGrowth
         
         updatedHistory[i] = {
           ...currentRecord,
           startingBalance: prevRecord.endingBalance,
-          endingBalance: runningBalance
+          endingBalance: runningBalance,
+          depositAmount: depAmount,
+          depositDate: depEntries[0]?.date || null,
+          withdrawalAmount: wdAmount,
+          withdrawalDate: wdEntries[0]?.date || null,
+          depositGrowth: depGrowth,
+          withdrawalGrowthLoss: wdGrowth,
+          depositEntries: depEntries,
+          withdrawalEntries: wdEntries
         }
       }
 
@@ -481,23 +648,16 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       const growthAmount = currentBalance * (percentageGrowth / 100)
       let newBalance = currentBalance + growthAmount
 
-      // Add deposit if provided
-      const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
-      const newTotalDeposits = totalDeposits + depositAmount
-      
-      // Calculate deposit growth based on day of month
-      const depositGrowth = calculateProratedGrowth(
-        depositAmount, 
-        percentageGrowth, 
-        monthlyUpdate.depositDate, 
-        monthlyUpdate.month, 
-        monthlyUpdate.year
-      )
-      
-      newBalance += depositAmount + depositGrowth
+      const normalizedDepositEntries = (monthlyUpdate.depositEntries || [])
+        .map((entry) => ({ amount: parseFloat(entry?.amount) || 0, date: entry?.date || null }))
+        .filter((entry) => entry.amount > 0 || entry.date)
+      const normalizedWithdrawalEntries = (monthlyUpdate.withdrawalEntries || [])
+        .map((entry) => ({ amount: parseFloat(entry?.amount) || 0, date: entry?.date || null }))
+        .filter((entry) => entry.amount > 0 || entry.date)
 
-      // Subtract withdrawal if provided
-      const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
+      const depositAmount = normalizedDepositEntries.reduce((sum, entry) => sum + entry.amount, 0)
+      const withdrawalAmount = normalizedWithdrawalEntries.reduce((sum, entry) => sum + entry.amount, 0)
+      const newTotalDeposits = totalDeposits + depositAmount
       const newTotalWithdrawals = totalWithdrawals + withdrawalAmount
       
       // Calculate withdrawal growth loss (negative impact - they lose growth on the amount withdrawn)
@@ -521,14 +681,26 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         return amount * (percentageGrowth / 100) * proratedRatio
       }
       
-      const withdrawalGrowth = calculateWithdrawalGrowthLoss(
-        withdrawalAmount, 
-        percentageGrowth, 
-        monthlyUpdate.withdrawalDate, 
-        monthlyUpdate.month, 
-        monthlyUpdate.year
-      )
+      const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
+        sum + calculateProratedGrowth(
+          entry.amount,
+          percentageGrowth,
+          entry.date,
+          monthlyUpdate.month,
+          monthlyUpdate.year
+        )
+      ), 0)
+      const withdrawalGrowth = normalizedWithdrawalEntries.reduce((sum, entry) => (
+        sum + calculateWithdrawalGrowthLoss(
+          entry.amount,
+          percentageGrowth,
+          entry.date,
+          monthlyUpdate.month,
+          monthlyUpdate.year
+        )
+      ), 0)
       
+      newBalance += depositAmount + depositGrowth
       newBalance -= withdrawalAmount + withdrawalGrowth
 
       // Create monthly record
@@ -542,9 +714,11 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         startingBalance: currentBalance,
         endingBalance: newBalance,
         depositAmount: depositAmount,
-        depositDate: monthlyUpdate.depositDate || null,
+        depositDate: normalizedDepositEntries[0]?.date || null,
         withdrawalAmount: withdrawalAmount,
-        withdrawalDate: monthlyUpdate.withdrawalDate || null,
+        withdrawalDate: normalizedWithdrawalEntries[0]?.date || null,
+        depositEntries: normalizedDepositEntries,
+        withdrawalEntries: normalizedWithdrawalEntries,
         updatedAt: new Date().toISOString(),
         ...(scope === 'primary'
           ? { tranche: TRANCHE_PRIMARY }
@@ -590,6 +764,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         depositDate: '',
         withdrawalAmount: '',
         withdrawalDate: '',
+        depositEntries: [{ amount: '', date: '' }],
+        withdrawalEntries: [{ amount: '', date: '' }],
         performanceScope: 'primary'
       })
       setShowAddPerformance(false)
@@ -845,55 +1021,103 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         </div>
                       </div>
 
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">Deposit Amount (€)</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={editedRecordData.depositAmount}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, depositAmount: e.target.value })}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                          />
+                      <div className="form-row investor-cashflow-row">
+                        <div className="form-group form-group--cashflow">
+                          <label className="form-label">Deposit entries (€)</label>
+                          <div className="cashflow-entry-list">
+                            {(editedRecordData.depositEntries || [{ amount: '', date: '' }]).map((entry, index) => (
+                              <div className="cashflow-entry-row" key={`edit-record-deposit-entry-${index}`}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  value={entry.amount || ''}
+                                  onChange={(e) => handleEditCashflowEntryChange('deposit', index, 'amount', e.target.value)}
+                                  placeholder="0.00"
+                                  step="0.01"
+                                  min="0"
+                                />
+                                <input
+                                  type="date"
+                                  className="form-input"
+                                  value={entry.date || ''}
+                                  onChange={(e) => handleEditCashflowEntryChange('deposit', index, 'date', e.target.value)}
+                                />
+                                {index === (editedRecordData.depositEntries || [{ amount: '', date: '' }]).length - 1 && (
+                                  <div className="cashflow-entry-actions">
+                                    <button
+                                      type="button"
+                                      className="cashflow-entry-action-btn"
+                                      onClick={() => handleAddEditCashflowEntry('deposit')}
+                                      aria-label="Add another deposit"
+                                    >
+                                      +
+                                    </button>
+                                    {(editedRecordData.depositEntries || [{ amount: '', date: '' }]).length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="cashflow-entry-action-btn"
+                                        onClick={() => handleRemoveEditCashflowEntry('deposit', index)}
+                                        aria-label="Remove deposit entry"
+                                      >
+                                        -
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Deposit Date</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            value={editedRecordData.depositDate}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, depositDate: e.target.value })}
-                          />
+                        <div className="form-group form-group--cashflow">
+                          <label className="form-label">Withdrawal entries (€)</label>
+                          <div className="cashflow-entry-list">
+                            {(editedRecordData.withdrawalEntries || [{ amount: '', date: '' }]).map((entry, index) => (
+                              <div className="cashflow-entry-row" key={`edit-record-withdrawal-entry-${index}`}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  value={entry.amount || ''}
+                                  onChange={(e) => handleEditCashflowEntryChange('withdrawal', index, 'amount', e.target.value)}
+                                  placeholder="0.00"
+                                  step="0.01"
+                                  min="0"
+                                />
+                                <input
+                                  type="date"
+                                  className="form-input"
+                                  value={entry.date || ''}
+                                  onChange={(e) => handleEditCashflowEntryChange('withdrawal', index, 'date', e.target.value)}
+                                />
+                                {index === (editedRecordData.withdrawalEntries || [{ amount: '', date: '' }]).length - 1 && (
+                                  <div className="cashflow-entry-actions">
+                                    <button
+                                      type="button"
+                                      className="cashflow-entry-action-btn"
+                                      onClick={() => handleAddEditCashflowEntry('withdrawal')}
+                                      aria-label="Add another withdrawal"
+                                    >
+                                      +
+                                    </button>
+                                    {(editedRecordData.withdrawalEntries || [{ amount: '', date: '' }]).length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="cashflow-entry-action-btn"
+                                        onClick={() => handleRemoveEditCashflowEntry('withdrawal', index)}
+                                        aria-label="Remove withdrawal entry"
+                                      >
+                                        -
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="form-group form-group--edit-spacer" aria-hidden="true" />
                       </div>
 
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label className="form-label">Withdrawal Amount (€)</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            value={editedRecordData.withdrawalAmount}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalAmount: e.target.value })}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Withdrawal Date</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            value={editedRecordData.withdrawalDate}
-                            onChange={(e) => setEditedRecordData({ ...editedRecordData, withdrawalDate: e.target.value })}
-                          />
-                        </div>
+                      <div className="form-row investor-monthly-save-row">
                         <div className="form-group investor-edit-record-actions">
-                          <span className="form-group--monthly-save__label-spacer" aria-hidden="true" />
                           <button
                             type="button"
                             onClick={handleUpdateRecord}
@@ -1092,7 +1316,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         <select
                           className="form-input"
                           value={monthlyUpdate.month}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, month: e.target.value })}
+                          onChange={(e) => handleMonthlyUpdateFieldChange('month', e.target.value)}
                         >
                           <option value="">Select Month</option>
                           <option value="January">January</option>
@@ -1115,7 +1339,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           type="number"
                           className="form-input"
                           value={monthlyUpdate.year}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, year: e.target.value })}
+                          onChange={(e) => handleMonthlyUpdateFieldChange('year', e.target.value)}
                           placeholder="2024"
                           min="2020"
                           max="2100"
@@ -1127,7 +1351,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           type="number"
                           className="form-input"
                           value={monthlyUpdate.percentageGrowth}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, percentageGrowth: e.target.value })}
+                          onChange={(e) => handleMonthlyUpdateFieldChange('percentageGrowth', e.target.value)}
                           placeholder="2.0"
                           step="0.01"
                           min="-100"
@@ -1141,55 +1365,103 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       </div>
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Deposit Amount (€)</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          value={monthlyUpdate.depositAmount}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, depositAmount: e.target.value })}
-                          placeholder="0.00"
-                          step="0.01"
-                          min="0"
-                        />
+                    <div className="form-row investor-cashflow-row">
+                      <div className="form-group form-group--cashflow">
+                        <label className="form-label">Deposit entries (€)</label>
+                        <div className="cashflow-entry-list">
+                          {(monthlyUpdate.depositEntries || [{ amount: '', date: '' }]).map((entry, index) => (
+                            <div className="cashflow-entry-row" key={`investor-deposit-entry-${index}`}>
+                              <input
+                                type="number"
+                                className="form-input"
+                                value={entry.amount || ''}
+                                onChange={(e) => handleMonthlyCashflowEntryChange('deposit', index, 'amount', e.target.value)}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                              />
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={entry.date || ''}
+                                onChange={(e) => handleMonthlyCashflowEntryChange('deposit', index, 'date', e.target.value)}
+                              />
+                              {index === (monthlyUpdate.depositEntries || [{ amount: '', date: '' }]).length - 1 && (
+                                <div className="cashflow-entry-actions">
+                                  <button
+                                    type="button"
+                                    className="cashflow-entry-action-btn"
+                                    onClick={() => handleAddMonthlyCashflowEntry('deposit')}
+                                    aria-label="Add another deposit"
+                                  >
+                                    +
+                                  </button>
+                                  {(monthlyUpdate.depositEntries || [{ amount: '', date: '' }]).length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="cashflow-entry-action-btn"
+                                      onClick={() => handleRemoveMonthlyCashflowEntry('deposit', index)}
+                                      aria-label="Remove deposit entry"
+                                    >
+                                      -
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Deposit Date</label>
-                        <input
-                          type="date"
-                          className="form-input"
-                          value={monthlyUpdate.depositDate}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, depositDate: e.target.value })}
-                        />
+                      <div className="form-group form-group--cashflow">
+                        <label className="form-label">Withdrawal entries (€)</label>
+                        <div className="cashflow-entry-list">
+                          {(monthlyUpdate.withdrawalEntries || [{ amount: '', date: '' }]).map((entry, index) => (
+                            <div className="cashflow-entry-row" key={`investor-withdrawal-entry-${index}`}>
+                              <input
+                                type="number"
+                                className="form-input"
+                                value={entry.amount || ''}
+                                onChange={(e) => handleMonthlyCashflowEntryChange('withdrawal', index, 'amount', e.target.value)}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                              />
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={entry.date || ''}
+                                onChange={(e) => handleMonthlyCashflowEntryChange('withdrawal', index, 'date', e.target.value)}
+                              />
+                              {index === (monthlyUpdate.withdrawalEntries || [{ amount: '', date: '' }]).length - 1 && (
+                                <div className="cashflow-entry-actions">
+                                  <button
+                                    type="button"
+                                    className="cashflow-entry-action-btn"
+                                    onClick={() => handleAddMonthlyCashflowEntry('withdrawal')}
+                                    aria-label="Add another withdrawal"
+                                  >
+                                    +
+                                  </button>
+                                  {(monthlyUpdate.withdrawalEntries || [{ amount: '', date: '' }]).length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="cashflow-entry-action-btn"
+                                      onClick={() => handleRemoveMonthlyCashflowEntry('withdrawal', index)}
+                                      aria-label="Remove withdrawal entry"
+                                    >
+                                      -
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="form-group form-group--edit-spacer" aria-hidden="true" />
                     </div>
 
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Withdrawal Amount (€)</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          value={monthlyUpdate.withdrawalAmount}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, withdrawalAmount: e.target.value })}
-                          placeholder="0.00"
-                          step="0.01"
-                          min="0"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Withdrawal Date</label>
-                        <input
-                          type="date"
-                          className="form-input"
-                          value={monthlyUpdate.withdrawalDate}
-                          onChange={(e) => setMonthlyUpdate({ ...monthlyUpdate, withdrawalDate: e.target.value })}
-                        />
-                      </div>
+                    <div className="form-row investor-monthly-save-row">
                       <div className="form-group investor-monthly-save-group">
-                        <span className="form-group--monthly-save__label-spacer" aria-hidden="true" />
                         <button
                           type="button"
                           onClick={handleAddPerformance}
@@ -1231,16 +1503,24 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       )
                       const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
                       const baseGrowth = currentBalance * (percentageGrowth / 100)
-                      const depositAmount = parseFloat(monthlyUpdate.depositAmount) || 0
-                      const withdrawalAmount = parseFloat(monthlyUpdate.withdrawalAmount) || 0
+                      const normalizedDepositEntries = (monthlyUpdate.depositEntries || [])
+                        .map((entry) => ({ amount: parseFloat(entry?.amount) || 0, date: entry?.date || null }))
+                        .filter((entry) => entry.amount > 0 || entry.date)
+                      const normalizedWithdrawalEntries = (monthlyUpdate.withdrawalEntries || [])
+                        .map((entry) => ({ amount: parseFloat(entry?.amount) || 0, date: entry?.date || null }))
+                        .filter((entry) => entry.amount > 0 || entry.date)
+                      const depositAmount = normalizedDepositEntries.reduce((sum, entry) => sum + entry.amount, 0)
+                      const withdrawalAmount = normalizedWithdrawalEntries.reduce((sum, entry) => sum + entry.amount, 0)
                       
-                      const depositGrowth = calculateProratedGrowth(
-                        depositAmount, 
-                        percentageGrowth, 
-                        monthlyUpdate.depositDate, 
-                        monthlyUpdate.month, 
-                        monthlyUpdate.year
-                      )
+                      const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
+                        sum + calculateProratedGrowth(
+                          entry.amount,
+                          percentageGrowth,
+                          entry.date,
+                          monthlyUpdate.month,
+                          monthlyUpdate.year
+                        )
+                      ), 0)
                       
                       const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
                         if (!date || !month || !year || amount === 0) return 0
@@ -1258,13 +1538,15 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         return amount * (percentageGrowth / 100) * proratedRatio
                       }
                       
-                      const withdrawalGrowth = calculateWithdrawalGrowthLoss(
-                        withdrawalAmount, 
-                        percentageGrowth, 
-                        monthlyUpdate.withdrawalDate, 
-                        monthlyUpdate.month, 
-                        monthlyUpdate.year
-                      )
+                      const withdrawalGrowth = normalizedWithdrawalEntries.reduce((sum, entry) => (
+                        sum + calculateWithdrawalGrowthLoss(
+                          entry.amount,
+                          percentageGrowth,
+                          entry.date,
+                          monthlyUpdate.month,
+                          monthlyUpdate.year
+                        )
+                      ), 0)
                       
                       const finalBalance = currentBalance + baseGrowth + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
 
@@ -1280,7 +1562,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                               <span>Growth ({monthlyUpdate.percentageGrowth}%):</span>
                               <span>€{baseGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                            {monthlyUpdate.depositAmount && (
+                            {depositAmount > 0 && (
                               <>
                                 <div className="preview-item">
                                   <span>Deposit:</span>
@@ -1294,7 +1576,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                                 )}
                               </>
                             )}
-                            {monthlyUpdate.withdrawalAmount && (
+                            {withdrawalAmount > 0 && (
                               <>
                                 <div className="preview-item">
                                   <span>Withdrawal:</span>
