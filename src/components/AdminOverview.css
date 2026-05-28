@@ -942,11 +942,29 @@ html.dark-mode .current-progress-label {
   }
 
   .progress-bar-labels {
-    height: 20px;
+    height: 22px;
   }
 
   .target-label-amount {
-    font-size: 0.75rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+
+  .target-label-amount.target-1 {
+    padding-left: 0.15rem;
+  }
+
+  .target-label-amount.target-2 {
+    padding-right: 0.35rem;
+  }
+
+  .current-progress-label,
+  .current-progress-label--mobile {
+    font-size: 0.68rem;
+    font-weight: 600;
+    max-width: 46%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

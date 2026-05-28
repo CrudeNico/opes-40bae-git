@@ -392,6 +392,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const barMonthAnimCleanupRef = useRef(null)
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
+  const [isMobileProjectionBar, setIsMobileProjectionBar] = useState(() =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 768px)').matches
+  )
   const [dailyPerformances, setDailyPerformances] = useState({})
   const [selectedDay, setSelectedDay] = useState(null)
   const [showDayModal, setShowDayModal] = useState(false)
@@ -434,6 +438,15 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   useEffect(() => {
     loadOverviewData()
   }, [user])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const mq = window.matchMedia('(max-width: 768px)')
+    const syncMobile = () => setIsMobileProjectionBar(mq.matches)
+    syncMobile()
+    mq.addEventListener('change', syncMobile)
+    return () => mq.removeEventListener('change', syncMobile)
+  }, [])
 
   // Load saved calendar month from localStorage (skip for Admin 3 - always current month)
   useEffect(() => {
@@ -1094,12 +1107,23 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const TARGET_ONE_POSITION = 100
   const labelOverlapThreshold = 8
   const rightEdgeOverlapThreshold = 6
+  const mobileCurrentLabelMinPosition = TARGET_TWO_POSITION + 13
+  const overlapsTargetTwoDesktop =
+    Math.abs(currentProgressLabelPosition - TARGET_TWO_POSITION) <= labelOverlapThreshold
+  const overlapsTargetOne =
+    Math.abs(currentProgressLabelPosition - TARGET_ONE_POSITION) <= rightEdgeOverlapThreshold
+  const mobileCurrentLabelTooCloseToPayoutTarget =
+    isMobileProjectionBar && currentProgressLabelPosition < mobileCurrentLabelMinPosition
   const hideCurrentProgressLabel =
     progressAmount !== 0 &&
     (
-      Math.abs(currentProgressLabelPosition - TARGET_TWO_POSITION) <= labelOverlapThreshold ||
-      Math.abs(currentProgressLabelPosition - TARGET_ONE_POSITION) <= rightEdgeOverlapThreshold
+      mobileCurrentLabelTooCloseToPayoutTarget ||
+      (!isMobileProjectionBar && overlapsTargetTwoDesktop) ||
+      overlapsTargetOne
     )
+  const displayCurrentLabelPosition = isMobileProjectionBar
+    ? Math.min(Math.max(currentProgressLabelPosition, mobileCurrentLabelMinPosition), 95)
+    : currentProgressLabelPosition
 
   const barTargetBlue =
     progressPercentage > 0 ? Math.min(progressPercentage, firstTargetPosition) + 2.1 : 0
@@ -1815,8 +1839,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             {/* Current progress amount label */}
             {progressAmount !== 0 && !hideCurrentProgressLabel && progressPercentage > 0 && progressPercentage <= 100 && (
               <div
-                className="current-progress-label"
-                style={{ left: `${currentProgressLabelPosition}%` }}
+                className={`current-progress-label${isMobileProjectionBar ? ' current-progress-label--mobile' : ''}`}
+                style={{ left: `${displayCurrentLabelPosition}%` }}
               >
                 €{progressAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
