@@ -815,19 +815,12 @@ const HomePage = () => {
           <div className="hero-content">
             <h1 className="hero-title">
               <span className={`hero-title-line1 ${heroAnimationsReady ? 'fade-in' : ''}`}>
-                Monetize, Track and Trade Energy
-              </span>
-              <span className={`hero-title-line2 ${heroAnimationsReady ? 'fade-in' : ''}`}>
-                & Environmental Commodities
+                Specialized Investment in Crude Oil
               </span>
             </h1>
             <p className={`hero-subtitle ${heroAnimationsReady ? 'fade-in' : ''}`}>
-              <span className="hero-subtitle-lead">
-                Opessocius operates the world&apos;s largest integrated platform for the energy transition – trusted by
-              </span>
-              <span className="hero-subtitle-tail">
-                financial institutions, corporations, governments, and leading global power producers worldwide.
-              </span>
+              Opessocius is exclusively focused on financial exposure to crude oil markets through disciplined trading
+              strategies, strategic market positioning, and professional risk management.
             </p>
             <div className={`hero-buttons ${heroAnimationsReady ? 'fade-in' : ''}`}>
               <button 

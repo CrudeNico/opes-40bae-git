@@ -214,8 +214,8 @@ const LoginPage = () => {
               </div>
 
               <div className="form-group form-group--password">
-                <label htmlFor="password" className="form-label">Password</label>
-                <div className="forgot-password-row">
+                <div className="password-field-header">
+                  <label htmlFor="password" className="form-label">Password</label>
                   <button
                     type="button"
                     onClick={handleForgotPasswordClick}
