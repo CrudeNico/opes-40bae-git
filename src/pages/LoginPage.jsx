@@ -184,7 +184,12 @@ const LoginPage = () => {
         <div className="login-right">
           <div className="login-form-container">
             <h2 className="login-form-title">Log in</h2>
-            <p className="login-form-subtitle">Enter your details below to sign into your account.</p>
+            <p className="login-form-subtitle login-form-subtitle--desktop">
+              Enter your details below to sign into your account.
+            </p>
+            <p className="login-form-subtitle login-form-subtitle--mobile">
+              Enter your details below to sign in
+            </p>
 
             {error && (
               <div className="error-message">
@@ -208,16 +213,20 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <div className="form-label-row">
-                  <label htmlFor="password" className="form-label">Password</label>
-                  <button 
+              <div className="form-group form-group--password">
+                <label htmlFor="password" className="form-label">Password</label>
+                <div className="forgot-password-row">
+                  <button
                     type="button"
                     onClick={handleForgotPasswordClick}
                     className="forgot-password"
-                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem', color: '#6b7280' }}
                   >
-                    Forgot your password?
+                    <span className="forgot-password-text forgot-password-text--full">
+                      Forgot your password?
+                    </span>
+                    <span className="forgot-password-text forgot-password-text--short">
+                      Forgot?
+                    </span>
                   </button>
                 </div>
                 <div className="input-wrapper password-input-wrapper">

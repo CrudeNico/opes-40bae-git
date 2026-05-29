@@ -171,6 +171,10 @@
   margin: 0 0 2rem 0;
 }
 
+.login-form-subtitle--mobile {
+  display: none;
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -189,6 +193,34 @@
   align-items: center;
 }
 
+/* Password: label + forgot link + input */
+.form-group--password {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
+}
+
+.form-group--password > .form-label {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+.form-group--password .forgot-password-row {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.form-group--password .password-input-wrapper {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
 .form-label {
   font-size: 0.9rem;
   font-weight: 500;
@@ -196,10 +228,21 @@
 }
 
 .forgot-password {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 0.85rem;
   color: #6b7280;
   text-decoration: underline;
   transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.forgot-password-text--short {
+  display: none;
 }
 
 .forgot-password:hover {
@@ -441,7 +484,7 @@
   }
 
   .login-subtitle {
-    font-size: 0.95rem;
+    display: none;
   }
 
   .login-right {
@@ -450,6 +493,60 @@
 
   .login-form-container {
     padding: 2rem 1.5rem;
+    text-align: left;
+  }
+
+  .login-form-subtitle--desktop {
+    display: none;
+  }
+
+  .login-form-subtitle--mobile {
+    display: block;
+  }
+
+  .form-group {
+    align-items: stretch;
+  }
+
+  .form-label {
+    text-align: left;
+    align-self: flex-start;
+  }
+
+  .form-group--password {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .form-group--password > .form-label {
+    margin-bottom: 0.125rem;
+  }
+
+  .form-group--password .forgot-password-row {
+    order: 2;
+    width: 100%;
+    justify-content: flex-end;
+    margin: 0 0 0.125rem;
+    padding: 0;
+  }
+
+  .form-group--password .password-input-wrapper {
+    order: 3;
+  }
+
+  .forgot-password {
+    margin: 0;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .forgot-password-text--full {
+    display: none;
+  }
+
+  .forgot-password-text--short {
+    display: inline;
   }
 
   .social-login {
