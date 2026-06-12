@@ -179,7 +179,7 @@ function createSeededRandom(seed) {
   }
 }
 
-function generateAdmin3PortfolioData() {
+export function generateAdmin3PortfolioData() {
   const rand = createSeededRandom(42)
   const initialBalance = 100000
   const numMonths = 60

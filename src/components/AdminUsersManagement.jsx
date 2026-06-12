@@ -320,7 +320,9 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   }
 
   const isNewUser = (user) => {
-    if (!user?.id || user._isSample || dismissedNewUserFlags[user.id]) return false
+    if (!user?.id || dismissedNewUserFlags[user.id]) return false
+    if (user._showNewUserFlag) return true
+    if (user._isSample) return false
     return getCreatedAtMs(user.createdAt) > 0
   }
 
@@ -334,6 +336,12 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
 
   const sortUsersList = (list) => {
     return [...list].sort((a, b) => {
+      const aOrder = a._listOrder
+      const bOrder = b._listOrder
+      if (aOrder != null && bOrder != null) return aOrder - bOrder
+      if (aOrder != null) return -1
+      if (bOrder != null) return 1
+
       const aTerminated = isInvestmentTerminated(a)
       const bTerminated = isInvestmentTerminated(b)
       if (aTerminated && !bTerminated) return 1

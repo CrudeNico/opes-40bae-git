@@ -14,6 +14,7 @@ import AdminPortfolio from '../components/AdminPortfolio'
 import AdminEmails from '../components/AdminEmails'
 import AdminSettings from '../components/AdminSettings'
 import AdminOverview from '../components/AdminOverview'
+import AdminTeam from '../components/AdminTeam'
 import './AdminDashboardPage.css'
 
 const AdminDashboardPage = () => {
@@ -130,7 +131,7 @@ const AdminDashboardPage = () => {
     }
   }
 
-  const sections = [
+  const allSections = [
     { id: 'overview', title: 'Overview' },
     { id: 'portfolio', title: 'Portfolio' },
     { id: 'users', title: 'Manage Users' },
@@ -140,8 +141,22 @@ const AdminDashboardPage = () => {
     { id: 'community', title: 'Community' },
     { id: 'emails', title: 'Emails' },
     { id: 'support', title: 'Support' },
+    { id: 'team', title: 'Team', admin3Only: true },
     { id: 'settings', title: 'Settings' }
   ]
+
+  const isAdmin3 = user?.userStatuses?.includes('Admin 3')
+  const sections = allSections.filter((section) => {
+    if (section.admin3Only && !isAdmin3) return false
+    if (isAdmin3 && (section.id === 'learning' || section.id === 'community')) return false
+    return true
+  })
+
+  useEffect(() => {
+    if (isAdmin3 && (activeSection === 'learning' || activeSection === 'community')) {
+      setActiveSection('overview')
+    }
+  }, [isAdmin3, activeSection])
 
   if (!user) {
     return null // Will redirect
@@ -241,7 +256,9 @@ const AdminDashboardPage = () => {
           ) : activeSection === 'emails' ? (
             <AdminEmails />
           ) : activeSection === 'support' ? (
-            <AdminSupport />
+            <AdminSupport userStatuses={user?.userStatuses || []} />
+          ) : activeSection === 'team' ? (
+            <AdminTeam />
           ) : activeSection === 'settings' ? (
             <AdminSettings user={user} onProfileUpdate={handleProfileUpdate} />
           ) : (

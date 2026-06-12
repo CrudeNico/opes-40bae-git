@@ -7,6 +7,17 @@ import {
   TRANCHE_PRIMARY,
   TRANCHE_SECONDARY
 } from '../utils/investorDualTranche'
+import { getAdmin3Overrides } from '../utils/admin3Overrides'
+import { generateAdmin3PortfolioData } from './AdminPortfolio'
+import {
+  buildAdmin3DailyPerformances,
+  getMonthlyGrowthFromHistory,
+  isAdmin3CalendarDayBlocked
+} from '../utils/admin3DailyPerformances'
+import {
+  ADMIN3_PENDING_CONSULTATIONS_COUNT,
+  ADMIN3_USER_MESSAGE_ALERTS_COUNT
+} from '../utils/admin3SupportSandbox'
 import './AdminOverview.css'
 
 /** Normalize for case- and accent-insensitive comparison (e.g. Nicolás → nicolas). */
@@ -405,35 +416,15 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [performanceOwnerId, setPerformanceOwnerId] = useState(null)
   const [isAdmin2, setIsAdmin2] = useState(false)
   const [isAdmin3, setIsAdmin3] = useState(false)
+  const [admin3MonthlyHistory, setAdmin3MonthlyHistory] = useState([])
   const dailyPerfUnsubscribeRef = useRef(null)
 
   const ADMIN3_CURRENT_BALANCE = 7110000
   const ADMIN3_TOTAL_INVESTOR_ACCOUNTS = 1850000
   const ADMIN3_INVESTOR_PAYOUT_TARGET = 37500
   const ADMIN3_MONTHLY_PROJECTION = 7110000 * 0.09
-  const ADMIN3_TRADE_DAYS = [2, 3, 4, 18, 19, 20]
-  const ADMIN3_FIXED_TRADES = {
-    2: { type: 'win', amount: 5051.30 },
-    3: { type: 'win', amount: 10460.32 },
-    4: { type: 'win', amount: 2744.82 },
-    18: { type: 'win', amount: 3641 },
-    19: { type: 'win', amount: 6178.15 },
-    20: { type: 'win', amount: 1647.99 }
-  }
 
-  function generateAdmin3DailyPerformances() {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const perf = {}
-    for (const day of ADMIN3_TRADE_DAYS) {
-      const d = new Date(year, month, day)
-      if (d.getDay() === 0 || d.getDay() === 6) continue
-      const trade = ADMIN3_FIXED_TRADES[day]
-      if (trade) perf[day] = { ...trade }
-    }
-    return perf
-  }
+  const isAdmin3User = isAdmin3 || userStatuses?.includes('Admin 3')
 
   useEffect(() => {
     loadOverviewData()
@@ -448,9 +439,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     return () => mq.removeEventListener('change', syncMobile)
   }, [])
 
-  // Load saved calendar month from localStorage (skip for Admin 3 - always current month)
+  // Load saved calendar month from localStorage
   useEffect(() => {
-    if (userStatuses?.includes('Admin 3')) return
     const savedMonth = localStorage.getItem('adminOverviewCalendarMonth')
     const savedYear = localStorage.getItem('adminOverviewCalendarYear')
     if (savedMonth !== null && savedYear !== null) {
@@ -459,21 +449,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     }
   }, [userStatuses])
 
-  // Save calendar month to localStorage when it changes (skip for Admin 3)
+  // Save calendar month to localStorage when it changes
   useEffect(() => {
-    if (userStatuses?.includes('Admin 3')) return
     localStorage.setItem('adminOverviewCalendarMonth', calendarMonth.toString())
     localStorage.setItem('adminOverviewCalendarYear', calendarYear.toString())
-  }, [calendarMonth, calendarYear, userStatuses])
-
-  // Admin 3: force current month only
-  useEffect(() => {
-    if (isAdmin3 || userStatuses?.includes('Admin 3')) {
-      const now = new Date()
-      setCalendarMonth(now.getMonth())
-      setCalendarYear(now.getFullYear())
-    }
-  }, [userStatuses, isAdmin3])
+  }, [calendarMonth, calendarYear])
 
   // Load daily performances when month/year or owner changes
   useEffect(() => {
@@ -484,7 +464,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         dailyPerfUnsubscribeRef.current = null
       }
     }
-  }, [user, calendarMonth, calendarYear, performanceOwnerId, isAdmin3, userStatuses])
+  }, [user, calendarMonth, calendarYear, performanceOwnerId, isAdmin3, userStatuses, admin3MonthlyHistory])
 
   // Calculate total daily performance (net of wins minus losses, multi-trade aware)
   useEffect(() => {
@@ -607,11 +587,27 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
           if (isAdmin3Local) {
             setCurrentBalance(ADMIN3_CURRENT_BALANCE)
+            const basePortfolio = generateAdmin3PortfolioData()
+            let monthlyHistory = basePortfolio.monthlyHistory || []
+            if (user?.uid && ownerId) {
+              try {
+                const overrides = await getAdmin3Overrides(user.uid)
+                const overrideHistory = overrides[ownerId]?.investmentData?.monthlyHistory
+                if (Array.isArray(overrideHistory) && overrideHistory.length > 0) {
+                  monthlyHistory = overrideHistory
+                }
+              } catch (overrideErr) {
+                console.error('Error loading Admin 3 portfolio overrides:', overrideErr)
+              }
+            }
+            setAdmin3MonthlyHistory(monthlyHistory)
           } else if (portfolioData) {
+            setAdmin3MonthlyHistory([])
             const initialInvestment = portfolioData.initialInvestment || 0
             const balance = portfolioData.currentBalance || initialInvestment
             setCurrentBalance(balance)
           } else {
+            setAdmin3MonthlyHistory([])
             setCurrentBalance(0)
           }
         }
@@ -672,24 +668,28 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         where('status', '==', 'pending'),
         where('type', '==', 'consultation')
       )
-      const consultationsSnapshot = await getDocs(consultationsQuery)
-      setPendingConsultations(consultationsSnapshot.size)
+      if (userStatuses?.includes('Admin 3') || isAdmin3) {
+        setPendingConsultations(ADMIN3_PENDING_CONSULTATIONS_COUNT)
+        setUserMessageAlerts(ADMIN3_USER_MESSAGE_ALERTS_COUNT)
+      } else {
+        const consultationsSnapshot = await getDocs(consultationsQuery)
+        setPendingConsultations(consultationsSnapshot.size)
 
-      // Load user message alerts (unread chat messages)
-      // We mirror the logic from AdminSupport: count users that have at least one pending support message
-      const messagesQuery = query(
-        collection(db, 'supportMessages'),
-        where('status', '==', 'pending')
-      )
-      const messagesSnapshot = await getDocs(messagesQuery)
-      const unreadUserIds = new Set()
-      messagesSnapshot.forEach((docSnapshot) => {
-        const msgData = docSnapshot.data()
-        if (msgData.userId) {
-          unreadUserIds.add(msgData.userId)
-        }
-      })
-      setUserMessageAlerts(unreadUserIds.size)
+        // Load user message alerts (unread chat messages)
+        const messagesQuery = query(
+          collection(db, 'supportMessages'),
+          where('status', '==', 'pending')
+        )
+        const messagesSnapshot = await getDocs(messagesQuery)
+        const unreadUserIds = new Set()
+        messagesSnapshot.forEach((docSnapshot) => {
+          const msgData = docSnapshot.data()
+          if (msgData.userId) {
+            unreadUserIds.add(msgData.userId)
+          }
+        })
+        setUserMessageAlerts(unreadUserIds.size)
+      }
 
       if (userStatuses?.includes('Admin 3')) {
         setInvestorPayoutTarget(ADMIN3_INVESTOR_PAYOUT_TARGET)
@@ -706,15 +706,22 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const loadDailyPerformances = () => {
-    const now = new Date()
-    const isCurrentMonth = calendarMonth === now.getMonth() && calendarYear === now.getFullYear()
-
-    if ((isAdmin3 || userStatuses?.includes('Admin 3')) && isCurrentMonth) {
+    if (isAdmin3User) {
       if (dailyPerfUnsubscribeRef.current) {
         dailyPerfUnsubscribeRef.current()
         dailyPerfUnsubscribeRef.current = null
       }
-      setDailyPerformances(generateAdmin3DailyPerformances())
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December']
+      const monthName = monthNames[calendarMonth]
+      const growthAmount = getMonthlyGrowthFromHistory(
+        admin3MonthlyHistory,
+        monthName,
+        calendarYear
+      )
+      setDailyPerformances(
+        buildAdmin3DailyPerformances(growthAmount, calendarYear, calendarMonth)
+      )
       return
     }
 
@@ -879,6 +886,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const handleMonthNavigation = (direction) => {
+    const now = new Date()
+    const atCurrentMonth =
+      calendarYear === now.getFullYear() && calendarMonth === now.getMonth()
+
     if (direction === 'prev') {
       if (calendarMonth === 0) {
         setCalendarMonth(11)
@@ -886,14 +897,22 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       } else {
         setCalendarMonth(calendarMonth - 1)
       }
-    } else {
-      if (calendarMonth === 11) {
-        setCalendarMonth(0)
-        setCalendarYear(calendarYear + 1)
-      } else {
-        setCalendarMonth(calendarMonth + 1)
-      }
+      return
     }
+
+    if (isAdmin3User && atCurrentMonth) return
+
+    if (calendarMonth === 11) {
+      setCalendarMonth(0)
+      setCalendarYear(calendarYear + 1)
+    } else {
+      setCalendarMonth(calendarMonth + 1)
+    }
+  }
+
+  const isAdmin3AtCurrentMonth = () => {
+    const now = new Date()
+    return calendarYear === now.getFullYear() && calendarMonth === now.getMonth()
   }
 
   const getDaysInMonth = (month, year) => {
@@ -1877,10 +1896,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           <div className="calendar-header">
             <button
               className="calendar-nav-button"
-              onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && handleMonthNavigation('prev')}
+              onClick={() => handleMonthNavigation('prev')}
               aria-label="Previous month"
-              disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
-              style={{ opacity: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 0.4 : 1, cursor: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 'not-allowed' : 'pointer' }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1891,10 +1908,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             </h3>
             <button
               className="calendar-nav-button"
-              onClick={() => !(isAdmin3 || userStatuses?.includes('Admin 3')) && handleMonthNavigation('next')}
+              onClick={() => handleMonthNavigation('next')}
               aria-label="Next month"
-              disabled={isAdmin3 || userStatuses?.includes('Admin 3')}
-              style={{ opacity: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 0.4 : 1, cursor: (isAdmin3 || userStatuses?.includes('Admin 3')) ? 'not-allowed' : 'pointer' }}
+              disabled={isAdmin3User && isAdmin3AtCurrentMonth()}
+              style={
+                isAdmin3User && isAdmin3AtCurrentMonth()
+                  ? { opacity: 0.4, cursor: 'not-allowed' }
+                  : undefined
+              }
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1911,7 +1932,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             {Array.from({ length: getDaysInMonth(calendarMonth, calendarYear) }, (_, i) => {
               const day = i + 1
               const dayKey = day.toString()
-              const performance = dailyPerformances[dayKey]
+              const blockedDay = isAdmin3User
+                ? isAdmin3CalendarDayBlocked(calendarYear, calendarMonth, day)
+                : false
+              const performance = blockedDay ? undefined : dailyPerformances[dayKey]
               const hasPerf = dayHasPerformanceData(performance)
               const net = performance ? dayNetSigned(performance) : 0
               const netClass = net > 0 ? 'day-win' : net < 0 ? 'day-loss' : hasPerf ? 'day-flat' : ''

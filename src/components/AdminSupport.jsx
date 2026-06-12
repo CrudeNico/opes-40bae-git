@@ -3,9 +3,16 @@ import { getFirestore, collection, query, where, orderBy, onSnapshot, updateDoc,
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase/config'
 import { sendConsultationLinkEmail } from '../firebase/email'
+import {
+  generateAdmin3AlertUsers,
+  generateAdmin3PendingConsultations,
+  getAdmin3SampleChatMessages,
+  isAdmin3SampleSupportId
+} from '../utils/admin3SupportSandbox'
 import './AdminSupport.css'
 
-const AdminSupport = () => {
+const AdminSupport = ({ userStatuses = [] }) => {
+  const isAdmin3 = userStatuses.includes('Admin 3')
   const [users, setUsers] = useState([])
   const [selectedUser, setSelectedUser] = useState(null)
   const [userMessages, setUserMessages] = useState([])
@@ -62,9 +69,20 @@ const AdminSupport = () => {
   }
 
   useEffect(() => {
-    loadUsers()
-    loadConsultations()
-  }, [])
+    if (isAdmin3) {
+      const alertUsers = generateAdmin3AlertUsers()
+      setUsers(alertUsers)
+      setUnreadUsers(new Set(alertUsers.map((u) => u.uid)))
+      setConsultations(generateAdmin3PendingConsultations())
+      return undefined
+    }
+    const usersCleanup = loadUsers()
+    const consultationsCleanup = loadConsultations()
+    return () => {
+      if (typeof usersCleanup === 'function') usersCleanup()
+      if (typeof consultationsCleanup === 'function') consultationsCleanup()
+    }
+  }, [isAdmin3])
 
   useEffect(() => {
     if (selectedUser) {
@@ -76,23 +94,27 @@ const AdminSupport = () => {
         setActivePersonaKey('daniel')
       }
 
-      loadUserMessages(selectedUser.uid)
-      markMessagesAsRead(selectedUser.uid)
+      if (selectedUser._isAdmin3Sample) {
+        setUserMessages(getAdmin3SampleChatMessages(selectedUser.uid))
+      } else {
+        loadUserMessages(selectedUser.uid)
+        markMessagesAsRead(selectedUser.uid)
+      }
       // Immediately remove unread indicator when user is selected
-      setUnreadUsers(prev => {
+      setUnreadUsers((prev) => {
         const newSet = new Set(prev)
         newSet.delete(selectedUser.uid)
         return newSet
       })
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.uid === selectedUser.uid 
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.uid === selectedUser.uid
             ? { ...user, hasUnreadMessages: false }
             : user
         )
       )
     }
-  }, [selectedUser, personaByUserId])
+  }, [selectedUser, personaByUserId, isAdmin3])
 
   useEffect(() => {
     // Scroll to bottom when messages are updated
@@ -153,6 +175,7 @@ const AdminSupport = () => {
   
   // Listen for new messages to update unread status
   useEffect(() => {
+    if (isAdmin3) return undefined
     const db = getFirestore()
     // Remove orderBy to avoid composite index requirement
     const messagesQuery = query(
@@ -180,7 +203,7 @@ const AdminSupport = () => {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [isAdmin3])
 
   const loadUserMessages = (userId) => {
     const db = getFirestore()
@@ -218,6 +241,7 @@ const AdminSupport = () => {
   }
 
   const markMessagesAsRead = async (userId) => {
+    if (isAdmin3SampleSupportId(userId)) return
     try {
       const db = getFirestore()
       // Find all pending messages for this user
@@ -336,6 +360,7 @@ const AdminSupport = () => {
     if ((!newMessage.trim() && !attachedFile && !attachedImage) || !selectedUser) {
       return
     }
+    if (selectedUser._isAdmin3Sample) return
 
     setLoadingMessage(true)
     setUploadingFile(true)
@@ -409,7 +434,7 @@ const AdminSupport = () => {
   }
 
   const handleRouteToSpecialist = async (personaKey) => {
-    if (!selectedUser) return
+    if (!selectedUser || selectedUser._isAdmin3Sample) return
 
     const persona = ADMIN_PERSONAS[personaKey]
     if (!persona) return
@@ -448,6 +473,12 @@ const AdminSupport = () => {
 
   const handleSendConsultationLink = async () => {
     if (!googleMeetLink.trim() || !selectedConsultation) {
+      return
+    }
+
+    if (selectedConsultation._isAdmin3Sample) {
+      setSelectedConsultation(null)
+      setGoogleMeetLink('')
       return
     }
 
@@ -524,7 +555,10 @@ const AdminSupport = () => {
                   {user.photoURL ? (
                     <img src={user.photoURL} alt={user.displayName || user.email} />
                   ) : (
-                    <div className="user-avatar-placeholder">
+                    <div
+                      className="user-avatar-placeholder"
+                      style={user.profileColor ? { background: user.profileColor } : undefined}
+                    >
                       {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -659,7 +693,7 @@ const AdminSupport = () => {
                     type="button"
                     title="Switch back to Operator (Daniel G.)"
                     aria-label="Switch back to Operator (Daniel G.)"
-                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    disabled={uploadingFile || loadingMessage || !selectedUser || selectedUser?._isAdmin3Sample}
                     onClick={() => handleRouteToSpecialist('daniel')}
                   >
                     O1
@@ -669,7 +703,7 @@ const AdminSupport = () => {
                     type="button"
                     title="Switch to Specialist 1 (Carlos S.)"
                     aria-label="Switch to Specialist 1 (Carlos S.)"
-                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    disabled={uploadingFile || loadingMessage || !selectedUser || selectedUser?._isAdmin3Sample}
                     onClick={() => handleRouteToSpecialist('specialist1')}
                   >
                     S1
@@ -679,7 +713,7 @@ const AdminSupport = () => {
                     type="button"
                     title="Switch to Specialist 2 (Manuel F.)"
                     aria-label="Switch to Specialist 2 (Manuel F.)"
-                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    disabled={uploadingFile || loadingMessage || !selectedUser || selectedUser?._isAdmin3Sample}
                     onClick={() => handleRouteToSpecialist('specialist2')}
                   >
                     S2
@@ -689,7 +723,7 @@ const AdminSupport = () => {
                     type="button"
                     title="Add image"
                     aria-label="Add image"
-                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    disabled={uploadingFile || loadingMessage || !selectedUser || selectedUser?._isAdmin3Sample}
                     onClick={() => {
                       const input = document.createElement('input')
                       input.type = 'file'
@@ -712,7 +746,7 @@ const AdminSupport = () => {
                     type="button"
                     title="Add file"
                     aria-label="Add file"
-                    disabled={uploadingFile || loadingMessage || !selectedUser}
+                    disabled={uploadingFile || loadingMessage || !selectedUser || selectedUser?._isAdmin3Sample}
                     onClick={() => {
                       const input = document.createElement('input')
                       input.type = 'file'
@@ -732,7 +766,7 @@ const AdminSupport = () => {
                   <button 
                     className="btn btn-primary send-button"
                     onClick={() => handleSendMessage()}
-                    disabled={loadingMessage || uploadingFile || (!newMessage.trim() && !uploadingFile) || !selectedUser}
+                    disabled={loadingMessage || uploadingFile || (!newMessage.trim() && !uploadingFile) || !selectedUser || selectedUser?._isAdmin3Sample}
                   >
                     {loadingMessage || uploadingFile ? 'Sending...' : 'Send'}
                   </button>

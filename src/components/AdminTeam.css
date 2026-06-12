@@ -1,0 +1,267 @@
+.admin-team-container {
+  width: 100%;
+  padding: 0;
+}
+
+.admin-team-header {
+  margin-bottom: 1.75rem;
+}
+
+.admin-team-title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.35rem 0;
+}
+
+.admin-team-subtitle {
+  margin: 0;
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.admin-team-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-team-summary-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.admin-team-summary-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+}
+
+.admin-team-summary-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.admin-team-summary-card.summary-in-progress {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+}
+
+.admin-team-summary-card.summary-pending {
+  border-color: #fde68a;
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+}
+
+.admin-team-summary-card.summary-not-initialized {
+  border-color: #e5e7eb;
+  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+}
+
+.admin-team-tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.admin-team-task-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.85rem;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 220px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.admin-team-task-card:hover {
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.admin-team-task-card.status-in-progress {
+  border-left: 4px solid #3b82f6;
+}
+
+.admin-team-task-card.status-pending {
+  border-left: 4px solid #f59e0b;
+}
+
+.admin-team-task-card.status-not-initialized {
+  border-left: 4px solid #9ca3af;
+}
+
+.admin-team-task-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.admin-team-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.admin-team-status-badge.status-in-progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.admin-team-status-badge.status-pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.admin-team-status-badge.status-not-initialized {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.admin-team-due-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.admin-team-task-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.35;
+}
+
+.admin-team-task-description {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #6b7280;
+  flex: 1;
+}
+
+.admin-team-task-footer {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.admin-team-assignees-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+}
+
+.admin-team-assignees {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.admin-team-assignee {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.admin-team-assignee-avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.admin-team-assignee-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.admin-team-unassigned {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .admin-team-title {
+    font-size: 2rem;
+  }
+
+  .admin-team-tasks-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+html.dark-mode .admin-team-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .admin-team-subtitle {
+  color: #9ca3af;
+}
+
+html.dark-mode .admin-team-summary-card,
+html.dark-mode .admin-team-task-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .admin-team-summary-value,
+html.dark-mode .admin-team-task-title {
+  color: #f9fafb;
+}
+
+html.dark-mode .admin-team-task-description,
+html.dark-mode .admin-team-due-label,
+html.dark-mode .admin-team-summary-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .admin-team-assignee-name {
+  color: #e5e7eb;
+}
+
+html.dark-mode .admin-team-task-footer {
+  border-top-color: #374151;
+}
+
+html.dark-mode .admin-team-summary-card.summary-in-progress {
+  background: linear-gradient(180deg, #1e3a5f 0%, #1f2937 100%);
+  border-color: #2563eb;
+}
+
+html.dark-mode .admin-team-summary-card.summary-pending {
+  background: linear-gradient(180deg, #422006 0%, #1f2937 100%);
+  border-color: #d97706;
+}
+
+html.dark-mode .admin-team-summary-card.summary-not-initialized {
+  background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+}
