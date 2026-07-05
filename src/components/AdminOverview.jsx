@@ -7,12 +7,13 @@ import {
   TRANCHE_PRIMARY,
   TRANCHE_SECONDARY
 } from '../utils/investorDualTranche'
-import { getAdmin3Overrides } from '../utils/admin3Overrides'
+import { getAdmin3Overrides, getAdmin3DailyPerformanceOverrides, saveAdmin3DailyPerformanceMonth, admin3DailyPerformanceMonthKey } from '../utils/admin3Overrides'
 import { generateAdmin3PortfolioData } from './AdminPortfolio'
 import {
   buildAdmin3DailyPerformances,
   getMonthlyGrowthFromHistory,
-  isAdmin3CalendarDayBlocked
+  isAdmin3CalendarDayBlocked,
+  mergeAdmin3DailyPerformanceOverrides
 } from '../utils/admin3DailyPerformances'
 import {
   ADMIN3_PENDING_CONSULTATIONS_COUNT,
@@ -417,6 +418,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [isAdmin2, setIsAdmin2] = useState(false)
   const [isAdmin3, setIsAdmin3] = useState(false)
   const [admin3MonthlyHistory, setAdmin3MonthlyHistory] = useState([])
+  const [admin3DailyPerfOverrides, setAdmin3DailyPerfOverrides] = useState({})
   const dailyPerfUnsubscribeRef = useRef(null)
 
   const ADMIN3_CURRENT_BALANCE = 7110000
@@ -425,6 +427,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const ADMIN3_MONTHLY_PROJECTION = 7110000 * 0.09
 
   const isAdmin3User = isAdmin3 || userStatuses?.includes('Admin 3')
+  const canEditAdmin3DayTrades = isAdmin3User && !isAdmin2
 
   useEffect(() => {
     loadOverviewData()
@@ -464,7 +467,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         dailyPerfUnsubscribeRef.current = null
       }
     }
-  }, [user, calendarMonth, calendarYear, performanceOwnerId, isAdmin3, userStatuses, admin3MonthlyHistory])
+  }, [user, calendarMonth, calendarYear, performanceOwnerId, isAdmin3, userStatuses, admin3MonthlyHistory, admin3DailyPerfOverrides])
 
   // Calculate total daily performance (net of wins minus losses, multi-trade aware)
   useEffect(() => {
@@ -596,9 +599,13 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 if (Array.isArray(overrideHistory) && overrideHistory.length > 0) {
                   monthlyHistory = overrideHistory
                 }
+                const dailyOverrides = await getAdmin3DailyPerformanceOverrides(user.uid)
+                setAdmin3DailyPerfOverrides(dailyOverrides)
               } catch (overrideErr) {
                 console.error('Error loading Admin 3 portfolio overrides:', overrideErr)
               }
+            } else {
+              setAdmin3DailyPerfOverrides({})
             }
             setAdmin3MonthlyHistory(monthlyHistory)
           } else if (portfolioData) {
@@ -719,8 +726,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
         monthName,
         calendarYear
       )
+      const monthKey = admin3DailyPerformanceMonthKey(calendarYear, monthName)
+      const base = buildAdmin3DailyPerformances(growthAmount, calendarYear, calendarMonth)
       setDailyPerformances(
-        buildAdmin3DailyPerformances(growthAmount, calendarYear, calendarMonth)
+        mergeAdmin3DailyPerformanceOverrides(base, admin3DailyPerfOverrides[monthKey])
       )
       return
     }
@@ -797,8 +806,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const handleSaveDayPerformance = async () => {
-    if (isAdmin2 || isAdmin3 || userStatuses?.includes('Admin 3')) return
-    if (!selectedDay) return
+    if (isAdmin2 || !selectedDay) return
 
     const cleaned = dayPerformanceTrades
       .map((t) => {
@@ -817,20 +825,42 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
     if (cleaned.length === 0) return
 
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December']
+    const monthName = monthNames[calendarMonth]
+    const dayKey = selectedDay.toString()
+    const updatedPerformances = {
+      ...dailyPerformances,
+      [dayKey]: { trades: cleaned }
+    }
+
+    if (canEditAdmin3DayTrades) {
+      if (!user?.uid) return
+      try {
+        const monthKey = admin3DailyPerformanceMonthKey(calendarYear, monthName)
+        const prevMonth = admin3DailyPerfOverrides[monthKey] || { days: {}, deleted: [] }
+        const nextMonth = {
+          days: { ...(prevMonth.days || {}), [dayKey]: { trades: cleaned } },
+          deleted: (prevMonth.deleted || []).filter((d) => String(d) !== dayKey)
+        }
+        await saveAdmin3DailyPerformanceMonth(user.uid, calendarYear, monthName, nextMonth)
+        setAdmin3DailyPerfOverrides((prev) => ({ ...prev, [monthKey]: nextMonth }))
+        setDailyPerformances(updatedPerformances)
+        setShowDayModal(false)
+        setSelectedDay(null)
+        setDayPerformanceTrades([])
+      } catch (error) {
+        console.error('Error saving Admin 3 daily performance:', error)
+        setError('Failed to save daily performance')
+      }
+      return
+    }
+
     try {
       const db = getFirestore()
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December']
-      const monthName = monthNames[calendarMonth]
       const ownerId = performanceOwnerId || user?.uid
       if (!ownerId) return
       const docId = `dailyPerformance_${ownerId}_${calendarYear}_${monthName}`
-      
-      const dayKey = selectedDay.toString()
-      const updatedPerformances = {
-        ...dailyPerformances,
-        [dayKey]: { trades: cleaned }
-      }
 
       await setDoc(doc(db, 'adminDailyPerformance', docId), {
         userId: user.uid,
@@ -851,21 +881,46 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   }
 
   const handleDeleteDayPerformance = async () => {
-    if (isAdmin2 || isAdmin3 || userStatuses?.includes('Admin 3')) return
-    if (!selectedDay) return
+    if (isAdmin2 || !selectedDay) return
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December']
+    const monthName = monthNames[calendarMonth]
+    const dayKey = selectedDay.toString()
+    const updatedPerformances = { ...dailyPerformances }
+    delete updatedPerformances[dayKey]
+
+    if (canEditAdmin3DayTrades) {
+      if (!user?.uid) return
+      try {
+        const monthKey = admin3DailyPerformanceMonthKey(calendarYear, monthName)
+        const prevMonth = admin3DailyPerfOverrides[monthKey] || { days: {}, deleted: [] }
+        const nextDays = { ...(prevMonth.days || {}) }
+        delete nextDays[dayKey]
+        const deletedSet = new Set((prevMonth.deleted || []).map(String))
+        deletedSet.add(dayKey)
+        const nextMonth = {
+          days: nextDays,
+          deleted: [...deletedSet]
+        }
+        await saveAdmin3DailyPerformanceMonth(user.uid, calendarYear, monthName, nextMonth)
+        setAdmin3DailyPerfOverrides((prev) => ({ ...prev, [monthKey]: nextMonth }))
+        setDailyPerformances(updatedPerformances)
+        setShowDayModal(false)
+        setSelectedDay(null)
+        setDayPerformanceTrades([])
+      } catch (error) {
+        console.error('Error deleting Admin 3 daily performance:', error)
+        setError('Failed to delete daily performance')
+      }
+      return
+    }
 
     try {
       const db = getFirestore()
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December']
-      const monthName = monthNames[calendarMonth]
       const ownerId = performanceOwnerId || user?.uid
       if (!ownerId) return
       const docId = `dailyPerformance_${ownerId}_${calendarYear}_${monthName}`
-      
-      const dayKey = selectedDay.toString()
-      const updatedPerformances = { ...dailyPerformances }
-      delete updatedPerformances[dayKey]
 
       await setDoc(doc(db, 'adminDailyPerformance', docId), {
         userId: user.uid,
@@ -2014,11 +2069,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 <p className="day-modal-trades-label">Trades for this day</p>
                 {dayPerformanceTrades.map((trade) => {
                   const typeUnset = trade.type !== 'win' && trade.type !== 'loss'
-                  const admin3Lock = isAdmin3 || userStatuses?.includes('Admin 3')
+                  const tradeEditLocked = isAdmin2
                   const showRemoveTrade =
                     dayPerformanceTrades.length > 1 &&
                     !typeUnset &&
-                    !admin3Lock
+                    !tradeEditLocked
                   return (
                   <div key={trade.id} className="day-modal-trade-row">
                     <div className="performance-type-buttons performance-type-buttons--inline day-modal-type-toggle">
@@ -2027,8 +2082,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                           <button
                             type="button"
                             className="type-button type-button-pill type-button--win"
-                            onClick={() => !admin3Lock && updateDayTrade(trade.id, { type: 'win' })}
-                            disabled={admin3Lock}
+                            onClick={() => !tradeEditLocked && updateDayTrade(trade.id, { type: 'win' })}
+                            disabled={tradeEditLocked}
                             aria-pressed="false"
                           >
                             Win
@@ -2036,8 +2091,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                           <button
                             type="button"
                             className="type-button type-button-pill type-button--loss"
-                            onClick={() => !admin3Lock && updateDayTrade(trade.id, { type: 'loss' })}
-                            disabled={admin3Lock}
+                            onClick={() => !tradeEditLocked && updateDayTrade(trade.id, { type: 'loss' })}
+                            disabled={tradeEditLocked}
                             aria-pressed="false"
                           >
                             Loss
@@ -2048,10 +2103,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                           type="button"
                           className="type-button type-button-pill type-button--win active"
                           onClick={() =>
-                            !admin3Lock && updateDayTrade(trade.id, { type: null })
+                            !tradeEditLocked && updateDayTrade(trade.id, { type: null })
                           }
-                          disabled={admin3Lock}
-                          title={admin3Lock ? undefined : 'Click to change type'}
+                          disabled={tradeEditLocked}
+                          title={tradeEditLocked ? undefined : 'Click to change type'}
                           aria-pressed="true"
                         >
                           Win
@@ -2061,10 +2116,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                           type="button"
                           className="type-button type-button-pill type-button--loss active"
                           onClick={() =>
-                            !admin3Lock && updateDayTrade(trade.id, { type: null })
+                            !tradeEditLocked && updateDayTrade(trade.id, { type: null })
                           }
-                          disabled={admin3Lock}
-                          title={admin3Lock ? undefined : 'Click to change type'}
+                          disabled={tradeEditLocked}
+                          title={tradeEditLocked ? undefined : 'Click to change type'}
                           aria-pressed="true"
                         >
                           Loss
@@ -2078,11 +2133,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                       className="form-input day-modal-input day-modal-input-amount"
                       value={trade.amount}
                       onChange={(e) =>
-                        !(isAdmin3 || userStatuses?.includes('Admin 3')) &&
+                        !tradeEditLocked &&
                         updateDayTrade(trade.id, { amount: e.target.value })
                       }
                       placeholder="Amount (€)"
-                      readOnly={isAdmin3 || userStatuses?.includes('Admin 3')}
+                      readOnly={tradeEditLocked}
                       aria-label="Trade gross amount"
                     />
                     <input
@@ -2092,11 +2147,11 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                       className="form-input day-modal-input day-modal-input-fee"
                       value={trade.fee ?? ''}
                       onChange={(e) =>
-                        !(isAdmin3 || userStatuses?.includes('Admin 3')) &&
+                        !tradeEditLocked &&
                         updateDayTrade(trade.id, { fee: e.target.value })
                       }
                       placeholder="Fee (€)"
-                      readOnly={isAdmin3 || userStatuses?.includes('Admin 3')}
+                      readOnly={tradeEditLocked}
                       aria-label="Trade fee, optional"
                     />
                     {showRemoveTrade && (
@@ -2128,7 +2183,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                   </div>
                   )
                 })}
-                {!(isAdmin3 || userStatuses?.includes('Admin 3')) && (
+                {!isAdmin2 && (
                   <button type="button" className="day-modal-add-trade" onClick={addDayTradeRow}>
                     + Add trade
                   </button>
@@ -2143,9 +2198,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                     setDayPerformanceTrades([])
                   }}
                 >
-                  {(isAdmin3 || userStatuses?.includes('Admin 3')) ? 'Close' : 'Cancel'}
+                  Cancel
                 </button>
-                {!(isAdmin3 || userStatuses?.includes('Admin 3')) && (
+                {!isAdmin2 && (
                   <>
                     {selectedDay != null &&
                       dayHasPerformanceData(dailyPerformances[selectedDay.toString()]) && (

@@ -44,3 +44,28 @@ export function mergeUserWithOverride(user, override) {
     _hasAdmin3Override: true
   }
 }
+
+export function admin3DailyPerformanceMonthKey(year, monthName) {
+  return `${year}_${monthName}`
+}
+
+export async function getAdmin3DailyPerformanceOverrides(admin3UserId) {
+  if (!admin3UserId) return {}
+  const db = getFirestore()
+  const snap = await getDoc(doc(db, COLLECTION, admin3UserId))
+  return snap.exists() ? (snap.data().dailyPerformanceOverrides || {}) : {}
+}
+
+export async function saveAdmin3DailyPerformanceMonth(admin3UserId, year, monthName, monthPayload) {
+  if (!admin3UserId) return
+  const db = getFirestore()
+  const ref = doc(db, COLLECTION, admin3UserId)
+  const snap = await getDoc(ref)
+  const existing = snap.exists() ? snap.data() : {}
+  const monthKey = admin3DailyPerformanceMonthKey(year, monthName)
+  const dailyPerformanceOverrides = {
+    ...(existing.dailyPerformanceOverrides || {}),
+    [monthKey]: monthPayload
+  }
+  await setDoc(ref, { ...existing, dailyPerformanceOverrides }, { merge: true })
+}

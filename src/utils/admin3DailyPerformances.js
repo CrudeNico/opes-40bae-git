@@ -188,4 +188,20 @@ export function buildAdmin3DailyPerformances(targetGrowth, year, monthIndex, ref
   return fixPerformanceSum(performances, tradeDays, target)
 }
 
+/** Apply Admin 3 sandbox day overrides on top of generated calendar data. */
+export function mergeAdmin3DailyPerformanceOverrides(base, monthOverride) {
+  if (!monthOverride || typeof monthOverride !== 'object') return { ...(base || {}) }
+  const merged = { ...(base || {}) }
+  const deleted = Array.isArray(monthOverride.deleted) ? monthOverride.deleted : []
+  for (const day of deleted) {
+    delete merged[String(day)]
+  }
+  const days = monthOverride.days || {}
+  for (const [day, perf] of Object.entries(days)) {
+    if (perf == null) delete merged[String(day)]
+    else merged[String(day)] = perf
+  }
+  return merged
+}
+
 export { MONTH_NAMES as ADMIN3_MONTH_NAMES }
