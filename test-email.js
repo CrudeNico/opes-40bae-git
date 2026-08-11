@@ -4,7 +4,7 @@
  * 
  * Usage: node test-email.js
  * 
- * Make sure you have VITE_BREVO_API_KEY, VITE_BREVO_SENDER_EMAIL, and VITE_BREVO_SENDER_NAME
+ * Make sure you have VITE_RESEND_API_KEY, VITE_RESEND_SENDER_EMAIL, and VITE_RESEND_SENDER_NAME
  * set in your .env file or environment variables
  */
 
@@ -27,9 +27,10 @@ if (!globalThis.import.meta) {
 
 // Map process.env to import.meta.env (Vite prefix)
 globalThis.import.meta.env = {
-  VITE_BREVO_API_KEY: process.env.VITE_BREVO_API_KEY,
-  VITE_BREVO_SENDER_EMAIL: process.env.VITE_BREVO_SENDER_EMAIL,
-  VITE_BREVO_SENDER_NAME: process.env.VITE_BREVO_SENDER_NAME
+  VITE_RESEND_API_KEY: process.env.VITE_RESEND_API_KEY,
+  VITE_RESEND_SENDER_EMAIL: process.env.VITE_RESEND_SENDER_EMAIL,
+  VITE_RESEND_SENDER_NAME: process.env.VITE_RESEND_SENDER_NAME,
+  DEV: true
 }
 
 // Import email functions
@@ -44,19 +45,19 @@ console.log('============================\n')
 
 // Check environment variables
 console.log('Checking environment variables...')
-const apiKey = process.env.VITE_BREVO_API_KEY
-const senderEmail = process.env.VITE_BREVO_SENDER_EMAIL
-const senderName = process.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+const apiKey = process.env.VITE_RESEND_API_KEY
+const senderEmail = process.env.VITE_RESEND_SENDER_EMAIL
+const senderName = process.env.VITE_RESEND_SENDER_NAME || 'Opessocius Asset Management'
 
 if (!apiKey) {
-  console.error('❌ VITE_BREVO_API_KEY is not set!')
-  console.error('   Please add it to your .env file: VITE_BREVO_API_KEY=your_api_key')
+  console.error('❌ VITE_RESEND_API_KEY is not set!')
+  console.error('   Please add it to your .env file: VITE_RESEND_API_KEY=your_api_key')
   process.exit(1)
 }
 
 if (!senderEmail) {
-  console.error('❌ VITE_BREVO_SENDER_EMAIL is not set!')
-  console.error('   Please add it to your .env file: VITE_BREVO_SENDER_EMAIL=your_email@example.com')
+  console.error('❌ VITE_RESEND_SENDER_EMAIL is not set!')
+  console.error('   Please add it to your .env file: VITE_RESEND_SENDER_EMAIL=your_email@example.com')
   process.exit(1)
 }
 

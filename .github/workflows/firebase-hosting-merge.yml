@@ -20,9 +20,9 @@ jobs:
       
       - name: Build with environment variables
         env:
-          VITE_BREVO_API_KEY: ${{ secrets.VITE_BREVO_API_KEY }}
-          VITE_BREVO_SENDER_EMAIL: ${{ secrets.VITE_BREVO_SENDER_EMAIL }}
-          VITE_BREVO_SENDER_NAME: ${{ secrets.VITE_BREVO_SENDER_NAME }}
+          VITE_RESEND_API_KEY: ${{ secrets.VITE_RESEND_API_KEY }}
+          VITE_RESEND_SENDER_EMAIL: ${{ secrets.VITE_RESEND_SENDER_EMAIL }}
+          VITE_RESEND_SENDER_NAME: ${{ secrets.VITE_RESEND_SENDER_NAME }}
         run: npm run build
       
       - uses: FirebaseExtended/action-hosting-deploy@v0

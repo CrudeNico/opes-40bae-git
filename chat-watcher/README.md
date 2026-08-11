@@ -39,11 +39,11 @@ This deploys the job, grants the Scheduler permission to invoke it, and creates/
 
 To manually trigger a run: `gcloud run jobs execute chat-watcher --region us-central1 --project opes-40bae`
 
-### 5. Set env vars (Brevo + alert email)
+### 5. Set env vars (Resend + alert email)
 
 ```bash
 gcloud run jobs update chat-watcher --region us-central1 --project opes-40bae \
-  --set-env-vars BREVO_API_KEY=your_brevo_key,BREVO_SENDER_EMAIL=no-reply@yourdomain.com,CHAT_WATCHER_ALERT_EMAIL=your@email.com
+  --set-env-vars RESEND_API_KEY=your_resend_key,RESEND_SENDER_EMAIL=no-reply@yourdomain.com,CHAT_WATCHER_ALERT_EMAIL=your@email.com
 ```
 
 ## When session expires

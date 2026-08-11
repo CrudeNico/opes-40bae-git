@@ -1,135 +1,138 @@
 /**
- * Email service using Brevo (Sendinblue)
+ * Email service using Resend
  * Sends confirmation emails to users after account creation
  * Sends notification emails for trade alerts and weekly reports
  */
 
-/**
- * Send account confirmation email to user
- * @param {string} userEmail - User's email address
- * @param {string} userName - User's full name
- * @returns {Promise} - Success status
- */
-export const sendConfirmationEmail = async (userEmail, userName) => {
-  try {
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY
-    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
-    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+import {
+  buildEmailHtml,
+  emailDetailBox,
+  emailList,
+  emailMutedParagraph,
+  emailParagraph
+} from '../utils/emailLayout.js'
 
-    // Debug logging (remove in production if needed)
-    if (process.env.NODE_ENV === 'development') {
+const getEmailConfig = () => {
+  const apiKey = import.meta.env.VITE_RESEND_API_KEY
+  const senderEmail = import.meta.env.VITE_RESEND_SENDER_EMAIL
+  const senderName = import.meta.env.VITE_RESEND_SENDER_NAME || 'Opessocius Asset Management'
+  return { apiKey, senderEmail, senderName }
+}
+
+const formatResendError = (status, errorData = {}) => {
+  if (status === 401 || status === 403) {
+    return 'Unauthorized: Invalid API key. Please verify your VITE_RESEND_API_KEY.'
+  }
+  return errorData.message || errorData.error || `Failed to send email (${status})`
+}
+
+const emailFooterNote = 'This is an automated email. Please do not reply to this message.'
+
+/**
+ * Send an email via Resend API
+ * @param {object} options
+ * @param {string} options.to
+ * @param {string} [options.toName]
+ * @param {string} options.subject
+ * @param {string} options.html
+ * @param {string} [options.text]
+ * @param {Array<{filename: string, content: string}>} [options.attachments]
+ * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
+ */
+export const sendResendEmail = async ({ to, toName, subject, html, text, attachments }) => {
+  try {
+    const { apiKey, senderEmail, senderName } = getEmailConfig()
+
+    if (import.meta.env.DEV) {
       console.log('Email config check:', {
         hasApiKey: !!apiKey,
         apiKeyLength: apiKey?.length || 0,
         apiKeyPrefix: apiKey?.substring(0, 10) || 'none',
         hasSenderEmail: !!senderEmail,
-        senderEmail: senderEmail
+        senderEmail
       })
     }
 
     if (!apiKey || !senderEmail) {
-      console.error('Brevo API key or sender email not configured')
+      console.error('Resend API key or sender email not configured')
       return { success: false, error: 'Email service not configured' }
     }
 
-    // Brevo API endpoint
-    const url = 'https://api.brevo.com/v3/smtp/email'
+    const payload = {
+      from: `${senderName} <${senderEmail}>`,
+      to: [to],
+      subject,
+      html,
+      ...(text ? { text } : {}),
+      ...(attachments?.length ? { attachments } : {})
+    }
 
-    // Email content
-    const emailData = {
-      sender: {
-        name: senderName,
-        email: senderEmail
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
       },
-      to: [
-        {
-          email: userEmail,
-          name: userName || userEmail
-        }
-      ],
-      subject: 'Opessocius account confirmation',
-      htmlContent: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-              }
-              .header {
-                background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
-                color: #ffffff;
-                padding: 30px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-              }
-              .header h1 {
-                color: #ffffff;
-              }
-              .content {
-                background: #ffffff;
-                padding: 30px;
-                border: 1px solid #e5e7eb;
-                border-top: none;
-                border-radius: 0 0 8px 8px;
-              }
-              .button {
-                display: inline-block;
-                background: #14b8a6;
-                color: #ffffff;
-                padding: 12px 24px;
-                text-decoration: none;
-                border-radius: 6px;
-                margin: 20px 0;
-              }
-              .footer {
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 12px;
-                color: #6b7280;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Welcome to Opessocius Asset Management</h1>
-            </div>
-            <div class="content">
-              <h2>Thank you for creating your account!</h2>
-              <p>Dear ${userName || 'Valued Client'},</p>
-              <p>We're excited to confirm that your investor portal account has been successfully created.</p>
-              <p>Your account is now active and ready to use. You can:</p>
-              <ul>
-                <li>Access your portfolio and track performance</li>
-                <li>Manage your investments with ease</li>
-                <li>View real-time market data and insights</li>
-              </ul>
-              <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
-              <p>Best regards,<br>The Opessocius Asset Management Team</p>
-            </div>
-            <div class="footer">
-              <p>This is an automated confirmation email. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
-            </div>
-          </body>
-        </html>
-      `,
-      textContent: `
-Welcome to Opessocius Asset Management
+      body: JSON.stringify(payload)
+    })
 
-Thank you for creating your account!
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Resend API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+        to,
+        toName
+      })
+      return {
+        success: false,
+        error: formatResendError(response.status, errorData)
+      }
+    }
 
-Dear ${userName || 'Valued Client'},
+    const result = await response.json()
+    return { success: true, messageId: result.id }
+  } catch (error) {
+    console.error('Error sending email:', error)
+    return { success: false, error: error.message || 'Failed to send email' }
+  }
+}
 
-We're excited to confirm that your investor portal account has been successfully created.
+/**
+ * Send account confirmation email to user
+ */
+export const sendConfirmationEmail = async (userEmail, userName) => {
+  const name = userName || 'Valued Client'
+  const subject = 'Opessocius account confirmation'
+
+  return sendResendEmail({
+    to: userEmail,
+    toName: name,
+    subject,
+    html: buildEmailHtml({
+      subject,
+      heading: 'Welcome to Opessocius',
+      greeting: `Dear ${name},`,
+      body: [
+        emailParagraph('Thank you for creating your account! We\'re excited to confirm that your investor portal account has been successfully created.'),
+        emailParagraph('Your account is now active and ready to use. You can:'),
+        emailList([
+          'Access your portfolio and track performance',
+          'Manage your investments with ease',
+          'View real-time market data and insights'
+        ]),
+        emailParagraph('If you have any questions or need assistance, please don\'t hesitate to contact our support team.'),
+        emailParagraph('Best regards,<br>The Opessocius Team', '0')
+      ].join(''),
+      cta: { label: 'Go to Dashboard', href: 'https://opessocius.com/dashboard' },
+      footerNote: emailFooterNote
+    }),
+    text: `Welcome to Opessocius
+
+Dear ${name},
+
+Thank you for creating your account! We're excited to confirm that your investor portal account has been successfully created.
 
 Your account is now active and ready to use. You can:
 - Access your portfolio and track performance
@@ -139,194 +142,53 @@ Your account is now active and ready to use. You can:
 If you have any questions or need assistance, please don't hesitate to contact our support team.
 
 Best regards,
-The Opessocius Asset Management Team
+The Opessocius Team
 
 ---
-This is an automated confirmation email. Please do not reply to this message.
-© ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
-      `
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'api-key': apiKey
-      },
-      body: JSON.stringify(emailData)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData: errorData
-      })
-      
-      // Provide more helpful error messages
-      let errorMessage = 'Failed to send email'
-      if (response.status === 401) {
-        if (errorData.message && errorData.message.includes('not enabled')) {
-          errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
-        } else {
-          errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_BREVO_API_KEY in GitHub Secrets matches your Brevo API key.'
-        }
-      } else if (errorData.message) {
-        errorMessage = errorData.message
-      } else {
-        errorMessage = `${response.status} ${response.statusText}`
-      }
-      
-      return { 
-        success: false, 
-        error: errorMessage
-      }
-    }
-
-    const result = await response.json()
-    return { success: true, messageId: result.messageId }
-  } catch (error) {
-    console.error('Error sending email:', error)
-    return { success: false, error: error.message || 'Failed to send email' }
-  }
+${emailFooterNote}
+© ${new Date().getFullYear()} Opessocius. All rights reserved.`
+  })
 }
 
 /**
  * Send Google Meet consultation link to user
- * @param {string} userEmail - User's email address
- * @param {string} userName - User's full name
- * @param {Date} consultationDate - Date of consultation
- * @param {string} consultationTime - Time of consultation
- * @param {string} googleMeetLink - Google Meet link
- * @returns {Promise} - Success status
  */
 export const sendConsultationLinkEmail = async (userEmail, userName, consultationDate, consultationTime, googleMeetLink) => {
-  try {
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY
-    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
-    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+  const name = userName || 'Valued Client'
+  const dateStr = consultationDate?.toDate ?
+    consultationDate.toDate().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    }) :
+    'Date TBD'
+  const subject = 'Your Consultation Meeting Link - Opessocius'
 
-    if (!apiKey || !senderEmail) {
-      console.error('Brevo API key or sender email not configured')
-      return { success: false, error: 'Email service not configured' }
-    }
+  return sendResendEmail({
+    to: userEmail,
+    toName: name,
+    subject,
+    html: buildEmailHtml({
+      subject,
+      heading: 'Your Consultation Meeting Link',
+      greeting: `Hello ${name},`,
+      body: [
+        emailParagraph('Your consultation meeting has been scheduled. Please find the details below:'),
+        emailDetailBox([
+          emailParagraph(`<strong>Date:</strong> ${dateStr}`, '8px'),
+          emailParagraph(`<strong>Time:</strong> ${consultationTime || 'Time TBD'}`, '0')
+        ].join('')),
+        emailParagraph('Click the button below to join your consultation meeting:'),
+        emailMutedParagraph(`Or copy and paste this link: ${googleMeetLink}`),
+        emailParagraph('We look forward to speaking with you!', '8px'),
+        emailParagraph('Best regards,<br>The Opessocius Team', '0')
+      ].join(''),
+      cta: { label: 'Join Meeting', href: googleMeetLink },
+      footerNote: emailFooterNote
+    }),
+    text: `Your Consultation Meeting Link
 
-    // Format date
-    const dateStr = consultationDate?.toDate ? 
-      consultationDate.toDate().toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      }) : 
-      'Date TBD'
-
-    // Brevo API endpoint
-    const url = 'https://api.brevo.com/v3/smtp/email'
-
-    // Email content
-    const emailData = {
-      sender: {
-        name: senderName,
-        email: senderEmail
-      },
-      to: [
-        {
-          email: userEmail,
-          name: userName || userEmail
-        }
-      ],
-      subject: 'Your Consultation Meeting Link - Opessocius',
-      htmlContent: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-              }
-              .header {
-                background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
-                color: #ffffff;
-                padding: 30px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-              }
-              .header h1 {
-                color: #ffffff;
-              }
-              .content {
-                background: #ffffff;
-                padding: 30px;
-                border: 1px solid #e5e7eb;
-                border-top: none;
-                border-radius: 0 0 8px 8px;
-              }
-              .button {
-                display: inline-block;
-                background: #3b82f6;
-                color: #ffffff;
-                padding: 12px 24px;
-                text-decoration: none;
-                border-radius: 6px;
-                margin: 20px 0;
-              }
-              .meeting-details {
-                background: #f9fafb;
-                padding: 20px;
-                border-radius: 6px;
-                margin: 20px 0;
-              }
-              .footer {
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 12px;
-                color: #6b7280;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Your Consultation Meeting Link</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName || 'Valued Client'},</h2>
-              <p>Your consultation meeting has been scheduled. Please find the details below:</p>
-              
-              <div class="meeting-details">
-                <p><strong>Date:</strong> ${dateStr}</p>
-                <p><strong>Time:</strong> ${consultationTime || 'Time TBD'}</p>
-              </div>
-
-              <p>Click the button below to join your consultation meeting:</p>
-              <a href="${googleMeetLink}" class="button">Join Meeting</a>
-              
-              <p>Or copy and paste this link into your browser:</p>
-              <p style="word-break: break-all; color: #3b82f6;">${googleMeetLink}</p>
-
-              <p>We look forward to speaking with you!</p>
-              <p>Best regards,<br>The Opessocius Asset Management Team</p>
-            </div>
-            <div class="footer">
-              <p>This is an automated email. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
-            </div>
-          </body>
-        </html>
-      `,
-      textContent: `
-Your Consultation Meeting Link
-
-Hello ${userName || 'Valued Client'},
+Hello ${name},
 
 Your consultation meeting has been scheduled. Please find the details below:
 
@@ -339,200 +201,62 @@ ${googleMeetLink}
 We look forward to speaking with you!
 
 Best regards,
-The Opessocius Asset Management Team
+The Opessocius Team
 
 ---
-This is an automated email. Please do not reply to this message.
-© ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
-      `
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'api-key': apiKey
-      },
-      body: JSON.stringify(emailData)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData: errorData
-      })
-      
-      // Provide more helpful error messages
-      let errorMessage = 'Failed to send email'
-      if (response.status === 401) {
-        if (errorData.message && errorData.message.includes('not enabled')) {
-          errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
-        } else {
-          errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_BREVO_API_KEY in GitHub Secrets matches your Brevo API key.'
-        }
-      } else if (errorData.message) {
-        errorMessage = errorData.message
-      } else {
-        errorMessage = `${response.status} ${response.statusText}`
-      }
-      
-      return { 
-        success: false, 
-        error: errorMessage
-      }
-    }
-
-    const result = await response.json()
-    return { success: true, messageId: result.messageId }
-  } catch (error) {
-    console.error('Error sending email:', error)
-    return { success: false, error: error.message || 'Failed to send email' }
-  }
+${emailFooterNote}
+© ${new Date().getFullYear()} Opessocius. All rights reserved.`
+  })
 }
 
 /**
  * Send consultation confirmation email to user
- * @param {string} userEmail - User's email address
- * @param {string} userName - User's full name
- * @param {Date|Timestamp} consultationDate - Date of consultation
- * @param {string} consultationTime - Time of consultation
- * @returns {Promise} - Success status
  */
 export const sendConsultationConfirmationEmail = async (userEmail, userName, consultationDate, consultationTime) => {
-  try {
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY
-    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
-    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
-
-    if (!apiKey || !senderEmail) {
-      console.error('Brevo API key or sender email not configured')
-      return { success: false, error: 'Email service not configured' }
-    }
-
-    // Format date
-    const dateStr = consultationDate?.toDate ? 
-      consultationDate.toDate().toLocaleDateString('en-US', {
+  const name = userName || 'Valued Client'
+  const dateStr = consultationDate?.toDate ?
+    consultationDate.toDate().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      weekday: 'long'
+    }) :
+    consultationDate instanceof Date ?
+      consultationDate.toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
         weekday: 'long'
-      }) : 
-      consultationDate instanceof Date ?
-        consultationDate.toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-          weekday: 'long'
-        }) :
-        'Date TBD'
+      }) :
+      'Date TBD'
+  const subject = 'Consultation Scheduled - Opessocius'
 
-    // Brevo API endpoint
-    const url = 'https://api.brevo.com/v3/smtp/email'
+  return sendResendEmail({
+    to: userEmail,
+    toName: name,
+    subject,
+    html: buildEmailHtml({
+      subject,
+      heading: 'Consultation Scheduled',
+      greeting: `Hello ${name},`,
+      body: [
+        emailParagraph('Thank you for scheduling a consultation with us. Your appointment has been confirmed!'),
+        emailDetailBox([
+          emailParagraph(`<strong>Date:</strong> ${dateStr}`, '8px'),
+          emailParagraph(`<strong>Time:</strong> ${consultationTime || 'Time TBD'}`, '0')
+        ].join('')),
+        emailDetailBox([
+          emailParagraph('<strong>Meeting Link Information</strong>', '8px'),
+          emailParagraph('You will receive an email with your meeting link <strong>5 minutes before</strong> your scheduled consultation time. Please check your inbox (and spam folder) at that time.', '0')
+        ].join('')),
+        emailParagraph('Our team is looking forward to speaking with you. If you have any questions or need to reschedule, please contact us through your account dashboard.'),
+        emailParagraph('Best regards,<br>The Opessocius Team', '0')
+      ].join(''),
+      footerNote: emailFooterNote
+    }),
+    text: `Consultation Scheduled
 
-    // Email content
-    const emailData = {
-      sender: {
-        name: senderName,
-        email: senderEmail
-      },
-      to: [
-        {
-          email: userEmail,
-          name: userName || userEmail
-        }
-      ],
-      subject: 'Consultation Scheduled - Opessocius',
-      htmlContent: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-              }
-              .header {
-                background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
-                color: #ffffff;
-                padding: 30px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-              }
-              .header h1 {
-                color: #ffffff;
-              }
-              .content {
-                background: #ffffff;
-                padding: 30px;
-                border: 1px solid #e5e7eb;
-                border-top: none;
-                border-radius: 0 0 8px 8px;
-              }
-              .meeting-details {
-                background: #f9fafb;
-                padding: 20px;
-                border-radius: 6px;
-                margin: 20px 0;
-                border-left: 4px solid #3b82f6;
-              }
-              .info-box {
-                background: #eff6ff;
-                padding: 15px;
-                border-radius: 6px;
-                margin: 20px 0;
-                border-left: 4px solid #3b82f6;
-              }
-              .footer {
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 12px;
-                color: #6b7280;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Consultation Scheduled</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName || 'Valued Client'},</h2>
-              <p>Thank you for scheduling a consultation with us. Your appointment has been confirmed!</p>
-              
-              <div class="meeting-details">
-                <p><strong>Date:</strong> ${dateStr}</p>
-                <p><strong>Time:</strong> ${consultationTime || 'Time TBD'}</p>
-              </div>
-
-              <div class="info-box">
-                <p><strong>📧 Meeting Link Information</strong></p>
-                <p>You will receive an email with your meeting link <strong>5 minutes before</strong> your scheduled consultation time. Please check your inbox (and spam folder) at that time.</p>
-              </div>
-
-              <p>Our team is looking forward to speaking with you. If you have any questions or need to reschedule, please contact us through your account dashboard.</p>
-              
-              <p>Best regards,<br>The Opessocius Asset Management Team</p>
-            </div>
-            <div class="footer">
-              <p>This is an automated confirmation email. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
-            </div>
-          </body>
-        </html>
-      `,
-      textContent: `
-Consultation Scheduled
-
-Hello ${userName || 'Valued Client'},
+Hello ${name},
 
 Thank you for scheduling a consultation with us. Your appointment has been confirmed!
 
@@ -545,289 +269,108 @@ You will receive an email with your meeting link 5 minutes before your scheduled
 Our team is looking forward to speaking with you. If you have any questions or need to reschedule, please contact us through your account dashboard.
 
 Best regards,
-The Opessocius Asset Management Team
+The Opessocius Team
 
 ---
-This is an automated confirmation email. Please do not reply to this message.
-© ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
-      `
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'api-key': apiKey
-      },
-      body: JSON.stringify(emailData)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error (consultation confirmation):', errorData)
-      return { 
-        success: false, 
-        error: errorData.message || 'Failed to send consultation confirmation email' 
-      }
-    }
-
-    const result = await response.json()
-    return { success: true, messageId: result.messageId }
-  } catch (error) {
-    console.error('Error sending consultation confirmation email:', error)
-    return { success: false, error: error.message || 'Failed to send consultation confirmation email' }
-  }
+${emailFooterNote}
+© ${new Date().getFullYear()} Opessocius. All rights reserved.`
+  })
 }
 
 /**
  * Send trade alert notification email to users who have it enabled
- * @param {string} userEmail - User's email address
- * @param {string} userName - User's name
- * @param {object} alert - Trade alert data
- * @returns {Promise} - Success status
  */
 export const sendTradeAlertNotification = async (userEmail, userName, alert) => {
-  try {
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY
-    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
-    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+  const name = userName || 'Valued Client'
+  const subject = 'New Trade Alert - Opessocius'
 
-    if (!apiKey || !senderEmail) {
-      console.error('Brevo API key or sender email not configured')
-      return { success: false, error: 'Email service not configured' }
-    }
+  return sendResendEmail({
+    to: userEmail,
+    toName: name,
+    subject,
+    html: buildEmailHtml({
+      subject,
+      heading: 'New Trade Alert',
+      greeting: `Hello ${name},`,
+      body: [
+        emailParagraph('A new trade alert has been posted in the community. Please log in to view the details.'),
+        emailDetailBox([
+          emailParagraph(`<strong>Symbol:</strong> ${alert.symbol || 'N/A'}`, '8px'),
+          emailParagraph(`<strong>Action:</strong> ${alert.action || 'N/A'}`, '8px'),
+          emailParagraph(`<strong>Price:</strong> ${alert.price || 'N/A'}`, alert.takeProfit || alert.stopLoss ? '8px' : '0'),
+          alert.takeProfit ? emailParagraph(`<strong>Take Profit:</strong> ${alert.takeProfit}`, alert.stopLoss ? '8px' : '0') : '',
+          alert.stopLoss ? emailParagraph(`<strong>Stop Loss:</strong> ${alert.stopLoss}`, '0') : ''
+        ].filter(Boolean).join('')),
+        emailParagraph('Best regards,<br>The Opessocius Team', '0')
+      ].join(''),
+      cta: { label: 'View Trade Alert', href: 'https://opessocius.com/dashboard' },
+      footerNote: emailFooterNote
+    }),
+    text: `New Trade Alert
 
-    const url = 'https://api.brevo.com/v3/smtp/email'
+Hello ${name},
 
-    const emailData = {
-      sender: {
-        name: senderName,
-        email: senderEmail
-      },
-      to: [
-        {
-          email: userEmail,
-          name: userName || userEmail
-        }
-      ],
-      subject: 'New Trade Alert - Opessocius',
-      htmlContent: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%); color: #ffffff; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-              .header h1 { color: #ffffff; margin: 0; }
-              .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
-              .alert-details { background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; }
-              .alert-item { margin: 10px 0; }
-              .alert-label { font-weight: 600; color: #1f2937; }
-              .cta-button { display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>New Trade Alert</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName || 'Valued Client'},</h2>
-              <p>A new trade alert has been posted in the community. Please log in to view the details.</p>
-              
-              <div class="alert-details">
-                <div class="alert-item">
-                  <span class="alert-label">Symbol:</span> ${alert.symbol || 'N/A'}
-                </div>
-                <div class="alert-item">
-                  <span class="alert-label">Action:</span> ${alert.action || 'N/A'}
-                </div>
-                <div class="alert-item">
-                  <span class="alert-label">Price:</span> ${alert.price || 'N/A'}
-                </div>
-                ${alert.takeProfit ? `<div class="alert-item"><span class="alert-label">Take Profit:</span> ${alert.takeProfit}</div>` : ''}
-                ${alert.stopLoss ? `<div class="alert-item"><span class="alert-label">Stop Loss:</span> ${alert.stopLoss}</div>` : ''}
-              </div>
+A new trade alert has been posted in the community. Please log in to view the details.
 
-              <a href="https://opes-40bae.web.app/dashboard" class="cta-button">View Trade Alert</a>
-              
-              <p style="margin-top: 30px;">Best regards,<br>The Opessocius Asset Management Team</p>
-            </div>
-            <div class="footer">
-              <p>This is an automated email. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
-            </div>
-          </body>
-        </html>
-      `,
-      textContent: `
-        New Trade Alert
+Symbol: ${alert.symbol || 'N/A'}
+Action: ${alert.action || 'N/A'}
+Price: ${alert.price || 'N/A'}
+${alert.takeProfit ? `Take Profit: ${alert.takeProfit}` : ''}
+${alert.stopLoss ? `Stop Loss: ${alert.stopLoss}` : ''}
 
-        Hello ${userName || 'Valued Client'},
+View Trade Alert: https://opessocius.com/dashboard
 
-        A new trade alert has been posted in the community. Please log in to view the details.
+Best regards,
+The Opessocius Team
 
-        Symbol: ${alert.symbol || 'N/A'}
-        Action: ${alert.action || 'N/A'}
-        Price: ${alert.price || 'N/A'}
-        ${alert.takeProfit ? `Take Profit: ${alert.takeProfit}` : ''}
-        ${alert.stopLoss ? `Stop Loss: ${alert.stopLoss}` : ''}
-
-        View Trade Alert: https://opes-40bae.web.app/dashboard
-
-        Best regards,
-        The Opessocius Asset Management Team
-
-        ---
-        This is an automated email. Please do not reply to this message.
-        © ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
-      `
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'api-key': apiKey
-      },
-      body: JSON.stringify(emailData)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error (trade alert notification):', errorData)
-      return { 
-        success: false, 
-        error: errorData.message || 'Failed to send trade alert notification' 
-      }
-    }
-
-    const result = await response.json()
-    return { success: true, messageId: result.messageId }
-  } catch (error) {
-    console.error('Error sending trade alert notification:', error)
-    return { success: false, error: error.message || 'Failed to send trade alert notification' }
-  }
+---
+${emailFooterNote}
+© ${new Date().getFullYear()} Opessocius. All rights reserved.`
+  })
 }
 
 /**
  * Send weekly report notification email to users who have it enabled
- * @param {string} userEmail - User's email address
- * @param {string} userName - User's name
- * @param {object} report - Weekly report data
- * @returns {Promise} - Success status
  */
 export const sendWeeklyReportNotification = async (userEmail, userName, report) => {
-  try {
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY
-    const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
-    const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+  const name = userName || 'Valued Client'
+  const subject = 'New Weekly Report Available - Opessocius'
 
-    if (!apiKey || !senderEmail) {
-      console.error('Brevo API key or sender email not configured')
-      return { success: false, error: 'Email service not configured' }
-    }
+  return sendResendEmail({
+    to: userEmail,
+    toName: name,
+    subject,
+    html: buildEmailHtml({
+      subject,
+      heading: 'New Weekly Report Available',
+      greeting: `Hello ${name},`,
+      body: [
+        emailParagraph(`A new weekly report${report.videoUrl ? ' and video' : ''} has been posted in the community. Please log in to view it.`),
+        emailDetailBox([
+          emailParagraph(`<strong>${report.title || 'Weekly Report'}</strong>`, report.description ? '8px' : '0'),
+          report.description ? emailParagraph(report.description, '0') : ''
+        ].filter(Boolean).join('')),
+        emailParagraph('Best regards,<br>The Opessocius Team', '0')
+      ].join(''),
+      cta: { label: 'View Weekly Report', href: 'https://opessocius.com/dashboard' },
+      footerNote: emailFooterNote
+    }),
+    text: `New Weekly Report Available
 
-    const url = 'https://api.brevo.com/v3/smtp/email'
+Hello ${name},
 
-    const emailData = {
-      sender: {
-        name: senderName,
-        email: senderEmail
-      },
-      to: [
-        {
-          email: userEmail,
-          name: userName || userEmail
-        }
-      ],
-      subject: 'New Weekly Report Available - Opessocius',
-      htmlContent: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%); color: #ffffff; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-              .header h1 { color: #ffffff; margin: 0; }
-              .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
-              .report-details { background: #f9fafb; padding: 20px; border-radius: 6px; margin: 20px 0; }
-              .cta-button { display: inline-block; padding: 12px 24px; background: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>New Weekly Report Available</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName || 'Valued Client'},</h2>
-              <p>A new weekly report ${report.videoUrl ? 'and video' : ''} has been posted in the community. Please log in to view it.</p>
-              
-              <div class="report-details">
-                <h3 style="margin-top: 0;">${report.title || 'Weekly Report'}</h3>
-                ${report.description ? `<p>${report.description}</p>` : ''}
-              </div>
+A new weekly report${report.videoUrl ? ' and video' : ''} has been posted in the community. Please log in to view it.
 
-              <a href="https://opes-40bae.web.app/dashboard" class="cta-button">View Weekly Report</a>
-              
-              <p style="margin-top: 30px;">Best regards,<br>The Opessocius Asset Management Team</p>
-            </div>
-            <div class="footer">
-              <p>This is an automated email. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
-            </div>
-          </body>
-        </html>
-      `,
-      textContent: `
-        New Weekly Report Available
+${report.title || 'Weekly Report'}
+${report.description || ''}
 
-        Hello ${userName || 'Valued Client'},
+View Weekly Report: https://opessocius.com/dashboard
 
-        A new weekly report ${report.videoUrl ? 'and video' : ''} has been posted in the community. Please log in to view it.
+Best regards,
+The Opessocius Team
 
-        ${report.title || 'Weekly Report'}
-        ${report.description || ''}
-
-        View Weekly Report: https://opes-40bae.web.app/dashboard
-
-        Best regards,
-        The Opessocius Asset Management Team
-
-        ---
-        This is an automated email. Please do not reply to this message.
-        © ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.
-      `
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'api-key': apiKey
-      },
-      body: JSON.stringify(emailData)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Brevo API error (weekly report notification):', errorData)
-      return { 
-        success: false, 
-        error: errorData.message || 'Failed to send weekly report notification' 
-      }
-    }
-
-    const result = await response.json()
-    return { success: true, messageId: result.messageId }
-  } catch (error) {
-    console.error('Error sending weekly report notification:', error)
-    return { success: false, error: error.message || 'Failed to send weekly report notification' }
-  }
+---
+${emailFooterNote}
+© ${new Date().getFullYear()} Opessocius. All rights reserved.`
+  })
 }

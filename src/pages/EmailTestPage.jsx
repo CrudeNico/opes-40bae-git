@@ -306,21 +306,21 @@ const EmailTestPage = () => {
           <h2>Environment Variables Check</h2>
           <div className="env-status">
             <div className="env-item">
-              <span className="env-label">VITE_BREVO_API_KEY:</span>
-              <span className={import.meta.env.VITE_BREVO_API_KEY ? 'env-ok' : 'env-missing'}>
-                {import.meta.env.VITE_BREVO_API_KEY ? '✅ Set' : '❌ Missing'}
+              <span className="env-label">VITE_RESEND_API_KEY:</span>
+              <span className={import.meta.env.VITE_RESEND_API_KEY ? 'env-ok' : 'env-missing'}>
+                {import.meta.env.VITE_RESEND_API_KEY ? '✅ Set' : '❌ Missing'}
               </span>
             </div>
             <div className="env-item">
-              <span className="env-label">VITE_BREVO_SENDER_EMAIL:</span>
-              <span className={import.meta.env.VITE_BREVO_SENDER_EMAIL ? 'env-ok' : 'env-missing'}>
-                {import.meta.env.VITE_BREVO_SENDER_EMAIL ? '✅ Set' : '❌ Missing'}
+              <span className="env-label">VITE_RESEND_SENDER_EMAIL:</span>
+              <span className={import.meta.env.VITE_RESEND_SENDER_EMAIL ? 'env-ok' : 'env-missing'}>
+                {import.meta.env.VITE_RESEND_SENDER_EMAIL ? '✅ Set' : '❌ Missing'}
               </span>
             </div>
             <div className="env-item">
-              <span className="env-label">VITE_BREVO_SENDER_NAME:</span>
-              <span className={import.meta.env.VITE_BREVO_SENDER_NAME ? 'env-ok' : 'env-missing'}>
-                {import.meta.env.VITE_BREVO_SENDER_NAME ? `✅ ${import.meta.env.VITE_BREVO_SENDER_NAME}` : '⚠️ Using default'}
+              <span className="env-label">VITE_RESEND_SENDER_NAME:</span>
+              <span className={import.meta.env.VITE_RESEND_SENDER_NAME ? 'env-ok' : 'env-missing'}>
+                {import.meta.env.VITE_RESEND_SENDER_NAME ? `✅ ${import.meta.env.VITE_RESEND_SENDER_NAME}` : '⚠️ Using default'}
               </span>
             </div>
           </div>

@@ -7,6 +7,7 @@
 import { chromium } from 'playwright'
 import { createHash } from 'crypto'
 import admin from 'firebase-admin'
+import { buildEmailHtml, emailList, emailParagraph } from '../src/utils/emailLayout.js'
 
 const SESSION_COLLECTION = '_system'
 const SESSION_DOC_ID = 'chatWatcherSession'
@@ -64,37 +65,39 @@ async function extractMessages(page) {
 }
 
 async function sendLogoutAlert(message) {
-  const apiKey = process.env.BREVO_API_KEY
-  const senderEmail = process.env.BREVO_SENDER_EMAIL
+  const apiKey = process.env.RESEND_API_KEY
+  const senderEmail = process.env.RESEND_SENDER_EMAIL
   const alertEmail = process.env.CHAT_WATCHER_ALERT_EMAIL || senderEmail
 
   if (!apiKey || !senderEmail) {
-    console.error('BREVO_API_KEY / BREVO_SENDER_EMAIL not set - cannot send alert')
+    console.error('RESEND_API_KEY / RESEND_SENDER_EMAIL not set - cannot send alert')
     return
   }
 
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'api-key': apiKey
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      sender: { name: 'Chat Watcher', email: senderEmail },
-      to: [{ email: alertEmail }],
+      from: `Chat Watcher <${senderEmail}>`,
+      to: [alertEmail],
       subject: '[Chat Watcher] Session expired – manual re-login required',
-      htmlContent: `
-        <h2>Chat watcher session expired</h2>
-        <p>The community chat watcher could not access the chat. You need to log in again.</p>
-        <pre>${message}</pre>
-        <p><strong>Steps:</strong></p>
-        <ol>
-          <li>Run: <code>node manual-login.mjs</code></li>
-          <li>Log in in the browser, press Enter to save</li>
-          <li>Run: <code>node upload-session.mjs</code></li>
-        </ol>
-      `
+      html: buildEmailHtml({
+        subject: 'Chat Watcher Alert',
+        heading: 'Session Expired',
+        body: [
+          emailParagraph('The community chat watcher could not access the chat. You need to log in again.'),
+          emailParagraph(`<pre style="margin:0;font-size:13px;line-height:1.5;color:#B8C4D6;white-space:pre-wrap;word-break:break-word;">${message}</pre>`, '16px'),
+          emailParagraph('<strong>Steps to restore:</strong>', '8px'),
+          emailList([
+            'Run: <code style="color:#FFFFFF;">node manual-login.mjs</code>',
+            'Log in in the browser, press Enter to save',
+            'Run: <code style="color:#FFFFFF;">node upload-session.mjs</code>'
+          ])
+        ].join('')
+      })
     })
   })
   if (!res.ok) {

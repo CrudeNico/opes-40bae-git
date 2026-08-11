@@ -75,9 +75,9 @@ else
 fi
 
 echo ""
-echo "Set env vars (Brevo + alert email) if not already set:"
+echo "Set env vars (Resend + alert email) if not already set:"
 echo "  gcloud run jobs update $JOB_NAME --region $REGION --project $PROJECT_ID \\"
-echo "    --set-env-vars BREVO_API_KEY=your_key,BREVO_SENDER_EMAIL=no-reply@yourdomain.com,CHAT_WATCHER_ALERT_EMAIL=your@email.com"
+echo "    --set-env-vars RESEND_API_KEY=your_key,RESEND_SENDER_EMAIL=no-reply@yourdomain.com,CHAT_WATCHER_ALERT_EMAIL=your@email.com"
 
 echo ""
 echo "Triggering one run now (catches up after deploy)..."

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs } from 'firebase/firestore'
+import { buildEmailHtml } from '../utils/emailLayout.js'
 import './AdminEmails.css'
 
 const AdminEmails = () => {
@@ -189,10 +190,10 @@ const AdminEmails = () => {
 
     try {
       const filePromises = files.map(async (file) => {
-        // Check file size (limit to 25MB per file for Brevo)
-        const maxSize = 25 * 1024 * 1024 // 25MB
+        // Check file size (limit to 40MB per file for Resend)
+        const maxSize = 40 * 1024 * 1024 // 40MB
         if (file.size > maxSize) {
-          throw new Error(`File "${file.name}" exceeds 25MB limit`)
+          throw new Error(`File "${file.name}" exceeds 40MB limit`)
         }
 
         // Read file as base64 for email attachment
@@ -291,10 +292,10 @@ const AdminEmails = () => {
         emailList = recipientEmails.map(r => r.email)
       }
 
-      // Get Brevo API credentials
-      const apiKey = import.meta.env.VITE_BREVO_API_KEY
-      const senderEmail = import.meta.env.VITE_BREVO_SENDER_EMAIL
-      const senderName = import.meta.env.VITE_BREVO_SENDER_NAME || 'Opessocius Asset Management'
+      // Get Resend API credentials
+      const apiKey = import.meta.env.VITE_RESEND_API_KEY
+      const senderEmail = import.meta.env.VITE_RESEND_SENDER_EMAIL
+      const senderName = import.meta.env.VITE_RESEND_SENDER_NAME || 'Opessocius Asset Management'
 
       if (!apiKey || !senderEmail) {
         setError('Email service not configured. Please check environment variables.')
@@ -307,91 +308,29 @@ const AdminEmails = () => {
       const formattedContent = emailData.content.replace(/\n/g, '<br>')
       const emailContent = formattedContent
 
-      // Build attachments array for Brevo API (base64 encoded)
+      // Build attachments array for Resend API (base64 encoded)
       const attachments = attachedFiles.map(file => ({
-        name: file.name,
+        filename: file.name,
         content: file.base64
       }))
 
-      // Create email HTML with same layout as other emails
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-              }
-              .header {
-                background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1429 100%);
-                color: #ffffff;
-                padding: 30px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-              }
-              .header h1 {
-                color: #ffffff;
-                margin: 0;
-              }
-              .content {
-                background: #ffffff;
-                padding: 30px;
-                border: 1px solid #e5e7eb;
-                border-top: none;
-                border-radius: 0 0 8px 8px;
-              }
-              .content h2 {
-                color: #1f2937;
-                margin-top: 0;
-              }
-              .content p {
-                color: #374151;
-                margin: 1em 0;
-              }
-              .footer {
-                margin-top: 30px;
-                padding-top: 20px;
-                border-top: 1px solid #e5e7eb;
-                font-size: 12px;
-                color: #6b7280;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Opessocius Asset Management</h1>
-            </div>
-            <div class="content">
-              <h2>${emailData.subject}</h2>
-              <div style="white-space: pre-wrap; color: #374151; line-height: 1.6;">${emailContent}</div>
-            </div>
-            <div class="footer">
-              <p>This is an automated email from Opessocius Asset Management. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Opessocius Asset Management. All rights reserved.</p>
-            </div>
-          </body>
-        </html>
-      `
+      const emailHtml = buildEmailHtml({
+        subject: emailData.subject,
+        heading: emailData.subject,
+        body: `<div style="font-size:15px;line-height:1.6;color:#FFFFFF;">${emailContent}</div>`,
+        footerNote: 'This is an automated email from Opessocius. Please do not reply to this message.'
+      })
 
       const plainTextContent = emailData.content
 
       const buildErrorMessage = (responseStatus, responseStatusText, errorData = {}) => {
         let errorMessage = 'Failed to send email'
-        if (responseStatus === 401) {
-          if (errorData.message && errorData.message.includes('not enabled')) {
-            errorMessage = 'API Key is not enabled. Please check your Brevo account settings and ensure SMTP permissions are enabled for your API key.'
-          } else {
-            errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_BREVO_API_KEY in GitHub Secrets matches your Brevo API key.'
-          }
+        if (responseStatus === 401 || responseStatus === 403) {
+          errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_RESEND_API_KEY.'
         } else if (errorData.message) {
           errorMessage = `Failed to send email: ${errorData.message}`
+        } else if (errorData.error) {
+          errorMessage = `Failed to send email: ${errorData.error}`
         } else {
           errorMessage = `Failed to send email: ${responseStatus} ${responseStatusText}`
         }
@@ -399,39 +338,35 @@ const AdminEmails = () => {
       }
 
       // Send each email as an individual request to preserve recipient privacy.
-      const url = 'https://api.brevo.com/v3/smtp/email'
+      const url = 'https://api.resend.com/emails'
       let successCount = 0
       let firstFailureMessage = ''
 
       for (const recipientEmail of emailList) {
         const emailPayload = {
-          sender: {
-            name: senderName,
-            email: senderEmail
-          },
-          to: [{ email: recipientEmail }],
+          from: `${senderName} <${senderEmail}>`,
+          to: [recipientEmail],
           subject: emailData.subject,
-          htmlContent: emailHtml,
-          textContent: plainTextContent
+          html: emailHtml,
+          text: plainTextContent
         }
 
         if (attachments.length > 0) {
-          emailPayload.attachment = attachments
+          emailPayload.attachments = attachments
         }
 
         const response = await fetch(url, {
           method: 'POST',
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'api-key': apiKey
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(emailPayload)
         })
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
-          console.error('Brevo API error for recipient:', {
+          console.error('Resend API error for recipient:', {
             recipientEmail,
             status: response.status,
             statusText: response.statusText,
