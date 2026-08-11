@@ -13,12 +13,57 @@ import {
   getAdminInvestorSummaryTotalDeposits,
   getAdminPerformancePreviewStartingBalance
 } from '../utils/investorDualTranche'
+import {
+  calculateProratedDepositGrowth,
+  calculateWithdrawalGrowthLoss,
+  getRecordNetGrowthAmount
+} from '../utils/monthlyCashflowProration'
 import './AdminInvestorsManagement.css'
 
 const PLACEHOLDER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
 const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
 
 const isPartnerUser = (inv) => Array.isArray(inv?.statuses) && inv.statuses.includes('Partner')
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+]
+
+const hasPerformanceEntryForCurrentMonth = (investor) => {
+  const history = investor?.investmentData?.monthlyHistory
+  if (!Array.isArray(history) || history.length === 0) return false
+  const now = new Date()
+  const monthName = MONTH_NAMES[now.getMonth()]
+  const year = now.getFullYear()
+  return history.some((record) => {
+    const recordYear = parseInt(record?.year, 10)
+    return record?.month === monthName && recordYear === year
+  })
+}
+
+const CurrentMonthPerformanceCheckIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width="18"
+    height="18"
+    role="img"
+    aria-label="Performance logged for this month"
+    className="investor-card-month-check-icon"
+    fill="currentColor"
+    stroke="currentColor"
+    strokeWidth="0.1"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    paintOrder="stroke fill markers"
+  >
+    <path
+      fill="currentColor"
+      d="M17 3.34a10 10 0 1 1-14.995 8.984L2 12l.005-.324A10 10 0 0 1 17 3.34m-1.293 5.953a1 1 0 0 0-1.32-.083l-.094.083L11 12.585l-1.293-1.292l-.094-.083a1 1 0 0 0-1.403 1.403l.083.094l2 2l.094.083a1 1 0 0 0 1.226 0l.094-.083l4-4l.083-.094a1 1 0 0 0-.083-1.32"
+    />
+  </svg>
+)
 
 const polarToCartesian = (cx, cy, r, deg) => {
   const rad = (deg - 90) * (Math.PI / 180)
@@ -454,35 +499,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         return
       }
 
-      // Helper functions for prorated growth (same as in handleAddPerformance)
-      const getDaysInMonth = (month, year) => {
-        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
-        return new Date(year, monthIndex + 1, 0).getDate()
-      }
-
-      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        const depositDate = new Date(date)
-        const dayOfMonth = depositDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        let daysRemaining = daysInMonth - dayOfMonth + 1
-        if (dayOfMonth === daysInMonth) {
-          daysRemaining = 0
-        }
-        const proratedRatio = daysRemaining / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-
-      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        const withdrawalDate = new Date(date)
-        const dayOfMonth = withdrawalDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        const proratedRatio = (daysInMonth - dayOfMonth) / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-
       // Calculate the starting balance for this month (same-tranche previous ending, or tranche initial)
       let startingBalance = getRecordTrancheStartingBalance(
         monthlyHistory,
@@ -504,7 +520,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
 
       const depositAmount = normalizedDepositEntries.reduce((sum, entry) => sum + entry.amount, 0)
       const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
-        sum + calculateProratedGrowth(
+        sum + calculateProratedDepositGrowth(
           entry.amount,
           percentageGrowth,
           entry.date,
@@ -578,7 +594,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         const depAmount = depEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
         const wdAmount = wdEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
         const depGrowth = depEntries.reduce((sum, entry) => (
-          sum + calculateProratedGrowth(
+          sum + calculateProratedDepositGrowth(
             Number(entry.amount) || 0,
             currentRecord.percentageGrowth,
             entry.date,
@@ -705,34 +721,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         return
       }
 
-      const getDaysInMonth = (month, year) => {
-        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
-                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
-        return new Date(year, monthIndex + 1, 0).getDate()
-      }
-
-      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        const depositDate = new Date(date)
-        const dayOfMonth = depositDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        let daysRemaining = daysInMonth - dayOfMonth + 1
-        if (dayOfMonth === daysInMonth) {
-          daysRemaining = 0
-        }
-        const proratedRatio = daysRemaining / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-
-      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        const withdrawalDate = new Date(date)
-        const dayOfMonth = withdrawalDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        const proratedRatio = (daysInMonth - dayOfMonth) / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-
       const deletedTranche = monthlyHistory[recordIndex]?.tranche || null
       const updatedHistory = monthlyHistory.filter((_, index) => index !== recordIndex)
 
@@ -762,7 +750,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         const depAmount = depEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
         const wdAmount = wdEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
         const depGrowth = depEntries.reduce((sum, entry) => (
-          sum + calculateProratedGrowth(
+          sum + calculateProratedDepositGrowth(
             Number(entry.amount) || 0,
             currentRecord.percentageGrowth,
             entry.date,
@@ -892,39 +880,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       )
       const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
 
-      // Helper function to get days in a month
-      const getDaysInMonth = (month, year) => {
-        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
-        return new Date(year, monthIndex + 1, 0).getDate()
-      }
-
-      // Helper function to calculate prorated growth based on day of month
-      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        
-        const depositDate = new Date(date)
-        const dayOfMonth = depositDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        
-        // If deposit is on day 1, get full month's growth
-        // If deposit is on day 15, get half month's growth (15/30 or 15/31)
-        // If deposit is on day 31, get no growth (31/31 = 1, but we want 0 since it's the last day)
-        // Formula: (daysInMonth - dayOfMonth + 1) / daysInMonth
-        // Day 1: (30-1+1)/30 = 1.0 (full growth)
-        // Day 15: (30-15+1)/30 = 0.533 (about half)
-        // Day 31: (31-31+1)/31 = 0.032 (almost no growth, but we'll set it to 0 for day 31)
-        
-        let daysRemaining = daysInMonth - dayOfMonth + 1
-        // If it's the last day of the month, no growth
-        if (dayOfMonth === daysInMonth) {
-          daysRemaining = 0
-        }
-        
-        const proratedRatio = daysRemaining / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-
       // Calculate new balance based on percentage growth
       const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
       const growthAmount = currentBalance * (percentageGrowth / 100)
@@ -941,30 +896,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       const withdrawalAmount = normalizedWithdrawalEntries.reduce((sum, entry) => sum + entry.amount, 0)
       const newTotalDeposits = totalDeposits + depositAmount
       const newTotalWithdrawals = totalWithdrawals + withdrawalAmount
-      
-      // Calculate withdrawal growth loss (negative impact - they lose growth on the amount withdrawn)
-      // If withdrawal is on day 1, they lose full month's growth (money withdrawn at start, earned no growth)
-      // If withdrawal is on day 15, they lose about half month's growth (money was there for half the month)
-      // If withdrawal is on day 31 (last day), they lose no growth (money was there almost the whole month)
-      // Formula: (daysInMonth - dayOfMonth) / daysInMonth
-      // Day 1: (31-1)/31 = 30/31 = 97% loss (almost full)
-      // Day 15: (31-15)/31 = 16/31 = 52% loss (about half)
-      // Day 31: (31-31)/31 = 0/31 = 0% loss (zero)
-      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        
-        const withdrawalDate = new Date(date)
-        const dayOfMonth = withdrawalDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        
-        // Calculate days remaining in month after withdrawal
-        const daysRemaining = daysInMonth - dayOfMonth
-        const proratedRatio = daysRemaining / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-      
+
       const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
-        sum + calculateProratedGrowth(
+        sum + calculateProratedDepositGrowth(
           entry.amount,
           percentageGrowth,
           entry.date,
@@ -1094,12 +1028,18 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
             ) : (
               investors.map((investor) => {
                 const partner = isPartnerUser(investor)
+                const hasCurrentMonthEntry = hasPerformanceEntryForCurrentMonth(investor)
                 return (
                 <div
                   key={investor.id}
                   className={`investor-card ${selectedInvestor?.id === investor.id ? 'selected' : ''}${partner ? ' investor-card-partner' : ''}`}
                   onClick={() => handleInvestorSelect(investor)}
                 >
+                  {hasCurrentMonthEntry && (
+                    <span className="investor-card-month-check" title="Performance logged for this month">
+                      <CurrentMonthPerformanceCheckIcon />
+                    </span>
+                  )}
                   <div className={`investor-card-image${partner ? ' investor-card-image-partner' : ''}`}>
                     {!isAdmin3 && investor.profileImageUrl ? (
                       <img src={investor.profileImageUrl} alt={investor.displayName || investor.email} />
@@ -1483,7 +1423,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                                   <div>{record.percentageGrowth}%</div>
                                   <div>
                                     €
-                                    {(record.growthAmount || 0).toLocaleString('en-US', {
+                                    {getRecordNetGrowthAmount(record).toLocaleString('en-US', {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2
                                     })}
@@ -1554,7 +1494,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           <div>{record.percentageGrowth}%</div>
                           <div>
                             €
-                            {(record.growthAmount || 0).toLocaleString('en-US', {
+                            {getRecordNetGrowthAmount(record).toLocaleString('en-US', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
                             })}
@@ -1776,29 +1716,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                     </div>
 
                     {monthlyUpdate.percentageGrowth && selectedInvestor.investmentData && (() => {
-                      // Calculate prorated growth for preview
-                      const getDaysInMonth = (month, year) => {
-                        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
-                                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
-                        return new Date(year, monthIndex + 1, 0).getDate()
-                      }
-
-                      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
-                        if (!date || !month || !year || amount === 0) return 0
-                        
-                        const depositDate = new Date(date)
-                        const dayOfMonth = depositDate.getDate()
-                        const daysInMonth = getDaysInMonth(month, parseInt(year))
-                        
-                        let daysRemaining = daysInMonth - dayOfMonth + 1
-                        if (dayOfMonth === daysInMonth) {
-                          daysRemaining = 0
-                        }
-                        
-                        const proratedRatio = daysRemaining / daysInMonth
-                        return amount * (percentageGrowth / 100) * proratedRatio
-                      }
-
                       const currentBalance = getAdminPerformancePreviewStartingBalance(
                         selectedInvestor.investmentData,
                         monthlyUpdate.performanceScope || 'primary'
@@ -1813,9 +1730,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                         .filter((entry) => entry.amount > 0 || entry.date)
                       const depositAmount = normalizedDepositEntries.reduce((sum, entry) => sum + entry.amount, 0)
                       const withdrawalAmount = normalizedWithdrawalEntries.reduce((sum, entry) => sum + entry.amount, 0)
-                      
+
                       const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
-                        sum + calculateProratedGrowth(
+                        sum + calculateProratedDepositGrowth(
                           entry.amount,
                           percentageGrowth,
                           entry.date,
@@ -1823,23 +1740,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           monthlyUpdate.year
                         )
                       ), 0)
-                      
-                      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
-                        if (!date || !month || !year || amount === 0) return 0
-                        
-                        const withdrawalDate = new Date(date)
-                        const dayOfMonth = withdrawalDate.getDate()
-                        const daysInMonth = getDaysInMonth(month, parseInt(year))
-                        
-                        // For withdrawals: (daysInMonth - dayOfMonth) / daysInMonth
-                        // Day 1: (31-1)/31 = 30/31 = 97% loss (almost full)
-                        // Day 15: (31-15)/31 = 16/31 = 52% loss (about half)
-                        // Day 31: (31-31)/31 = 0/31 = 0% loss (zero)
-                        const daysRemaining = daysInMonth - dayOfMonth
-                        const proratedRatio = daysRemaining / daysInMonth
-                        return amount * (percentageGrowth / 100) * proratedRatio
-                      }
-                      
+
                       const withdrawalGrowth = normalizedWithdrawalEntries.reduce((sum, entry) => (
                         sum + calculateWithdrawalGrowthLoss(
                           entry.amount,
@@ -1849,8 +1750,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           monthlyUpdate.year
                         )
                       ), 0)
-                      
+
                       const finalBalance = currentBalance + baseGrowth + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
+                      const netGrowth = baseGrowth + depositGrowth - withdrawalGrowth
 
                       return (
                         <div className="update-preview">
@@ -1861,7 +1763,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                               <span>€{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className="preview-item">
-                              <span>Growth ({monthlyUpdate.percentageGrowth}%):</span>
+                              <span>Base Growth ({monthlyUpdate.percentageGrowth}%):</span>
                               <span>€{baseGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             {depositAmount > 0 && (
@@ -1892,6 +1794,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                                 )}
                               </>
                             )}
+                            <div className="preview-item">
+                              <span>Net Growth Amount:</span>
+                              <span>€{netGrowth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
                             <div className="preview-item preview-total">
                               <span>Final Balance:</span>
                               <span>€{finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
