@@ -6,7 +6,8 @@ import {
   TRANCHE_PRIMARY,
   TRANCHE_SECONDARY,
   getLastTrancheEnding,
-  computeDualTrancheSumBalance,
+  getRecordTrancheStartingBalance,
+  resolveInvestorCurrentBalance,
   getInvestorCombinedInitial,
   getAdminInvestorSummaryCurrentBalance,
   getAdminInvestorSummaryTotalDeposits,
@@ -482,12 +483,12 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         return amount * (percentageGrowth / 100) * proratedRatio
       }
 
-      // Calculate the starting balance for this month
-      // It should be the ending balance of the previous month, or initial investment if it's the first month
-      let startingBalance = currentInvestmentData.initialInvestment || 0
-      if (recordIndex > 0) {
-        startingBalance = monthlyHistory[recordIndex - 1].endingBalance || startingBalance
-      }
+      // Calculate the starting balance for this month (same-tranche previous ending, or tranche initial)
+      let startingBalance = getRecordTrancheStartingBalance(
+        monthlyHistory,
+        recordIndex,
+        currentInvestmentData
+      )
 
       // Recalculate the month's data with edited values
       const percentageGrowth = parseFloat(editedRecordData.percentageGrowth) || 0
@@ -549,17 +550,25 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       const updatedHistory = [...monthlyHistory]
       updatedHistory[recordIndex] = updatedRecord
 
-      // Recalculate all subsequent months' balances
-      let runningBalance = newBalance
+      const editedTranche = updatedRecord.tranche || null
+
+      // Recalculate subsequent months in the same tranche only (dual portfolios stay independent)
       for (let i = recordIndex + 1; i < updatedHistory.length; i++) {
-        const prevRecord = updatedHistory[i - 1]
         const currentRecord = updatedHistory[i]
-        
-        // Recalculate starting from previous month's ending balance
-        runningBalance = prevRecord.endingBalance
-        const monthGrowth = runningBalance * (currentRecord.percentageGrowth / 100)
-        runningBalance = runningBalance + monthGrowth
-        
+        if (editedTranche) {
+          if (currentRecord.tranche !== editedTranche) continue
+        } else if (currentRecord.tranche) {
+          continue
+        }
+
+        const trancheStart = getRecordTrancheStartingBalance(
+          updatedHistory,
+          i,
+          currentInvestmentData
+        )
+        const monthGrowth = trancheStart * (currentRecord.percentageGrowth / 100)
+        let runningBalance = trancheStart + monthGrowth
+
         const depEntries = Array.isArray(currentRecord.depositEntries) && currentRecord.depositEntries.length > 0
           ? currentRecord.depositEntries
           : [{ amount: currentRecord.depositAmount || 0, date: currentRecord.depositDate || null }]
@@ -588,10 +597,11 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         ), 0)
         runningBalance += depAmount + depGrowth
         runningBalance -= wdAmount + wdGrowth
-        
+
         updatedHistory[i] = {
           ...currentRecord,
-          startingBalance: prevRecord.endingBalance,
+          startingBalance: trancheStart,
+          growthAmount: monthGrowth,
           endingBalance: runningBalance,
           depositAmount: depAmount,
           depositDate: depEntries[0]?.date || null,
@@ -604,10 +614,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         }
       }
 
-      // Update current balance to be the last month's ending balance
-      const finalBalance = updatedHistory.length > 0 
-        ? updatedHistory[updatedHistory.length - 1].endingBalance 
-        : currentInvestmentData.initialInvestment || 0
+      // Dual-tranche: current balance = latest conservative ending + latest moderate ending
+      const finalBalance = resolveInvestorCurrentBalance(currentInvestmentData, updatedHistory)
 
       // Recalculate total deposits and withdrawals (both tranche initials when dual)
       const totalDeposits =
@@ -647,6 +655,186 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     } catch (error) {
       console.error('Error updating monthly record:', error)
       setError(`Failed to update monthly record: ${error.message}`)
+    } finally {
+      setLoadingEdit(false)
+    }
+  }
+
+  const handleDeleteRecord = async () => {
+    if (!canEditPerformance) {
+      setError('You do not have permission to delete monthly performance.')
+      return
+    }
+    if (!selectedInvestor || !editingRecord) return
+
+    const monthLabel = editedRecordData.month || editingRecord.month || 'this month'
+    const yearLabel = editedRecordData.year || editingRecord.year || ''
+    const confirmLabel = yearLabel ? `${monthLabel} ${yearLabel}` : monthLabel
+    if (!window.confirm(`Eliminate the record for ${confirmLabel}? This cannot be undone.`)) {
+      return
+    }
+
+    setLoadingEdit(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const userDocRef = doc(db, 'users', selectedInvestor.id)
+      const userDoc = await getDoc(userDocRef)
+
+      if (!userDoc.exists()) {
+        setError('User document not found')
+        return
+      }
+
+      const userData = userDoc.data()
+      const currentInvestmentData = (isAdmin3 ? selectedInvestor.investmentData : userData.investmentData) || {}
+      const monthlyHistory = currentInvestmentData.monthlyHistory || []
+      const primaryInitForTotals = currentInvestmentData.initialInvestment || 0
+      const secondaryInitForTotals = currentInvestmentData.secondaryInvestment?.initialInvestment || 0
+      const hasDualForTotals =
+        currentInvestmentData.secondaryInvestment &&
+        (currentInvestmentData.secondaryInvestment.initialInvestment || 0) > 0
+      const depositBaseline =
+        hasDualForTotals ? primaryInitForTotals + secondaryInitForTotals : primaryInitForTotals
+
+      const recordIndex = editingRecord.index
+      if (recordIndex < 0 || recordIndex >= monthlyHistory.length) {
+        setError('Invalid record index')
+        return
+      }
+
+      const getDaysInMonth = (month, year) => {
+        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
+        return new Date(year, monthIndex + 1, 0).getDate()
+      }
+
+      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const depositDate = new Date(date)
+        const dayOfMonth = depositDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        let daysRemaining = daysInMonth - dayOfMonth + 1
+        if (dayOfMonth === daysInMonth) {
+          daysRemaining = 0
+        }
+        const proratedRatio = daysRemaining / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
+        if (!date || !month || !year || amount === 0) return 0
+        const withdrawalDate = new Date(date)
+        const dayOfMonth = withdrawalDate.getDate()
+        const daysInMonth = getDaysInMonth(month, parseInt(year))
+        const proratedRatio = (daysInMonth - dayOfMonth) / daysInMonth
+        return amount * (percentageGrowth / 100) * proratedRatio
+      }
+
+      const deletedTranche = monthlyHistory[recordIndex]?.tranche || null
+      const updatedHistory = monthlyHistory.filter((_, index) => index !== recordIndex)
+
+      // Recalculate subsequent same-tranche rows only (other tranche stays untouched)
+      for (let i = recordIndex; i < updatedHistory.length; i++) {
+        const currentRecord = updatedHistory[i]
+        if (deletedTranche) {
+          if (currentRecord.tranche !== deletedTranche) continue
+        } else if (currentRecord.tranche) {
+          continue
+        }
+
+        const trancheStart = getRecordTrancheStartingBalance(
+          updatedHistory,
+          i,
+          currentInvestmentData
+        )
+        const monthGrowth = trancheStart * (currentRecord.percentageGrowth / 100)
+        let runningBalance = trancheStart + monthGrowth
+
+        const depEntries = Array.isArray(currentRecord.depositEntries) && currentRecord.depositEntries.length > 0
+          ? currentRecord.depositEntries
+          : [{ amount: currentRecord.depositAmount || 0, date: currentRecord.depositDate || null }]
+        const wdEntries = Array.isArray(currentRecord.withdrawalEntries) && currentRecord.withdrawalEntries.length > 0
+          ? currentRecord.withdrawalEntries
+          : [{ amount: currentRecord.withdrawalAmount || 0, date: currentRecord.withdrawalDate || null }]
+        const depAmount = depEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+        const wdAmount = wdEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+        const depGrowth = depEntries.reduce((sum, entry) => (
+          sum + calculateProratedGrowth(
+            Number(entry.amount) || 0,
+            currentRecord.percentageGrowth,
+            entry.date,
+            currentRecord.month,
+            currentRecord.year
+          )
+        ), 0)
+        const wdGrowth = wdEntries.reduce((sum, entry) => (
+          sum + calculateWithdrawalGrowthLoss(
+            Number(entry.amount) || 0,
+            currentRecord.percentageGrowth,
+            entry.date,
+            currentRecord.month,
+            currentRecord.year
+          )
+        ), 0)
+        runningBalance += depAmount + depGrowth
+        runningBalance -= wdAmount + wdGrowth
+
+        updatedHistory[i] = {
+          ...currentRecord,
+          startingBalance: trancheStart,
+          growthAmount: monthGrowth,
+          endingBalance: runningBalance,
+          depositAmount: depAmount,
+          depositDate: depEntries[0]?.date || null,
+          withdrawalAmount: wdAmount,
+          withdrawalDate: wdEntries[0]?.date || null,
+          depositGrowth: depGrowth,
+          withdrawalGrowthLoss: wdGrowth,
+          depositEntries: depEntries,
+          withdrawalEntries: wdEntries
+        }
+      }
+
+      const finalBalance = resolveInvestorCurrentBalance(currentInvestmentData, updatedHistory)
+
+      const totalDeposits =
+        depositBaseline + updatedHistory.reduce((sum, r) => sum + (r.depositAmount || 0), 0)
+      const totalWithdrawals = updatedHistory.reduce((sum, r) => sum + (r.withdrawalAmount || 0), 0)
+
+      const updatedInvestmentData = {
+        ...currentInvestmentData,
+        currentBalance: finalBalance,
+        totalDeposits,
+        totalWithdrawals,
+        monthlyHistory: updatedHistory,
+        lastUpdated: new Date().toISOString()
+      }
+
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, selectedInvestor.id, { investmentData: updatedInvestmentData })
+      } else {
+        await updateDoc(userDocRef, {
+          investmentData: updatedInvestmentData,
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      setSuccess(
+        isAdmin3
+          ? 'Record eliminated in your sandbox (changes visible only to you)'
+          : `Monthly record for ${confirmLabel} eliminated successfully!`
+      )
+      setEditingRecord(null)
+      setEditedRecordData({})
+
+      await loadInvestors()
+      setSelectedInvestor({ ...selectedInvestor, investmentData: updatedInvestmentData })
+    } catch (error) {
+      console.error('Error deleting monthly record:', error)
+      setError(`Failed to eliminate monthly record: ${error.message}`)
     } finally {
       setLoadingEdit(false)
     }
@@ -825,10 +1013,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
       const existingHistory = currentInvestmentData.monthlyHistory || []
       const updatedHistory = [...existingHistory, monthlyRecord]
 
-      const finalCombinedBalance =
-        scope === 'account'
-          ? newBalance
-          : computeDualTrancheSumBalance(updatedHistory, primaryInit, secondaryInit)
+      const finalCombinedBalance = resolveInvestorCurrentBalance(
+        currentInvestmentData,
+        updatedHistory
+      )
 
       // Update investment data
       const updatedInvestmentData = {
@@ -1231,6 +1419,14 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                             className="btn-submit btn-submit--edit-record"
                           >
                             {loadingEdit ? 'Updating...' : 'Update Record'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDeleteRecord}
+                            disabled={loadingEdit}
+                            className="btn-delete investor-edit-record-eliminate-btn"
+                          >
+                            {loadingEdit ? 'Working...' : 'Eliminate'}
                           </button>
                         </div>
                       </div>

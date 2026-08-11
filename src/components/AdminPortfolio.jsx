@@ -1288,6 +1288,25 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     const monthLabel = editFormData.month || 'this month'
     const yearLabel = editFormData.year || ''
     const confirmLabel = yearLabel ? `${monthLabel} ${yearLabel}` : monthLabel
+    await eliminatePortfolioRecordAtIndex(editingRecordIndex, confirmLabel)
+  }
+
+  const handleEliminateRecord = async (recordIndex) => {
+    if (!canAddPerformance) {
+      setError('You do not have permission to delete monthly performance.')
+      return
+    }
+    if (!portfolioData) return
+
+    const existingHistory = sortMonthlyHistory(portfolioData.monthlyHistory || [])
+    const record = existingHistory[recordIndex]
+    if (!record) return
+
+    const confirmLabel = `${record.month} ${record.year}`
+    await eliminatePortfolioRecordAtIndex(recordIndex, confirmLabel)
+  }
+
+  const eliminatePortfolioRecordAtIndex = async (recordIndex, confirmLabel) => {
     if (!window.confirm(`Eliminate the record for ${confirmLabel}? This cannot be undone.`)) {
       return
     }
@@ -1308,7 +1327,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       const currentPortfolioData =
         (isAdmin3 ? portfolioData : resolveAdminPortfolioDataWithLegacyFallback(userData)) || {}
       const existingHistory = sortMonthlyHistory(currentPortfolioData.monthlyHistory || [])
-      const historyWithoutRecord = existingHistory.filter((_, index) => index !== editingRecordIndex)
+      const historyWithoutRecord = existingHistory.filter((_, index) => index !== recordIndex)
       const recalculatedHistory = recalculatePortfolioMonthlyHistory(
         historyWithoutRecord,
         currentPortfolioData.initialInvestment || 0,
@@ -1342,19 +1361,27 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           ? 'Record eliminated in your sandbox (changes visible only to you)'
           : `Monthly record for ${confirmLabel} eliminated successfully!`
       )
-      setEditingRecordIndex(null)
-      setEditFormData({
-        month: '',
-        year: '',
-        percentageGrowth: '',
-        growthAmountExact: '',
-        depositAmount: '',
-        depositDate: '',
-        withdrawalAmount: '',
-        withdrawalDate: '',
-        depositEntries: [{ amount: '', date: '' }],
-        withdrawalEntries: [{ amount: '', date: '' }]
+      const wasEditingDeleted = editingRecordIndex === recordIndex
+      setEditingRecordIndex((prev) => {
+        if (prev === null) return null
+        if (prev === recordIndex) return null
+        if (prev > recordIndex) return prev - 1
+        return prev
       })
+      if (wasEditingDeleted) {
+        setEditFormData({
+          month: '',
+          year: '',
+          percentageGrowth: '',
+          growthAmountExact: '',
+          depositAmount: '',
+          depositDate: '',
+          withdrawalAmount: '',
+          withdrawalDate: '',
+          depositEntries: [{ amount: '', date: '' }],
+          withdrawalEntries: [{ amount: '', date: '' }]
+        })
+      }
       await loadPortfolioData()
       await loadTotalInvestorAccounts()
     } catch (error) {
@@ -3131,13 +3158,21 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                     <div>{record.withdrawalAmount > 0 ? `€${record.withdrawalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                     <div>€{record.endingBalance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</div>
                     {canAddPerformance && (
-                      <div>
+                      <div className="history-row-actions">
                         <button
                           className="btn-edit-record"
                           onClick={() => handleEditRecord(originalIndex)}
                           disabled={editingRecordIndex !== null && editingRecordIndex !== originalIndex}
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-eliminate-record"
+                          onClick={() => handleEliminateRecord(originalIndex)}
+                          disabled={loadingEdit}
+                        >
+                          Eliminate
                         </button>
                       </div>
                     )}

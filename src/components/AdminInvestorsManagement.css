@@ -915,6 +915,36 @@
   transform: none;
 }
 
+.investor-edit-record-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.investor-edit-record-eliminate-btn {
+  width: 100%;
+  border: none;
+  border-radius: 0.3rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fef2f2;
+  color: #b91c1c;
+  transition: background 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.investor-edit-record-eliminate-btn:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.investor-edit-record-eliminate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .alert {
   padding: 1rem 1.5rem;
   border-radius: 0.5rem;
@@ -1311,6 +1341,16 @@ html.dark-mode .investor-edit-record-close {
 
 html.dark-mode .investor-edit-record-close:hover:not(:disabled) {
   color: #f9fafb;
+}
+
+html.dark-mode .investor-edit-record-eliminate-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+html.dark-mode .investor-edit-record-eliminate-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
 }
 
 html.dark-mode .modal-content {

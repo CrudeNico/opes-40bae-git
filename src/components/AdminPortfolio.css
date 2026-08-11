@@ -899,7 +899,7 @@
 }
 
 .history-table.with-actions .history-header {
-  grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 1fr;
+  grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 1.4fr;
 }
 
 .history-row {
@@ -914,7 +914,7 @@
 }
 
 .history-table.with-actions .history-row {
-  grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 1fr;
+  grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 1.4fr;
 }
 
 .history-row.editing {
@@ -941,6 +941,36 @@
 }
 
 .btn-edit-record:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.history-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.btn-eliminate-record {
+  padding: 0.5rem 0.85rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-eliminate-record:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+}
+
+.btn-eliminate-record:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1435,6 +1465,18 @@ html.dark-mode .history-row:hover {
 html.dark-mode .history-row.editing {
   background: #1e3a5f;
   border-color: #3b82f6;
+}
+
+html.dark-mode .btn-eliminate-record {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+html.dark-mode .btn-eliminate-record:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 html.dark-mode .btn-cancel {

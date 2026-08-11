@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react'
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { computeDualTrancheSumBalance } from '../utils/investorDualTranche'
 import './Portfolio.css'
 
 /** Combined initial, weighted monthly return rate, and total planned monthly additions when a secondary tranche exists. */
@@ -1261,7 +1262,7 @@ const Portfolio = ({ user, onStatusUpdate }) => {
       if (portfolioTrancheView === 'total') {
         graphHistory = getTotalMergedHistory(fullH, primaryInit, secondaryInit)
         viewInitial = primaryInit + secondaryInit
-        viewCurrentBalance = currentBalance
+        viewCurrentBalance = computeDualTrancheSumBalance(fullH, primaryInit, secondaryInit)
         viewMonthlyRate = monthlyReturnRate
         viewMonthlyAdditions = monthlyAdditions
         const primaryHist = fullH.filter((r) => r.tranche === TRANCHE_PRIMARY)

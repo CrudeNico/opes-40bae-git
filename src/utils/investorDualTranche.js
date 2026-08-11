@@ -27,6 +27,57 @@ export function computeDualTrancheSumBalance(history, primaryInit, secondaryInit
   )
 }
 
+/**
+ * Starting balance for the record at `index`: previous same-tranche ending, else that tranche's initial.
+ * Untagged (legacy) rows chain only to other untagged rows.
+ */
+export function getRecordTrancheStartingBalance(history, index, investmentData) {
+  const record = history?.[index]
+  if (!record) return Number(investmentData?.initialInvestment) || 0
+
+  const primaryInit = Number(investmentData?.initialInvestment) || 0
+  const secondaryInit = Number(investmentData?.secondaryInvestment?.initialInvestment) || 0
+  const tranche = record.tranche
+
+  for (let i = index - 1; i >= 0; i--) {
+    const prev = history[i]
+    if (tranche) {
+      if (prev.tranche === tranche) return Number(prev.endingBalance) || 0
+    } else if (!prev.tranche) {
+      return Number(prev.endingBalance) || 0
+    }
+  }
+
+  if (tranche === TRANCHE_SECONDARY) return secondaryInit
+  return primaryInit
+}
+
+/**
+ * Canonical current balance for an investor account.
+ * Dual-tranche: always latest conservative ending + latest moderate ending (fallback to each tranche initial).
+ * Single-tranche: latest monthly ending, else initial.
+ */
+export function resolveInvestorCurrentBalance(investmentData, monthlyHistory) {
+  if (!investmentData) return 0
+
+  const mh = monthlyHistory ?? investmentData.monthlyHistory ?? []
+  const primaryInit = Number(investmentData.initialInvestment) || 0
+  const secondaryInit = Number(investmentData.secondaryInvestment?.initialInvestment) || 0
+
+  if (investorHasDualTranche(investmentData)) {
+    return computeDualTrancheSumBalance(mh, primaryInit, secondaryInit)
+  }
+
+  if (mh.length > 0) {
+    const sorted = sortInvestorMonthlyHistory(mh)
+    const last = sorted[sorted.length - 1]
+    const ending = Number(last?.endingBalance)
+    return Number.isFinite(ending) ? ending : primaryInit
+  }
+
+  return primaryInit
+}
+
 /** Sum of primary and secondary initial amounts (secondary omitted if absent). */
 export function getInvestorCombinedInitial(investmentData) {
   if (!investmentData || investmentData.accountType !== 'Investor') {
@@ -45,30 +96,20 @@ export function investorHasDualTranche(investmentData) {
 
 /**
  * Current balance for admin investor UI and overview totals.
- * Prefer stored `currentBalance` when it is a finite number (canonical value from Firestore).
- * Otherwise, for dual-tranche + tagged history, derive combined ending balances; else initials.
+ * Dual-tranche accounts always use latest ending balances summed (not a possibly stale stored field).
+ * Single-tranche prefers stored `currentBalance` when finite, else derived ending / initial.
  */
 export function getAdminInvestorSummaryCurrentBalance(investmentData) {
   if (!investmentData) return 0
 
+  if (investorHasDualTranche(investmentData)) {
+    return resolveInvestorCurrentBalance(investmentData)
+  }
+
   const cb = Number(investmentData.currentBalance)
   if (Number.isFinite(cb)) return cb
 
-  const primaryInit = Number(investmentData.initialInvestment) || 0
-  const secondaryInit = Number(investmentData.secondaryInvestment?.initialInvestment) || 0
-  const dual = investorHasDualTranche(investmentData)
-  const mh = investmentData.monthlyHistory || []
-
-  if (dual && mh.length > 0) {
-    const tagged = mh.some(
-      (r) => r.tranche === TRANCHE_PRIMARY || r.tranche === TRANCHE_SECONDARY
-    )
-    if (tagged) {
-      return computeDualTrancheSumBalance(mh, primaryInit, secondaryInit)
-    }
-  }
-
-  return dual ? primaryInit + secondaryInit : primaryInit
+  return resolveInvestorCurrentBalance(investmentData)
 }
 
 /**
