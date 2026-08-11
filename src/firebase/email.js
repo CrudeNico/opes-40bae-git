@@ -1,9 +1,10 @@
 /**
- * Email service using Resend
+ * Email service using Resend via Firebase Cloud Functions
  * Sends confirmation emails to users after account creation
  * Sends notification emails for trade alerts and weekly reports
  */
 
+import { httpsCallable } from 'firebase/functions'
 import {
   buildEmailHtml,
   emailDetailBox,
@@ -11,91 +12,44 @@ import {
   emailMutedParagraph,
   emailParagraph
 } from '../utils/emailLayout.js'
-
-const getEmailConfig = () => {
-  const apiKey = import.meta.env.VITE_RESEND_API_KEY
-  const senderEmail = import.meta.env.VITE_RESEND_SENDER_EMAIL
-  const senderName = import.meta.env.VITE_RESEND_SENDER_NAME || 'Opessocius Asset Management'
-  return { apiKey, senderEmail, senderName }
-}
-
-const formatResendError = (status, errorData = {}) => {
-  if (status === 401 || status === 403) {
-    return 'Unauthorized: Invalid API key. Please verify your VITE_RESEND_API_KEY.'
-  }
-  return errorData.message || errorData.error || `Failed to send email (${status})`
-}
+import { functions } from './config.js'
 
 const emailFooterNote = 'This is an automated email. Please do not reply to this message.'
 
+const formatCallableError = (error) => {
+  const code = error?.code || ''
+  if (code === 'functions/unauthenticated') {
+    return 'You must be logged in as an admin to send this email.'
+  }
+  if (code === 'functions/permission-denied') {
+    return error.message || 'You do not have permission to send this email.'
+  }
+  if (code === 'functions/not-found') {
+    return 'Email service is not deployed yet. Deploy the sendResendEmail Cloud Function.'
+  }
+  return (error.message || 'Failed to send email').replace(/^FirebaseError:\s*/i, '')
+}
+
 /**
- * Send an email via Resend API
- * @param {object} options
- * @param {string} options.to
- * @param {string} [options.toName]
- * @param {string} options.subject
- * @param {string} options.html
- * @param {string} [options.text]
- * @param {Array<{filename: string, content: string}>} [options.attachments]
- * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
+ * Send an email via Resend (server-side Cloud Function)
  */
 export const sendResendEmail = async ({ to, toName, subject, html, text, attachments }) => {
   try {
-    const { apiKey, senderEmail, senderName } = getEmailConfig()
-
-    if (import.meta.env.DEV) {
-      console.log('Email config check:', {
-        hasApiKey: !!apiKey,
-        apiKeyLength: apiKey?.length || 0,
-        apiKeyPrefix: apiKey?.substring(0, 10) || 'none',
-        hasSenderEmail: !!senderEmail,
-        senderEmail
-      })
-    }
-
-    if (!apiKey || !senderEmail) {
-      console.error('Resend API key or sender email not configured')
-      return { success: false, error: 'Email service not configured' }
-    }
-
-    const payload = {
-      from: `${senderName} <${senderEmail}>`,
-      to: [to],
+    const callable = httpsCallable(functions, 'sendResendEmail')
+    const result = await callable({
+      to,
       subject,
       html,
-      ...(text ? { text } : {}),
-      ...(attachments?.length ? { attachments } : {})
-    }
-
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      text,
+      attachments
     })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('Resend API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-        to,
-        toName
-      })
-      return {
-        success: false,
-        error: formatResendError(response.status, errorData)
-      }
-    }
-
-    const result = await response.json()
-    return { success: true, messageId: result.id }
+    return result.data
   } catch (error) {
-    console.error('Error sending email:', error)
-    return { success: false, error: error.message || 'Failed to send email' }
+    console.error('Error sending email:', { to, toName, subject, error })
+    return {
+      success: false,
+      error: formatCallableError(error)
+    }
   }
 }
 

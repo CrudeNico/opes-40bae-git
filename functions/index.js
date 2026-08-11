@@ -5,6 +5,12 @@ import { defineSecret } from 'firebase-functions/params'
 import * as logger from 'firebase-functions/logger'
 import admin from 'firebase-admin'
 import OpenAI from 'openai'
+import {
+  RESEND_API_KEY,
+  RESEND_SENDER_EMAIL,
+  RESEND_SENDER_NAME,
+  sendViaResend
+} from './resend.js'
 
 admin.initializeApp()
 
@@ -702,6 +708,111 @@ export const refreshOilNewsNow = onCall(
     return {
       success: true,
       insertedCount
+    }
+  }
+)
+
+function normalizeRecipientList(to) {
+  const list = (Array.isArray(to) ? to : [to])
+    .map((email) => String(email || '').trim().toLowerCase())
+    .filter(Boolean)
+  return [...new Set(list)]
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+async function getRequesterContext(request) {
+  if (!request.auth?.uid) {
+    return { uid: null, email: null, statuses: [], isAdmin: false }
+  }
+
+  const db = admin.firestore()
+  const requesterDoc = await db.collection('users').doc(request.auth.uid).get()
+  const requesterData = requesterDoc.exists ? requesterDoc.data() : {}
+  const statuses = normalizeStatuses(requesterData)
+  const email = String(requesterData.email || request.auth.token?.email || '').trim().toLowerCase()
+
+  return {
+    uid: request.auth.uid,
+    email,
+    statuses,
+    isAdmin: isAdminLikeStatus(statuses)
+  }
+}
+
+export const sendResendEmail = onCall(
+  {
+    secrets: [RESEND_API_KEY]
+  },
+  async (request) => {
+    const { to, subject, html, text, attachments } = request.data || {}
+    const recipients = normalizeRecipientList(to)
+
+    if (recipients.length === 0) {
+      throw new HttpsError('invalid-argument', 'At least one recipient email is required.')
+    }
+
+    if (!subject || typeof subject !== 'string' || !subject.trim()) {
+      throw new HttpsError('invalid-argument', 'Email subject is required.')
+    }
+
+    if (!html || typeof html !== 'string' || !html.trim()) {
+      throw new HttpsError('invalid-argument', 'Email HTML content is required.')
+    }
+
+    if (recipients.some((email) => !isValidEmail(email))) {
+      throw new HttpsError('invalid-argument', 'One or more recipient emails are invalid.')
+    }
+
+    if (attachments && !Array.isArray(attachments)) {
+      throw new HttpsError('invalid-argument', 'Attachments must be an array.')
+    }
+
+    const hasAttachments = Array.isArray(attachments) && attachments.length > 0
+    const requester = await getRequesterContext(request)
+
+    if (hasAttachments || recipients.length > 1) {
+      if (!requester.uid) {
+        throw new HttpsError('unauthenticated', 'Authentication is required for bulk or attachment emails.')
+      }
+      if (!requester.isAdmin) {
+        throw new HttpsError('permission-denied', 'Only administrators can send bulk or attachment emails.')
+      }
+    } else if (requester.uid) {
+      const recipient = recipients[0]
+      if (!requester.isAdmin && requester.email && recipient !== requester.email) {
+        throw new HttpsError('permission-denied', 'You can only send email to your own address.')
+      }
+    }
+
+    try {
+      const result = await sendViaResend({
+        to: recipients,
+        subject: subject.trim(),
+        html,
+        text: typeof text === 'string' ? text : undefined,
+        attachments: hasAttachments ? attachments : undefined,
+        apiKey: RESEND_API_KEY.value(),
+        senderEmail: RESEND_SENDER_EMAIL.value(),
+        senderName: RESEND_SENDER_NAME.value()
+      })
+
+      logger.info('Resend email sent', {
+        requesterId: requester.uid || 'anonymous',
+        recipientCount: recipients.length,
+        hasAttachments,
+        messageId: result.messageId
+      })
+
+      return result
+    } catch (error) {
+      logger.error('Failed to send Resend email', {
+        requesterId: requester.uid || 'anonymous',
+        error: error?.message || error
+      })
+      throw new HttpsError('internal', error?.message || 'Failed to send email.')
     }
   }
 )

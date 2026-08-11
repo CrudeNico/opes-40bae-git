@@ -23,3 +23,18 @@ This function listens for new docs in `communityMessages` and posts an AI answer
 ### Notes
 - The frontend does not call OpenAI directly.
 - The reply appears in real-time because the UI already listens to `communityMessages`.
+
+## Resend email function
+
+Transactional and admin emails are sent through the `sendResendEmail` callable Cloud Function (Resend blocks direct browser requests).
+
+### Setup
+1. Set the Resend secret:
+   - `printf '%s' 'your_resend_key' | firebase functions:secrets:set RESEND_API_KEY`
+2. Optional env params (defaults are fine):
+   - `RESEND_SENDER_EMAIL` (default: `noreply@opessocius.com`)
+   - `RESEND_SENDER_NAME` (default: `Opessocius Asset Management`)
+3. Deploy:
+   - `firebase deploy --only functions:sendResendEmail`
+
+Admin bulk/attachment emails require an authenticated admin session.

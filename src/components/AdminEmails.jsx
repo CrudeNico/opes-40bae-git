@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { getFirestore, collection, getDocs } from 'firebase/firestore'
 import { buildEmailHtml } from '../utils/emailLayout.js'
+import { sendResendEmail } from '../firebase/email.js'
 import './AdminEmails.css'
 
 const AdminEmails = () => {
@@ -292,27 +293,8 @@ const AdminEmails = () => {
         emailList = recipientEmails.map(r => r.email)
       }
 
-      // Get Resend API credentials
-      const apiKey = import.meta.env.VITE_RESEND_API_KEY
-      const senderEmail = import.meta.env.VITE_RESEND_SENDER_EMAIL
-      const senderName = import.meta.env.VITE_RESEND_SENDER_NAME || 'Opessocius Asset Management'
-
-      if (!apiKey || !senderEmail) {
-        setError('Email service not configured. Please check environment variables.')
-        setSending(false)
-        return
-      }
-
-      // Format email content - just convert line breaks to HTML
-      // Files will be attached directly to the email, not shown as links
       const formattedContent = emailData.content.replace(/\n/g, '<br>')
       const emailContent = formattedContent
-
-      // Build attachments array for Resend API (base64 encoded)
-      const attachments = attachedFiles.map(file => ({
-        filename: file.name,
-        content: file.base64
-      }))
 
       const emailHtml = buildEmailHtml({
         subject: emailData.subject,
@@ -322,58 +304,30 @@ const AdminEmails = () => {
       })
 
       const plainTextContent = emailData.content
+      const attachments = attachedFiles.map(file => ({
+        filename: file.name,
+        content: file.base64
+      }))
 
-      const buildErrorMessage = (responseStatus, responseStatusText, errorData = {}) => {
-        let errorMessage = 'Failed to send email'
-        if (responseStatus === 401 || responseStatus === 403) {
-          errorMessage = 'Unauthorized: Invalid API key. Please verify your VITE_RESEND_API_KEY.'
-        } else if (errorData.message) {
-          errorMessage = `Failed to send email: ${errorData.message}`
-        } else if (errorData.error) {
-          errorMessage = `Failed to send email: ${errorData.error}`
-        } else {
-          errorMessage = `Failed to send email: ${responseStatus} ${responseStatusText}`
-        }
-        return errorMessage
-      }
-
-      // Send each email as an individual request to preserve recipient privacy.
-      const url = 'https://api.resend.com/emails'
       let successCount = 0
       let firstFailureMessage = ''
 
       for (const recipientEmail of emailList) {
-        const emailPayload = {
-          from: `${senderName} <${senderEmail}>`,
-          to: [recipientEmail],
+        const result = await sendResendEmail({
+          to: recipientEmail,
           subject: emailData.subject,
           html: emailHtml,
-          text: plainTextContent
-        }
-
-        if (attachments.length > 0) {
-          emailPayload.attachments = attachments
-        }
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(emailPayload)
+          text: plainTextContent,
+          attachments: attachments.length > 0 ? attachments : undefined
         })
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
+        if (!result.success) {
           console.error('Resend API error for recipient:', {
             recipientEmail,
-            status: response.status,
-            statusText: response.statusText,
-            errorData
+            error: result.error
           })
           if (!firstFailureMessage) {
-            firstFailureMessage = buildErrorMessage(response.status, response.statusText, errorData)
+            firstFailureMessage = result.error || 'Failed to send email'
           }
           continue
         }

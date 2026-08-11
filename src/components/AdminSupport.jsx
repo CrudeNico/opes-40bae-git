@@ -24,6 +24,7 @@ const AdminSupport = ({ userStatuses = [] }) => {
   const [selectedConsultation, setSelectedConsultation] = useState(null)
   const [googleMeetLink, setGoogleMeetLink] = useState('')
   const [loadingEmail, setLoadingEmail] = useState(false)
+  const [dismissingConsultation, setDismissingConsultation] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all') // all, pending, completed
   const [userTypeFilter, setUserTypeFilter] = useState('all') // all, investor, learner, relations, admin
   const messagesEndRef = useRef(null)
@@ -471,6 +472,42 @@ const AdminSupport = ({ userStatuses = [] }) => {
     }
   }
 
+  const handleDismissConsultation = async () => {
+    if (!selectedConsultation || selectedConsultation.status !== 'pending') {
+      return
+    }
+
+    if (selectedConsultation._isAdmin3Sample) {
+      setConsultations((prev) =>
+        prev.map((consultation) =>
+          consultation.id === selectedConsultation.id
+            ? { ...consultation, status: 'completed' }
+            : consultation
+        )
+      )
+      setSelectedConsultation(null)
+      setGoogleMeetLink('')
+      return
+    }
+
+    setDismissingConsultation(true)
+    try {
+      const db = getFirestore()
+      await updateDoc(doc(db, 'supportRequests', selectedConsultation.id), {
+        status: 'completed',
+        dismissedAt: Timestamp.now()
+      })
+
+      setSelectedConsultation(null)
+      setGoogleMeetLink('')
+    } catch (error) {
+      console.error('Error dismissing consultation:', error)
+      alert('Failed to dismiss consultation. Please try again.')
+    } finally {
+      setDismissingConsultation(false)
+    }
+  }
+
   const handleSendConsultationLink = async () => {
     if (!googleMeetLink.trim() || !selectedConsultation) {
       return
@@ -892,19 +929,35 @@ const AdminSupport = ({ userStatuses = [] }) => {
               </div>
             </div>
             <div className="modal-footer">
+              {selectedConsultation.status === 'pending' && (
+                <button
+                  type="button"
+                  className="btn btn-dismiss-consultation"
+                  onClick={handleDismissConsultation}
+                  disabled={loadingEmail || dismissingConsultation}
+                  title="Mark as complete"
+                  aria-label="Mark consultation as complete"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M20 9L18.005 20.3463C17.8369 21.3026 17.0062 22 16.0353 22H7.96474C6.99379 22 6.1631 21.3026 5.99496 20.3463L4 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M21 6L15.375 6M3 6L8.625 6M8.625 6V4C8.625 2.89543 9.52043 2 10.625 2H13.375C14.4796 2 15.375 2.89543 15.375 4V6M8.625 6L15.375 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
               <button 
                 className="btn btn-secondary"
                 onClick={() => {
                   setSelectedConsultation(null)
                   setGoogleMeetLink('')
                 }}
+                disabled={loadingEmail || dismissingConsultation}
               >
                 Cancel
               </button>
               <button 
                 className="btn btn-primary"
                 onClick={handleSendConsultationLink}
-                disabled={loadingEmail || !googleMeetLink.trim()}
+                disabled={loadingEmail || dismissingConsultation || !googleMeetLink.trim()}
               >
                 {loadingEmail ? 'Sending...' : 'Send Link'}
               </button>
