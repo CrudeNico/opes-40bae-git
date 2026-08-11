@@ -1,7 +1,7 @@
 /**
  * Admin 3 sandbox overrides - changes save only to the Admin 3 user's view.
  * Data stored in Firestore: admin3Overrides/{admin3UserId}
- * Structure: { userOverrides: { [targetUserId]: { displayName?, email?, profileImageUrl?, statuses?, investmentData? } } }
+ * Structure: { userOverrides: { [targetUserId]: { displayName?, email?, profileImageUrl?, statuses?, investmentData?, adminPortfolioData? } } }
  */
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 
@@ -41,6 +41,9 @@ export function mergeUserWithOverride(user, override) {
     profileImageUrl: override.profileImageUrl !== undefined ? override.profileImageUrl : user.profileImageUrl,
     statuses: override.statuses !== undefined ? override.statuses : user.statuses,
     investmentData: override.investmentData !== undefined ? override.investmentData : user.investmentData,
+    adminPortfolioData:
+      override.adminPortfolioData !== undefined ? override.adminPortfolioData : user.adminPortfolioData,
+    managedInvestorIds: override.managedInvestorIds !== undefined ? override.managedInvestorIds : user.managedInvestorIds,
     _hasAdmin3Override: true
   }
 }

@@ -58,16 +58,28 @@
 
 .investor-details-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.investor-details-header-main {
+  min-width: 0;
+}
+
+.investor-details-header-main .panel-title {
+  margin-bottom: 0.25rem;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .investor-details-email {
+  display: block;
   font-size: 0.9rem;
   color: #6b7280;
   font-weight: 500;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
 .investors-list {
@@ -106,6 +118,232 @@
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.investor-card-image-partner {
+  box-shadow: 0 0 0 3px #facc15;
+}
+
+.investor-card-partner.selected .investor-card-image-partner {
+  box-shadow: 0 0 0 3px #eab308;
+}
+
+.investor-partner-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  background: #fef9c3;
+  color: #a16207;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.btn-partner-management {
+  flex-shrink: 0;
+  padding: 0.55rem 1rem;
+  border: 1px solid #eab308;
+  border-radius: 9999px;
+  background: #fef9c3;
+  color: #a16207;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-partner-management:hover {
+  background: #fde047;
+  border-color: #ca8a04;
+}
+
+.partner-management-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+}
+
+.partner-management-modal {
+  width: min(920px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 0.85rem;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+}
+
+.partner-management-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.partner-management-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.15rem;
+  color: #1f2937;
+}
+
+.partner-management-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.partner-management-close {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.35rem;
+}
+
+.partner-management-close:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.partner-management-body {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.partner-management-pie-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.partner-management-pie {
+  width: 220px;
+  height: 220px;
+}
+
+.partner-management-summary {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.partner-management-summary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.65rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.partner-management-summary-row strong {
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.partner-management-summary-row-managed {
+  background: #fefce8;
+  border-color: #fde047;
+}
+
+.partner-management-list-label {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.partner-management-investor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.partner-management-investor-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.partner-management-investor-row.selected {
+  border-color: #eab308;
+  background: #fefce8;
+}
+
+.partner-management-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.partner-management-investor-name {
+  font-size: 0.85rem;
+  color: #1f2937;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partner-management-investor-balance {
+  font-size: 0.8rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.partner-management-investor-share {
+  font-size: 0.75rem;
+  color: #6b7280;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.partner-management-empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.partner-management-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  padding: 1rem 1.5rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .partner-management-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 .investor-card-image img {
@@ -1107,5 +1345,65 @@ html.dark-mode .btn-cancel {
 
 html.dark-mode .btn-cancel:hover:not(:disabled) {
   background: #4b5563;
+}
+
+html.dark-mode .investor-card-image-partner {
+  box-shadow: 0 0 0 3px #eab308;
+}
+
+html.dark-mode .investor-partner-badge {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+}
+
+html.dark-mode .btn-partner-management {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: #ca8a04;
+  color: #fde047;
+}
+
+html.dark-mode .partner-management-modal {
+  background: #1f2937;
+}
+
+html.dark-mode .partner-management-header {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .partner-management-header h3 {
+  color: #f9fafb;
+}
+
+html.dark-mode .partner-management-summary-row {
+  background: #111827;
+  border-color: #374151;
+  color: #9ca3af;
+}
+
+html.dark-mode .partner-management-summary-row strong {
+  color: #f9fafb;
+}
+
+html.dark-mode .partner-management-summary-row-managed {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: #ca8a04;
+}
+
+html.dark-mode .partner-management-investor-row {
+  background: #111827;
+  border-color: #374151;
+}
+
+html.dark-mode .partner-management-investor-row.selected {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: #ca8a04;
+}
+
+html.dark-mode .partner-management-investor-name {
+  color: #f9fafb;
+}
+
+html.dark-mode .partner-management-footer {
+  border-top-color: #374151;
 }
 

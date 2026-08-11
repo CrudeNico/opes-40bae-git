@@ -16,6 +16,7 @@ const STATUS_SHORT_LABELS = {
   'Admin 3': 'Admin 3',
   Investor: 'INV',
   Trader: 'TRD',
+  Partner: 'PTR',
   Learner: 'LRN',
   Community: 'COM'
 }
@@ -25,7 +26,8 @@ const USER_LIST_FILTER_OPTIONS = [
   { key: 'pending', label: 'PND' },
   { key: 'learner', label: 'LRN' },
   { key: 'community', label: 'COM' },
-  { key: 'trader', label: 'TRD' }
+  { key: 'trader', label: 'TRD' },
+  { key: 'partner', label: 'PTR' }
 ]
 
 function getInvestmentRecordStartMs(investmentData) {
@@ -93,6 +95,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
     'Admin 3': false,
     Investor: false,
     Trader: false,
+    Partner: false,
     Learner: false,
     Community: false
   })
@@ -117,7 +120,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
   const [uninvestTerminationDate, setUninvestTerminationDate] = useState('')
   const uninvestDateInputRef = useRef(null)
 
-  const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Learner', 'Community']
+  const availableStatuses = ['Admin', 'Admin 2', 'Admin 3', 'Investor', 'Trader', 'Partner', 'Learner', 'Community']
   const placeholderColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
   const NEW_USER_FLAGS_STORAGE_KEY = 'adminUsersDismissedNewFlags'
 
@@ -375,6 +378,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
     if (filterKey === 'learner') return statuses.includes('Learner')
     if (filterKey === 'community') return statuses.includes('Community')
     if (filterKey === 'trader') return statuses.includes('Trader')
+    if (filterKey === 'partner') return statuses.includes('Partner')
     return false
   }
 
@@ -404,6 +408,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         'Admin 3': currentStatuses.includes('Admin 3'),
         Investor: currentStatuses.includes('Investor'),
         Trader: currentStatuses.includes('Trader'),
+        Partner: currentStatuses.includes('Partner'),
         Learner: currentStatuses.includes('Learner'),
         Community: currentStatuses.includes('Community')
       }
@@ -826,6 +831,7 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         'Admin 3': currentStatuses.includes('Admin 3'),
         Investor: currentStatuses.includes('Investor'),
         Trader: currentStatuses.includes('Trader'),
+        Partner: currentStatuses.includes('Partner'),
         Learner: currentStatuses.includes('Learner'),
         Community: currentStatuses.includes('Community')
       }
@@ -929,6 +935,8 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
         'Admin 2': savedStatuses.includes('Admin 2') || savedStatuses.includes('Relations'),
         'Admin 3': savedStatuses.includes('Admin 3'),
         Investor: savedStatuses.includes('Investor'),
+        Trader: savedStatuses.includes('Trader'),
+        Partner: savedStatuses.includes('Partner'),
         Learner: savedStatuses.includes('Learner'),
         Community: savedStatuses.includes('Community')
       }

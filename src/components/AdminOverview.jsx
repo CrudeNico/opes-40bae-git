@@ -19,18 +19,17 @@ import {
   ADMIN3_PENDING_CONSULTATIONS_COUNT,
   ADMIN3_USER_MESSAGE_ALERTS_COUNT
 } from '../utils/admin3SupportSandbox'
+import {
+  collectApprovedInvestorOverviewRows,
+  sumInvestorOverviewMonthlyTargets
+} from '../utils/adminInvestorOverviewTotal'
+import {
+  ensureAdminPortfolioDataMigrated,
+  resolveAdminPortfolioData,
+  resolveAdminPortfolioDataWithLegacyFallback
+} from '../utils/adminPortfolioData'
 import './AdminOverview.css'
 
-/** Normalize for case- and accent-insensitive comparison (e.g. Nicolás → nicolas). */
-function normalizeOverviewKey(s) {
-  return (s || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
-/** Excluded from “total investor accounts” sum (Marcos & Nicolás/Nicolas de Rodrigo + legacy emails). */
 const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
 
 function isHexColor(s) {
@@ -54,17 +53,27 @@ function tradeSignedAmount(t) {
   return t.type === 'loss' ? -a : a
 }
 
-/** Non-negative fee (optional); empty / missing = no fee */
-function tradeFeeAmount(t) {
+/** Non-negative swap amount (optional); empty / missing = no swap. Legacy `fee` maps to swap. */
+function tradeSwapAmount(t) {
   if (t == null) return 0
-  const raw = t.fee
+  const raw = t.swap ?? t.fee
   if (raw === '' || raw == null) return 0
   return Math.max(0, parseFloat(String(raw).replace(',', '.')) || 0)
 }
 
-/** Signed P&L after fees (gross win/loss minus fee). */
+function tradeSwapDirection(t) {
+  if (t?.swapDirection === 'buy' || t?.swapDirection === 'sell') return t.swapDirection
+  if (t?.fee != null && Number(t.fee) > 0) return 'sell'
+  return null
+}
+
+/** Signed P&L after swap: buy adds to gross, sell subtracts from gross. */
 function tradeNetSigned(t) {
-  return tradeSignedAmount(t) - tradeFeeAmount(t)
+  const gross = tradeSignedAmount(t)
+  const swap = tradeSwapAmount(t)
+  if (swap <= 0) return gross
+  const direction = tradeSwapDirection(t) || 'sell'
+  return direction === 'buy' ? gross + swap : gross - swap
 }
 
 /** Normalize stored day performance (legacy single trade or `trades` array). */
@@ -72,12 +81,20 @@ function normalizeDayPerformance(perf) {
   if (!perf) return { trades: [] }
   if (Array.isArray(perf.trades) && perf.trades.length > 0) {
     return {
-      trades: perf.trades.map((t, i) => ({
-        id: t.id || `trade-${i}`,
-        type: t.type === 'loss' ? 'loss' : 'win',
-        amount: Math.max(0, Number(t.amount) || 0),
-        fee: Math.max(0, Number(t.fee) || 0)
-      }))
+      trades: perf.trades.map((t, i) => {
+        const legacyFee = Math.max(0, Number(t.fee) || 0)
+        const swap = Math.max(0, Number(t.swap) || 0) || legacyFee
+        let swapDirection =
+          t.swapDirection === 'buy' ? 'buy' : t.swapDirection === 'sell' ? 'sell' : null
+        if (!swapDirection && swap > 0) swapDirection = 'sell'
+        return {
+          id: t.id || `trade-${i}`,
+          type: t.type === 'loss' ? 'loss' : 'win',
+          amount: Math.max(0, Number(t.amount) || 0),
+          swap,
+          swapDirection: swap > 0 ? swapDirection : null
+        }
+      })
     }
   }
   if (perf.type && perf.amount != null && perf.amount !== '') {
@@ -258,21 +275,6 @@ function buildPieSlices(entries, displayBalance, colors) {
     colorIdx += 1
   }
   return out
-}
-
-function isExcludedFromInvestorOverviewTotal(email, displayName) {
-  const em = normalizeOverviewKey(email)
-  const nm = normalizeOverviewKey(displayName)
-  const excludedEmails = [
-    'nicolas.fernandez@opessocius.support',
-    'marcoscollab@gmail.com',
-    'ndrf1806@gmail.com'
-  ]
-  if (excludedEmails.includes(em)) return true
-  const excludedNames = ['marcos de rodrigo', 'nicolas de rodrigo']
-  // After NFD, Nicolás → nicolas, so this matches Nicolás or Nicolas de Rodrigo
-  if (excludedNames.includes(nm)) return true
-  return false
 }
 
 const CALENDAR_MONTH_NAMES = [
@@ -575,14 +577,16 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             
             if (adminUser) {
               ownerId = adminUser.id
-              if (adminUser.investmentData) {
-                portfolioData = adminUser.investmentData
+              portfolioData = resolveAdminPortfolioDataWithLegacyFallback(adminUser)
+              if (!resolveAdminPortfolioData(adminUser) && adminUser.investmentData) {
+                portfolioData = await ensureAdminPortfolioDataMigrated(db, adminUser.id, adminUser)
               }
             }
           } else {
-            // For full Admin, load their own portfolio data
-            if (userData.investmentData) {
-              portfolioData = userData.investmentData
+            // For full Admin, load firm portfolio (not personal investor investmentData)
+            portfolioData = resolveAdminPortfolioDataWithLegacyFallback(userData)
+            if (!userData.adminPortfolioData && userData.investmentData) {
+              portfolioData = await ensureAdminPortfolioDataMigrated(db, user.uid, userData)
             }
           }
           
@@ -595,7 +599,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             if (user?.uid && ownerId) {
               try {
                 const overrides = await getAdmin3Overrides(user.uid)
-                const overrideHistory = overrides[ownerId]?.investmentData?.monthlyHistory
+                const overrideHistory =
+                  overrides[ownerId]?.adminPortfolioData?.monthlyHistory ??
+                  overrides[ownerId]?.investmentData?.monthlyHistory
                 if (Array.isArray(overrideHistory) && overrideHistory.length > 0) {
                   monthlyHistory = overrideHistory
                 }
@@ -629,38 +635,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       const usersSnapshot = await getDocs(usersCollection)
       const prevMonthCtx = getPreviousMonthContext()
 
-      let total = 0
-      let payoutTargetSum = 0
-      const modalLines = []
-      usersSnapshot.forEach((docSnapshot) => {
-        const userData = docSnapshot.data()
-        const statuses = userData.statuses || []
-        const email = userData.email || ''
-        const displayName = userData.displayName || ''
-
-        if (isExcludedFromInvestorOverviewTotal(email, displayName)) {
-          return
-        }
-
-        // Sum balances for approved Investor accounts only (not traders)
-        if (
-          statuses.includes('Investor') &&
-          userData.investmentData &&
-          userData.investmentData.status === 'approved'
-        ) {
-          const inv = userData.investmentData
-          const balance = getAdminInvestorSummaryCurrentBalance(inv)
-          const { target } = monthlyTargetAndRateForPayout(inv, email, displayName, prevMonthCtx)
-          total += balance
-          payoutTargetSum += target
-          modalLines.push({
-            name: (displayName && displayName.trim()) || 'Unnamed investor',
-            balance,
-            monthlyTarget: target
-          })
-        }
-      })
-      modalLines.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      const { total, payoutTargetSum, modalLines } = collectApprovedInvestorOverviewRows(
+        usersSnapshot,
+        (inv, email, displayName) => monthlyTargetAndRateForPayout(inv, email, displayName, prevMonthCtx)
+      )
       if (userStatuses?.includes('Admin 3')) {
         setTotalInvestorAccounts(ADMIN3_TOTAL_INVESTOR_ACCOUNTS)
         setInvestorTotalModalLines([])
@@ -773,7 +751,7 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const addDayTradeRow = () => {
     setDayPerformanceTrades((prev) => [
       ...prev,
-      { id: newCalendarTradeId(), type: null, amount: '', fee: '' }
+      { id: newCalendarTradeId(), type: null, amount: '', swap: '', swapDirection: null }
     ])
   }
 
@@ -795,12 +773,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           id: t.id || newCalendarTradeId(),
           type: t.type === 'loss' ? 'loss' : 'win',
           amount: t.amount === 0 ? '' : String(t.amount),
-          fee:
-            t.fee != null && Number(t.fee) > 0 ? String(Number(t.fee)) : ''
+          swap:
+            t.swap != null && Number(t.swap) > 0 ? String(Number(t.swap)) : '',
+          swapDirection:
+            t.swapDirection === 'buy' || t.swapDirection === 'sell' ? t.swapDirection : null
         }))
       )
     } else {
-      setDayPerformanceTrades([{ id: newCalendarTradeId(), type: null, amount: '', fee: '' }])
+      setDayPerformanceTrades([{ id: newCalendarTradeId(), type: null, amount: '', swap: '', swapDirection: null }])
     }
     setShowDayModal(true)
   }
@@ -812,13 +792,17 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       .map((t) => {
         if (t.type !== 'win' && t.type !== 'loss') return null
         const amount = Math.max(0, parseFloat(String(t.amount).replace(',', '.')) || 0)
-        const feeNum = Math.max(0, parseFloat(String(t.fee ?? '').replace(',', '.')) || 0)
+        const swapNum = Math.max(0, parseFloat(String(t.swap ?? '').replace(',', '.')) || 0)
         const row = {
           id: t.id || newCalendarTradeId(),
           type: t.type === 'loss' ? 'loss' : 'win',
           amount
         }
-        if (feeNum > 0) row.fee = feeNum
+        if (swapNum > 0) {
+          row.swap = swapNum
+          row.swapDirection =
+            t.swapDirection === 'buy' || t.swapDirection === 'sell' ? t.swapDirection : 'sell'
+        }
         return row
       })
       .filter((t) => t && t.amount > 0)
@@ -1843,8 +1827,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                   <span className="investor-total-modal-colh">Investor</span>
                   <span className="investor-total-modal-colh investor-total-modal-colh-num">Balance</span>
                   <span className="investor-total-modal-colh investor-total-modal-colh-num">Monthly target</span>
-                  {investorTotalModalLines.map((row, idx) => (
-                    <React.Fragment key={`${row.name}-${idx}`}>
+                  {investorTotalModalLines.map((row) => (
+                    <React.Fragment key={row.id || row.email || row.name}>
                       <span className="investor-total-modal-name investor-total-modal-grid-row">{row.name}</span>
                       <span className="investor-total-modal-amount investor-total-modal-grid-row investor-total-modal-cell-num">
                         €
@@ -1854,11 +1838,12 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                         })}
                       </span>
                       <span className="investor-total-modal-target-amount investor-total-modal-grid-row investor-total-modal-cell-num">
-                        €
-                        {row.monthlyTarget.toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
+                        {row.monthlyTarget == null
+                          ? ''
+                          : `€${row.monthlyTarget.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}`}
                       </span>
                     </React.Fragment>
                   ))}
@@ -1880,9 +1865,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                   <span>Monthly payout target</span>
                   <span className="investor-total-modal-target-amount investor-total-modal-footer-target">
                     €
-                    {investorTotalModalLines
-                      .reduce((s, r) => s + r.monthlyTarget, 0)
-                      .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {sumInvestorOverviewMonthlyTargets(investorTotalModalLines).toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
                   </span>
                 </div>
               </div>
@@ -2051,7 +2037,6 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               <div className="day-modal-header">
                 <div className="day-modal-header-text">
                   <h3 className="day-modal-header-title">{selectedDayDateLabel}</h3>
-                  <p className="day-modal-header-sub">Performance</p>
                 </div>
                 <button
                   type="button"
@@ -2076,85 +2061,76 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                     !tradeEditLocked
                   return (
                   <div key={trade.id} className="day-modal-trade-row">
-                    <div className="performance-type-buttons performance-type-buttons--inline day-modal-type-toggle">
-                      {typeUnset ? (
-                        <>
+                    <div className="day-modal-trade-top">
+                      <div className="performance-type-buttons performance-type-buttons--inline day-modal-swap-toggle">
+                        {trade.swapDirection !== 'buy' && trade.swapDirection !== 'sell' ? (
+                          <>
+                            <button
+                              type="button"
+                              className="type-button type-button-pill type-button--buy"
+                              onClick={() =>
+                                !tradeEditLocked && updateDayTrade(trade.id, { swapDirection: 'buy' })
+                              }
+                              disabled={tradeEditLocked}
+                              aria-pressed="false"
+                            >
+                              Buy
+                            </button>
+                            <button
+                              type="button"
+                              className="type-button type-button-pill type-button--sell"
+                              onClick={() =>
+                                !tradeEditLocked && updateDayTrade(trade.id, { swapDirection: 'sell' })
+                              }
+                              disabled={tradeEditLocked}
+                              aria-pressed="false"
+                            >
+                              Sell
+                            </button>
+                          </>
+                        ) : trade.swapDirection === 'buy' ? (
                           <button
                             type="button"
-                            className="type-button type-button-pill type-button--win"
-                            onClick={() => !tradeEditLocked && updateDayTrade(trade.id, { type: 'win' })}
+                            className="type-button type-button-pill type-button--buy active"
+                            onClick={() =>
+                              !tradeEditLocked && updateDayTrade(trade.id, { swapDirection: null })
+                            }
                             disabled={tradeEditLocked}
-                            aria-pressed="false"
+                            title={tradeEditLocked ? undefined : 'Click to change swap direction'}
+                            aria-pressed="true"
                           >
-                            Win
+                            Buy
                           </button>
+                        ) : (
                           <button
                             type="button"
-                            className="type-button type-button-pill type-button--loss"
-                            onClick={() => !tradeEditLocked && updateDayTrade(trade.id, { type: 'loss' })}
+                            className="type-button type-button-pill type-button--sell active"
+                            onClick={() =>
+                              !tradeEditLocked && updateDayTrade(trade.id, { swapDirection: null })
+                            }
                             disabled={tradeEditLocked}
-                            aria-pressed="false"
+                            title={tradeEditLocked ? undefined : 'Click to change swap direction'}
+                            aria-pressed="true"
                           >
-                            Loss
+                            Sell
                           </button>
-                        </>
-                      ) : trade.type === 'win' ? (
-                        <button
-                          type="button"
-                          className="type-button type-button-pill type-button--win active"
-                          onClick={() =>
-                            !tradeEditLocked && updateDayTrade(trade.id, { type: null })
-                          }
-                          disabled={tradeEditLocked}
-                          title={tradeEditLocked ? undefined : 'Click to change type'}
-                          aria-pressed="true"
-                        >
-                          Win
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="type-button type-button-pill type-button--loss active"
-                          onClick={() =>
-                            !tradeEditLocked && updateDayTrade(trade.id, { type: null })
-                          }
-                          disabled={tradeEditLocked}
-                          title={tradeEditLocked ? undefined : 'Click to change type'}
-                          aria-pressed="true"
-                        >
-                          Loss
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input day-modal-input day-modal-input-amount"
-                      value={trade.amount}
-                      onChange={(e) =>
-                        !tradeEditLocked &&
-                        updateDayTrade(trade.id, { amount: e.target.value })
-                      }
-                      placeholder="Amount (€)"
-                      readOnly={tradeEditLocked}
-                      aria-label="Trade gross amount"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input day-modal-input day-modal-input-fee"
-                      value={trade.fee ?? ''}
-                      onChange={(e) =>
-                        !tradeEditLocked &&
-                        updateDayTrade(trade.id, { fee: e.target.value })
-                      }
-                      placeholder="Fee (€)"
-                      readOnly={tradeEditLocked}
-                      aria-label="Trade fee, optional"
-                    />
-                    {showRemoveTrade && (
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-input day-modal-input day-modal-input-swap"
+                        value={trade.swap ?? ''}
+                        onChange={(e) =>
+                          !tradeEditLocked &&
+                          updateDayTrade(trade.id, { swap: e.target.value })
+                        }
+                        placeholder="Swap (€)"
+                        readOnly={tradeEditLocked}
+                        aria-label="Trade swap amount, optional"
+                      />
+                      {showRemoveTrade && (
                         <button
                           type="button"
                           className="day-modal-remove-trade"
@@ -2180,6 +2156,73 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                           </svg>
                         </button>
                       )}
+                    </div>
+                    <div className="day-modal-trade-bottom">
+                      <div className="performance-type-buttons performance-type-buttons--inline day-modal-type-toggle">
+                        {typeUnset ? (
+                          <>
+                            <button
+                              type="button"
+                              className="type-button type-button-pill type-button--win"
+                              onClick={() => !tradeEditLocked && updateDayTrade(trade.id, { type: 'win' })}
+                              disabled={tradeEditLocked}
+                              aria-pressed="false"
+                            >
+                              Win
+                            </button>
+                            <button
+                              type="button"
+                              className="type-button type-button-pill type-button--loss"
+                              onClick={() => !tradeEditLocked && updateDayTrade(trade.id, { type: 'loss' })}
+                              disabled={tradeEditLocked}
+                              aria-pressed="false"
+                            >
+                              Loss
+                            </button>
+                          </>
+                        ) : trade.type === 'win' ? (
+                          <button
+                            type="button"
+                            className="type-button type-button-pill type-button--win active"
+                            onClick={() =>
+                              !tradeEditLocked && updateDayTrade(trade.id, { type: null })
+                            }
+                            disabled={tradeEditLocked}
+                            title={tradeEditLocked ? undefined : 'Click to change type'}
+                            aria-pressed="true"
+                          >
+                            Win
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="type-button type-button-pill type-button--loss active"
+                            onClick={() =>
+                              !tradeEditLocked && updateDayTrade(trade.id, { type: null })
+                            }
+                            disabled={tradeEditLocked}
+                            title={tradeEditLocked ? undefined : 'Click to change type'}
+                            aria-pressed="true"
+                          >
+                            Loss
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-input day-modal-input day-modal-input-amount"
+                        value={trade.amount}
+                        onChange={(e) =>
+                          !tradeEditLocked &&
+                          updateDayTrade(trade.id, { amount: e.target.value })
+                        }
+                        placeholder="Amount (€)"
+                        readOnly={tradeEditLocked}
+                        aria-label="Trade gross amount"
+                      />
+                    </div>
                   </div>
                   )
                 })}

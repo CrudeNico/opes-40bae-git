@@ -1396,89 +1396,105 @@ html.dark-mode .projection-description {
 
 .admin-overview-container .day-modal-trade-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-overview-container .day-modal-trade-row:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.admin-overview-container .day-modal-trade-top,
+.admin-overview-container .day-modal-trade-bottom {
+  display: flex;
   align-items: center;
-  gap: 0.45rem 0.55rem;
-  margin-bottom: 1rem;
+  gap: 0.55rem;
+  flex-wrap: nowrap;
 }
 
 .admin-overview-container .day-modal-trade-row .performance-type-buttons--inline {
   flex: 0 0 auto;
 }
 
-.admin-overview-container .day-modal-type-toggle {
+.admin-overview-container .day-modal-type-toggle,
+.admin-overview-container .day-modal-swap-toggle {
   flex-wrap: nowrap;
 }
 
-.admin-overview-container .form-input.day-modal-input-amount {
-  flex: 1 1 6.5rem;
-  min-width: 4.75rem;
-  max-width: 11rem;
+.admin-overview-container .form-input.day-modal-input-amount,
+.admin-overview-container .form-input.day-modal-input-swap {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
   border-radius: 9999px;
   padding: 0.45rem 0.85rem;
   font-size: 0.8rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
 }
 
-.admin-overview-container .form-input.day-modal-input-fee {
-  flex: 0 1 6rem;
-  min-width: 4.5rem;
-  max-width: 8rem;
-  border-radius: 9999px;
-  padding: 0.45rem 0.75rem;
-  font-size: 0.75rem;
+.admin-overview-container .form-input.day-modal-input-swap {
   color: #6b7280;
 }
 
-.admin-overview-container .performance-type-buttons {
+.admin-overview-container .day-modal-content .performance-type-buttons {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.45rem;
 }
 
-.admin-overview-container .performance-type-buttons--inline {
-  gap: 0.45rem;
+.admin-overview-container .day-modal-content .performance-type-buttons--inline {
+  gap: 0.4rem;
   flex-wrap: nowrap;
 }
 
-.admin-overview-container .type-button {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 0.5rem;
+.admin-overview-container .day-modal-content .type-button {
+  flex: 0 1 auto;
+  min-width: 4.1rem;
+  padding: 0.48rem 0.9rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
   background: #ffffff;
   color: #6b7280;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.admin-overview-container .type-button.type-button-pill {
-  flex: 0 1 auto;
-  min-width: 4rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 9999px;
   font-size: 0.8rem;
+  cursor: pointer;
 }
 
-.admin-overview-container .type-button:hover {
-  border-color: #d1d5db;
+.admin-overview-container .day-modal-content .type-button.type-button-pill {
+  flex: 0 1 auto;
 }
 
-.admin-overview-container .type-button.active {
-  border-color: #3b82f6;
-  background: #3b82f6;
-  color: #ffffff;
+.admin-overview-container .day-modal-content .type-button--buy,
+.admin-overview-container .day-modal-content .type-button--win {
+  color: #059669;
+  border-color: #d1fae5;
+  background: #f0fdf4;
 }
 
-.admin-overview-container .type-button.type-button--win.active {
-  border-color: #059669;
-  background: #059669;
-  color: #ffffff;
+.admin-overview-container .day-modal-content .type-button--buy.active,
+.admin-overview-container .day-modal-content .type-button--win.active {
+  border-color: #6ee7b7;
+  background: #d1fae5;
+  color: #047857;
 }
 
-.admin-overview-container .type-button.type-button--loss.active {
-  border-color: #dc2626;
-  background: #dc2626;
-  color: #ffffff;
+.admin-overview-container .day-modal-content .type-button--sell,
+.admin-overview-container .day-modal-content .type-button--loss {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.admin-overview-container .day-modal-content .type-button--sell.active,
+.admin-overview-container .day-modal-content .type-button--loss.active {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .admin-overview-container .form-input.day-modal-input {
@@ -1491,15 +1507,15 @@ html.dark-mode .projection-description {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  flex: 0 0 auto;
+  width: 2.2rem;
+  height: 2.2rem;
   padding: 0;
-  border: 2px solid #e5e7eb;
+  border: 1px solid #e5e7eb;
   border-radius: 9999px;
   background: #ffffff;
   color: #9ca3af;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .admin-overview-container .day-modal-remove-trade:hover {
@@ -1512,7 +1528,7 @@ html.dark-mode .projection-description {
   display: block;
   width: 100%;
   margin: 0 0 1rem 0;
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1rem;
   border-radius: 9999px;
   border: 1px dashed #d1d5db;
   background: #f9fafb;
@@ -1574,7 +1590,7 @@ html.dark-mode .projection-description {
   padding-right: 1.35rem !important;
 }
 
-.admin-overview-container .btn-secondary {
+.admin-overview-container .day-modal-footer .btn-secondary {
   padding: 0.7rem 1.35rem;
   background: #f3f4f6;
   color: #374151;
@@ -1583,35 +1599,33 @@ html.dark-mode .projection-description {
   font-weight: 500;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.admin-overview-container .btn-secondary:hover {
+.admin-overview-container .day-modal-footer .btn-secondary:hover {
   background: #e5e7eb;
   border-color: #d1d5db;
 }
 
-.admin-overview-container .btn-primary {
+.admin-overview-container .day-modal-footer .btn-primary {
   padding: 0.75rem 1.5rem;
   background: #3b82f6;
   color: #ffffff;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.admin-overview-container .btn-primary:hover:not(:disabled) {
+.admin-overview-container .day-modal-footer .btn-primary:hover:not(:disabled) {
   background: #2563eb;
 }
 
-.admin-overview-container .btn-primary:disabled {
+.admin-overview-container .day-modal-footer .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.admin-overview-container .btn-delete {
+.admin-overview-container .day-modal-footer .btn-delete {
   padding: 0.75rem 1.5rem;
   background: #ef4444;
   color: #ffffff;
@@ -1619,10 +1633,9 @@ html.dark-mode .projection-description {
   border-radius: 9999px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.admin-overview-container .btn-delete:hover {
+.admin-overview-container .day-modal-footer .btn-delete:hover {
   background: #dc2626;
 }
 
@@ -1709,32 +1722,42 @@ html.dark-mode .admin-overview-container .modal-close:hover {
   color: #f9fafb;
 }
 
-html.dark-mode .admin-overview-container .type-button {
+html.dark-mode .admin-overview-container .day-modal-trade-row {
+  border-bottom-color: #374151;
+}
+
+html.dark-mode .admin-overview-container .day-modal-content .type-button {
   background: #111827;
   border-color: #374151;
   color: #9ca3af;
 }
 
-html.dark-mode .admin-overview-container .type-button:hover {
-  border-color: #4b5563;
+html.dark-mode .admin-overview-container .day-modal-content .type-button--buy,
+html.dark-mode .admin-overview-container .day-modal-content .type-button--win {
+  color: #6ee7b7;
+  border-color: #065f46;
+  background: #064e3b;
 }
 
-html.dark-mode .admin-overview-container .type-button.active {
-  border-color: #3b82f6;
-  background: #3b82f6;
-  color: #ffffff;
-}
-
-html.dark-mode .admin-overview-container .type-button.type-button--win.active {
+html.dark-mode .admin-overview-container .day-modal-content .type-button--buy.active,
+html.dark-mode .admin-overview-container .day-modal-content .type-button--win.active {
   border-color: #10b981;
-  background: #059669;
-  color: #ffffff;
+  background: #047857;
+  color: #ecfdf5;
 }
 
-html.dark-mode .admin-overview-container .type-button.type-button--loss.active {
-  border-color: #f87171;
-  background: #dc2626;
-  color: #ffffff;
+html.dark-mode .admin-overview-container .day-modal-content .type-button--sell,
+html.dark-mode .admin-overview-container .day-modal-content .type-button--loss {
+  color: #fca5a5;
+  border-color: #991b1b;
+  background: #7f1d1d;
+}
+
+html.dark-mode .admin-overview-container .day-modal-content .type-button--sell.active,
+html.dark-mode .admin-overview-container .day-modal-content .type-button--loss.active {
+  border-color: #ef4444;
+  background: #b91c1c;
+  color: #fef2f2;
 }
 
 html.dark-mode .admin-overview-container .day-modal-header-sub {
@@ -1766,6 +1789,17 @@ html.dark-mode .admin-overview-container .day-modal-remove-trade:hover {
   background: #7f1d1d;
   border-color: #991b1b;
   color: #fecaca;
+}
+
+html.dark-mode .admin-overview-container .day-modal-footer .btn-secondary {
+  background: #374151;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+html.dark-mode .admin-overview-container .day-modal-footer .btn-secondary:hover {
+  background: #4b5563;
+  border-color: #6b7280;
 }
 
 html.dark-mode .admin-overview-container .day-modal-net--positive {
@@ -1801,13 +1835,13 @@ html.dark-mode .admin-overview-container .form-input.day-modal-input {
 }
 
 html.dark-mode .admin-overview-container .form-input.day-modal-input-amount,
-html.dark-mode .admin-overview-container .form-input.day-modal-input-fee {
+html.dark-mode .admin-overview-container .form-input.day-modal-input-swap {
   background: #111827;
   border-color: #4b5563;
   color: #f9fafb;
 }
 
-html.dark-mode .admin-overview-container .form-input.day-modal-input-fee {
+html.dark-mode .admin-overview-container .form-input.day-modal-input-swap {
   color: #d1d5db;
 }
 

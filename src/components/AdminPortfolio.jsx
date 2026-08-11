@@ -8,32 +8,192 @@ import {
   TRANCHE_PRIMARY,
   TRANCHE_SECONDARY
 } from '../utils/investorDualTranche'
+import {
+  isExcludedFromInvestorOverviewTotal,
+  isPartnerUserForOverview,
+  sumInvestorOverviewMonthlyTargets
+} from '../utils/adminInvestorOverviewTotal'
+import {
+  ensureAdminPortfolioDataMigrated,
+  resolveAdminPortfolioData,
+  resolveAdminPortfolioDataWithLegacyFallback
+} from '../utils/adminPortfolioData'
 import './AdminPortfolio.css'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
 
-/** Same as AdminInvestorsManagement: this account’s “current balance” is portfolio minus all other approved investor/trader balances. */
-const SPECIAL_DIFF_ONLY_INVESTOR_EMAIL = 'nicolas.fernandez@opessocius.support'
+function portfolioMonthYearKey(month, year) {
+  const y = parseInt(String(year), 10)
+  return `${month || ''}|${Number.isFinite(y) ? y : ''}`
+}
 
-const normalizePortfolioKey = (value) =>
-  String(value || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
+function portfolioHistoryHasDuplicate(history, month, year, excludeIndex = -1) {
+  if (!month || !String(year ?? '').trim()) return false
+  const key = portfolioMonthYearKey(month, year)
+  return (history || []).some(
+    (record, index) =>
+      index !== excludeIndex && portfolioMonthYearKey(record.month, record.year) === key
+  )
+}
 
-const isExcludedFromPortfolioInvestorTotal = (email, displayName) => {
-  const em = normalizePortfolioKey(email)
-  const nm = normalizePortfolioKey(displayName)
-  const excludedEmails = [
-    'nicolas.fernandez@opessocius.support',
-    'marcoscollab@gmail.com',
-    'ndrf1806@gmail.com'
-  ]
-  if (excludedEmails.includes(em)) return true
-  const excludedNames = ['marcos de rodrigo', 'nicolas de rodrigo']
-  return excludedNames.includes(nm)
+function sortPortfolioMonthlyHistory(history) {
+  return [...(history || [])].sort((a, b) => {
+    const yearA = parseInt(String(a.year), 10) || 0
+    const yearB = parseInt(String(b.year), 10) || 0
+    if (yearA !== yearB) return yearA - yearB
+    return MONTH_NAMES.indexOf(a.month || '') - MONTH_NAMES.indexOf(b.month || '')
+  })
+}
+
+function getPortfolioDaysInMonth(month, year) {
+  const monthIndex = MONTH_NAMES.indexOf(month)
+  return new Date(parseInt(String(year), 10), monthIndex + 1, 0).getDate()
+}
+
+function calculatePortfolioProratedGrowth(amount, percentageGrowth, date, month, year) {
+  if (!date || !month || !year || amount === 0) return 0
+  const depositDate = new Date(date)
+  const dayOfMonth = depositDate.getDate()
+  const daysInMonth = getPortfolioDaysInMonth(month, year)
+  let daysRemaining = daysInMonth - dayOfMonth + 1
+  if (dayOfMonth === daysInMonth) daysRemaining = 0
+  return amount * (percentageGrowth / 100) * (daysRemaining / daysInMonth)
+}
+
+function calculatePortfolioWithdrawalGrowthLoss(amount, percentageGrowth, date, month, year) {
+  if (!date || !month || !year || amount === 0) return 0
+  const withdrawalDate = new Date(date)
+  const dayOfMonth = withdrawalDate.getDate()
+  const daysInMonth = getPortfolioDaysInMonth(month, year)
+  const daysRemaining = daysInMonth - dayOfMonth
+  return amount * (percentageGrowth / 100) * (daysRemaining / daysInMonth)
+}
+
+function recalculatePortfolioMonthlyHistory(history, initialInvestment, options = {}) {
+  const { preserveExactEndingBalances = false } = options
+  const sortedHistory = sortPortfolioMonthlyHistory(history)
+  let runningBalance = initialInvestment || 0
+
+  return sortedHistory.map((record) => {
+    const normalizedRecordDepositEntries = (record.depositEntries || [])
+      .map((entry) => ({ amount: Number(entry?.amount) || 0, date: entry?.date || null }))
+      .filter((entry) => entry.amount > 0 || entry.date)
+    const normalizedRecordWithdrawalEntries = (record.withdrawalEntries || [])
+      .map((entry) => ({ amount: Number(entry?.amount) || 0, date: entry?.date || null }))
+      .filter((entry) => entry.amount > 0 || entry.date)
+    const fallbackDepositEntries = normalizedRecordDepositEntries.length > 0
+      ? normalizedRecordDepositEntries
+      : [{ amount: Number(record.depositAmount) || 0, date: record.depositDate || null }]
+    const fallbackWithdrawalEntries = normalizedRecordWithdrawalEntries.length > 0
+      ? normalizedRecordWithdrawalEntries
+      : [{ amount: Number(record.withdrawalAmount) || 0, date: record.withdrawalDate || null }]
+
+    const recordDepositAmount = fallbackDepositEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0)
+    const recordWithdrawalAmount = fallbackWithdrawalEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0)
+
+    if (preserveExactEndingBalances) {
+      const recordStartingBalance = runningBalance
+      const growthAmount = Number(record.growthAmount) || 0
+      const depositGrowth = Number(record.depositGrowth) || 0
+      const withdrawalGrowth = Number(record.withdrawalGrowth) || 0
+      const storedEnding = Number(record.endingBalance)
+      const endingBalance = Number.isFinite(storedEnding)
+        ? storedEnding
+        : recordStartingBalance +
+          growthAmount +
+          recordDepositAmount +
+          depositGrowth -
+          recordWithdrawalAmount -
+          withdrawalGrowth
+
+      runningBalance = endingBalance
+
+      return {
+        ...record,
+        startingBalance: recordStartingBalance,
+        growthAmount,
+        percentageGrowth: record.percentageGrowth,
+        endingBalance,
+        depositGrowth,
+        withdrawalGrowth,
+        depositAmount: recordDepositAmount,
+        withdrawalAmount: recordWithdrawalAmount,
+        depositDate: fallbackDepositEntries[0]?.date || null,
+        withdrawalDate: fallbackWithdrawalEntries[0]?.date || null,
+        depositEntries: fallbackDepositEntries,
+        withdrawalEntries: fallbackWithdrawalEntries,
+        exactEndingBalance: true,
+        updatedAt: record.updatedAt || new Date().toISOString()
+      }
+    }
+
+    const recordPercentageGrowth = record.percentageGrowth || 0
+    const recordGrowthAmount = runningBalance * (recordPercentageGrowth / 100)
+
+    const recordDepositGrowth = fallbackDepositEntries.reduce(
+      (sum, entry) =>
+        sum +
+        calculatePortfolioProratedGrowth(
+          entry.amount,
+          recordPercentageGrowth,
+          entry.date,
+          record.month,
+          record.year
+        ),
+      0
+    )
+
+    const recordWithdrawalGrowth = fallbackWithdrawalEntries.reduce(
+      (sum, entry) =>
+        sum +
+        calculatePortfolioWithdrawalGrowthLoss(
+          entry.amount,
+          recordPercentageGrowth,
+          entry.date,
+          record.month,
+          record.year
+        ),
+      0
+    )
+
+    const recordStartingBalance = runningBalance
+    runningBalance =
+      runningBalance +
+      recordGrowthAmount +
+      recordDepositAmount +
+      recordDepositGrowth -
+      recordWithdrawalAmount -
+      recordWithdrawalGrowth
+
+    return {
+      ...record,
+      startingBalance: recordStartingBalance,
+      growthAmount: recordGrowthAmount,
+      endingBalance: runningBalance,
+      depositGrowth: recordDepositGrowth,
+      withdrawalGrowth: recordWithdrawalGrowth,
+      depositAmount: recordDepositAmount,
+      withdrawalAmount: recordWithdrawalAmount,
+      depositDate: fallbackDepositEntries[0]?.date || null,
+      withdrawalDate: fallbackWithdrawalEntries[0]?.date || null,
+      depositEntries: fallbackDepositEntries,
+      withdrawalEntries: fallbackWithdrawalEntries,
+      updatedAt: record.updatedAt || new Date().toISOString()
+    }
+  })
+}
+
+function sumPortfolioCashflowTotals(history, initialInvestment) {
+  let totalDeposits = initialInvestment || 0
+  let totalWithdrawals = 0
+  ;(history || []).forEach((record) => {
+    totalDeposits += record.depositAmount || 0
+    totalWithdrawals += record.withdrawalAmount || 0
+  })
+  const currentBalance =
+    history?.length > 0 ? history[history.length - 1].endingBalance : initialInvestment || 0
+  return { totalDeposits, totalWithdrawals, currentBalance }
 }
 
 const isClaraPayoutInvestor = (email, displayName) => {
@@ -587,34 +747,8 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         }
       }
 
-      let portfolioAdminSummaryBalance = 0
-      if (user?.uid) {
-        const adminDocSnap = await getDoc(doc(db, 'users', user.uid))
-        if (adminDocSnap.exists()) {
-          let inv = adminDocSnap.data()?.investmentData || null
-          if (overrides[user.uid]?.investmentData !== undefined) {
-            inv = overrides[user.uid].investmentData
-          }
-          if (inv) portfolioAdminSummaryBalance = Number(getAdminInvestorSummaryCurrentBalance(inv)) || 0
-        }
-      }
-
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
-
-      let totalApprovedBalExcludingSpecial = 0
-      usersSnapshot.forEach((docSnapshot) => {
-        const { statuses, investmentData, email } = mergeUserForInvestorView(docSnapshot)
-        if ((email || '').toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) return
-        if (
-          investmentData &&
-          investmentData.status === 'approved' &&
-          (statuses.includes('Investor') || statuses.includes('Trader'))
-        ) {
-          totalApprovedBalExcludingSpecial +=
-            Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
-        }
-      })
       
       const prevMonthCtx = getPreviousMonthContext()
       let total = 0
@@ -634,12 +768,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           const safeInitialAll = Number(getInvestorCombinedInitial(invAll)) || 0
           const safeDepositsAll = Number(invAll.totalDeposits ?? safeInitialAll) || 0
           const safeWithdrawalsAll = Number(invAll.totalWithdrawals ?? 0) || 0
-          let safeCurrentAll = Number(getAdminInvestorSummaryCurrentBalance(invAll)) || 0
-          if ((email || '').toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) {
-            safeCurrentAll =
-              portfolioAdminSummaryBalance -
-              totalApprovedBalExcludingSpecial
-          }
+          const safeCurrentAll = Number(getAdminInvestorSummaryCurrentBalance(invAll)) || 0
           allApprovedRows.push({
             id: docSnapshot.id,
             name: (displayName && displayName.trim()) || email || 'Unnamed investor',
@@ -651,7 +780,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           })
         }
         
-        if (isExcludedFromPortfolioInvestorTotal(email, displayName)) {
+        if (isExcludedFromInvestorOverviewTotal(email)) {
           return
         }
         
@@ -660,16 +789,12 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           const safeInitial = Number(getInvestorCombinedInitial(investmentData)) || 0
           const safeDeposits = Number(investmentData.totalDeposits ?? safeInitial) || 0
           const safeWithdrawals = Number(investmentData.totalWithdrawals ?? 0) || 0
-          let safeCurrentBalance = Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
-          if ((email || '').toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) {
-            safeCurrentBalance =
-              portfolioAdminSummaryBalance -
-              totalApprovedBalExcludingSpecial
-          }
-          const monthlyTarget = Number(
-            monthlyTargetAndRateForPayout(investmentData, email, displayName, prevMonthCtx)
-          ) || 0
-          
+          const safeCurrentBalance = Number(getAdminInvestorSummaryCurrentBalance(investmentData)) || 0
+          const isPartner = isPartnerUserForOverview({ statuses, investmentData })
+          const monthlyTarget = isPartner
+            ? null
+            : Number(monthlyTargetAndRateForPayout(investmentData, email, displayName, prevMonthCtx)) || 0
+
           total += safeCurrentBalance
 
           investorRows.push({
@@ -686,6 +811,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             id: docSnapshot.id,
             name: (displayName && displayName.trim()) || 'Unnamed investor',
             balance: safeCurrentBalance,
+            isPartner,
             monthlyTarget
           })
         }
@@ -738,10 +864,16 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
           setPortfolioData(generateAdmin3PortfolioData())
         } else if (adminUser) {
           setPortfolioOwnerId(adminUser.id)
-          let invData = adminUser.investmentData || null
-          if (overrides[adminUser.id]?.investmentData) invData = overrides[adminUser.id].investmentData
-          if (invData) {
-            const sortedData = { ...invData, monthlyHistory: sortMonthlyHistory(invData.monthlyHistory || []) }
+          const adminOverride = overrides[adminUser.id]
+          let portfolioSource = resolveAdminPortfolioDataWithLegacyFallback(adminUser, adminOverride)
+          if (!resolveAdminPortfolioData(adminUser, adminOverride) && adminUser.investmentData && !isAdmin3) {
+            portfolioSource = await ensureAdminPortfolioDataMigrated(db, adminUser.id, adminUser)
+          }
+          if (portfolioSource) {
+            const sortedData = {
+              ...portfolioSource,
+              monthlyHistory: sortMonthlyHistory(portfolioSource.monthlyHistory || [])
+            }
             setPortfolioData(sortedData)
           } else setPortfolioData(null)
         } else {
@@ -753,10 +885,14 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
         if (userDoc.exists()) {
           const userData = userDoc.data()
-          if (userData.investmentData) {
+          let portfolioSource = resolveAdminPortfolioDataWithLegacyFallback(userData)
+          if (!userData.adminPortfolioData && userData.investmentData) {
+            portfolioSource = await ensureAdminPortfolioDataMigrated(db, user.uid, userData)
+          }
+          if (portfolioSource) {
             const sortedData = {
-              ...userData.investmentData,
-              monthlyHistory: sortMonthlyHistory(userData.investmentData.monthlyHistory || [])
+              ...portfolioSource,
+              monthlyHistory: sortMonthlyHistory(portfolioSource.monthlyHistory || [])
             }
             setPortfolioData(sortedData)
           } else setPortfolioData(null)
@@ -982,43 +1118,25 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         return
       }
       const userData = userDoc.data()
-      const currentInvestmentData = (isAdmin3 ? portfolioData : userData.investmentData) || {}
-      // Sort the existing history first to ensure we're working with chronological order
-      const existingHistory = sortMonthlyHistory(currentInvestmentData.monthlyHistory || [])
-      
-      // Helper functions (same as in handleAddPerformance)
-      const getDaysInMonth = (month, year) => {
-        const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month)
-        return new Date(year, monthIndex + 1, 0).getDate()
-      }
+      const currentPortfolioData =
+        (isAdmin3 ? portfolioData : resolveAdminPortfolioDataWithLegacyFallback(userData)) || {}
+      const existingHistory = sortMonthlyHistory(currentPortfolioData.monthlyHistory || [])
 
-      const calculateProratedGrowth = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        const depositDate = new Date(date)
-        const dayOfMonth = depositDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        let daysRemaining = daysInMonth - dayOfMonth + 1
-        if (dayOfMonth === daysInMonth) {
-          daysRemaining = 0
-        }
-        const proratedRatio = daysRemaining / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
-      }
-
-      const calculateWithdrawalGrowthLoss = (amount, percentageGrowth, date, month, year) => {
-        if (!date || !month || !year || amount === 0) return 0
-        const withdrawalDate = new Date(date)
-        const dayOfMonth = withdrawalDate.getDate()
-        const daysInMonth = getDaysInMonth(month, parseInt(year))
-        const daysRemaining = daysInMonth - dayOfMonth
-        const proratedRatio = daysRemaining / daysInMonth
-        return amount * (percentageGrowth / 100) * proratedRatio
+      if (
+        portfolioHistoryHasDuplicate(
+          existingHistory,
+          editFormData.month,
+          editFormData.year,
+          editingRecordIndex
+        )
+      ) {
+        setError(`A record for ${editFormData.month} ${editFormData.year} already exists.`)
+        return
       }
 
       // Get the starting balance for the record being edited
       // It's the ending balance of the previous record, or initial investment if it's the first record
-      let startingBalance = currentInvestmentData.initialInvestment || 0
+      let startingBalance = currentPortfolioData.initialInvestment || 0
       if (editingRecordIndex > 0) {
         startingBalance = existingHistory[editingRecordIndex - 1].endingBalance || startingBalance
       }
@@ -1056,25 +1174,31 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       const depositAmount = normalizedDepositEntries.reduce((sum, entry) => sum + entry.amount, 0)
       const withdrawalAmount = normalizedWithdrawalEntries.reduce((sum, entry) => sum + entry.amount, 0)
 
-      const depositGrowth = normalizedDepositEntries.reduce((sum, entry) => (
-        sum + calculateProratedGrowth(
-          entry.amount,
-          percentageGrowth,
-          entry.date,
-          editFormData.month,
-          editFormData.year
-        )
-      ), 0)
+      const depositGrowth = normalizedDepositEntries.reduce(
+        (sum, entry) =>
+          sum +
+          calculatePortfolioProratedGrowth(
+            entry.amount,
+            percentageGrowth,
+            entry.date,
+            editFormData.month,
+            editFormData.year
+          ),
+        0
+      )
 
-      const withdrawalGrowth = normalizedWithdrawalEntries.reduce((sum, entry) => (
-        sum + calculateWithdrawalGrowthLoss(
-          entry.amount,
-          percentageGrowth,
-          entry.date,
-          editFormData.month,
-          editFormData.year
-        )
-      ), 0)
+      const withdrawalGrowth = normalizedWithdrawalEntries.reduce(
+        (sum, entry) =>
+          sum +
+          calculatePortfolioWithdrawalGrowthLoss(
+            entry.amount,
+            percentageGrowth,
+            entry.date,
+            editFormData.month,
+            editFormData.year
+          ),
+        0
+      )
 
       const endingBalance = startingBalance + growthAmount + depositAmount + depositGrowth - withdrawalAmount - withdrawalGrowth
 
@@ -1094,88 +1218,22 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         withdrawalDate: normalizedWithdrawalEntries[0]?.date || null,
         depositEntries: normalizedDepositEntries,
         withdrawalEntries: normalizedWithdrawalEntries,
+        exactEndingBalance: true,
         updatedAt: new Date().toISOString()
       }
 
-      // Update the record at the editing index
       existingHistory[editingRecordIndex] = updatedRecord
 
-      // Sort the history chronologically (in case month/year was changed)
-      const sortedHistory = sortMonthlyHistory(existingHistory)
+      const recalculatedHistory = recalculatePortfolioMonthlyHistory(
+        existingHistory,
+        currentPortfolioData.initialInvestment || 0,
+        { preserveExactEndingBalances: true }
+      )
+      const { totalDeposits: newTotalDeposits, totalWithdrawals: newTotalWithdrawals, currentBalance: runningBalance } =
+        sumPortfolioCashflowTotals(recalculatedHistory, currentPortfolioData.initialInvestment || 0)
 
-      // Recalculate ALL records in chronological order from the beginning
-      // This ensures proper calculation even if the order changed
-      let runningBalance = currentInvestmentData.initialInvestment || 0
-      const recalculatedHistory = sortedHistory.map((record, index) => {
-        const recordPercentageGrowth = record.percentageGrowth || 0
-        const recordGrowthAmount = runningBalance * (recordPercentageGrowth / 100)
-        const normalizedRecordDepositEntries = (record.depositEntries || [])
-          .map((entry) => ({ amount: Number(entry?.amount) || 0, date: entry?.date || null }))
-          .filter((entry) => entry.amount > 0 || entry.date)
-        const normalizedRecordWithdrawalEntries = (record.withdrawalEntries || [])
-          .map((entry) => ({ amount: Number(entry?.amount) || 0, date: entry?.date || null }))
-          .filter((entry) => entry.amount > 0 || entry.date)
-        const fallbackDepositEntries = normalizedRecordDepositEntries.length > 0
-          ? normalizedRecordDepositEntries
-          : [{ amount: Number(record.depositAmount) || 0, date: record.depositDate || null }]
-        const fallbackWithdrawalEntries = normalizedRecordWithdrawalEntries.length > 0
-          ? normalizedRecordWithdrawalEntries
-          : [{ amount: Number(record.withdrawalAmount) || 0, date: record.withdrawalDate || null }]
-
-        const recordDepositAmount = fallbackDepositEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0)
-        const recordWithdrawalAmount = fallbackWithdrawalEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0)
-        
-        const recordDepositGrowth = fallbackDepositEntries.reduce((sum, entry) => (
-          sum + calculateProratedGrowth(
-            entry.amount,
-            recordPercentageGrowth,
-            entry.date,
-            record.month,
-            record.year
-          )
-        ), 0)
-        
-        const recordWithdrawalGrowth = fallbackWithdrawalEntries.reduce((sum, entry) => (
-          sum + calculateWithdrawalGrowthLoss(
-            entry.amount,
-            recordPercentageGrowth,
-            entry.date,
-            record.month,
-            record.year
-          )
-        ), 0)
-
-        const recordStartingBalance = runningBalance
-        runningBalance = runningBalance + recordGrowthAmount + recordDepositAmount + recordDepositGrowth - recordWithdrawalAmount - recordWithdrawalGrowth
-
-        return {
-          ...record,
-          startingBalance: recordStartingBalance,
-          growthAmount: recordGrowthAmount,
-          endingBalance: runningBalance,
-          depositGrowth: recordDepositGrowth,
-          withdrawalGrowth: recordWithdrawalGrowth,
-          depositAmount: recordDepositAmount,
-          withdrawalAmount: recordWithdrawalAmount,
-          depositDate: fallbackDepositEntries[0]?.date || null,
-          withdrawalDate: fallbackWithdrawalEntries[0]?.date || null,
-          depositEntries: fallbackDepositEntries,
-          withdrawalEntries: fallbackWithdrawalEntries,
-          updatedAt: record.updatedAt || new Date().toISOString()
-        }
-      })
-
-      // Recalculate totals
-      let newTotalDeposits = currentInvestmentData.initialInvestment || 0
-      let newTotalWithdrawals = 0
-      recalculatedHistory.forEach(record => {
-        newTotalDeposits += (record.depositAmount || 0)
-        newTotalWithdrawals += (record.withdrawalAmount || 0)
-      })
-
-      // Update investment data
-      const updatedInvestmentData = {
-        ...currentInvestmentData,
+      const updatedPortfolioData = {
+        ...currentPortfolioData,
         currentBalance: runningBalance,
         totalDeposits: newTotalDeposits,
         totalWithdrawals: newTotalWithdrawals,
@@ -1184,10 +1242,10 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       }
 
       if (isAdmin3 && user?.uid) {
-        await saveAdmin3UserOverride(user.uid, ownerId, { investmentData: updatedInvestmentData })
+        await saveAdmin3UserOverride(user.uid, ownerId, { adminPortfolioData: updatedPortfolioData })
       } else {
         await updateDoc(userDocRef, {
-          investmentData: updatedInvestmentData,
+          adminPortfolioData: updatedPortfolioData,
           updatedAt: new Date().toISOString()
         })
       }
@@ -1217,6 +1275,96 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
     }
   }
 
+  const handleDeleteEditRecord = async () => {
+    if (!canAddPerformance) {
+      setError('You do not have permission to delete monthly performance.')
+      return
+    }
+    if (!portfolioData || editingRecordIndex === null) {
+      setError('Invalid delete operation.')
+      return
+    }
+
+    const monthLabel = editFormData.month || 'this month'
+    const yearLabel = editFormData.year || ''
+    const confirmLabel = yearLabel ? `${monthLabel} ${yearLabel}` : monthLabel
+    if (!window.confirm(`Eliminate the record for ${confirmLabel}? This cannot be undone.`)) {
+      return
+    }
+
+    setLoadingEdit(true)
+    setError('')
+    setSuccess('')
+    try {
+      const db = getFirestore()
+      const ownerId = portfolioOwnerId || user.uid
+      const userDocRef = doc(db, 'users', ownerId)
+      const userDoc = await getDoc(userDocRef)
+      if (!userDoc.exists()) {
+        setError('User document not found')
+        return
+      }
+      const userData = userDoc.data()
+      const currentPortfolioData =
+        (isAdmin3 ? portfolioData : resolveAdminPortfolioDataWithLegacyFallback(userData)) || {}
+      const existingHistory = sortMonthlyHistory(currentPortfolioData.monthlyHistory || [])
+      const historyWithoutRecord = existingHistory.filter((_, index) => index !== editingRecordIndex)
+      const recalculatedHistory = recalculatePortfolioMonthlyHistory(
+        historyWithoutRecord,
+        currentPortfolioData.initialInvestment || 0,
+        { preserveExactEndingBalances: true }
+      )
+      const { totalDeposits, totalWithdrawals, currentBalance } = sumPortfolioCashflowTotals(
+        recalculatedHistory,
+        currentPortfolioData.initialInvestment || 0
+      )
+
+      const updatedPortfolioData = {
+        ...currentPortfolioData,
+        currentBalance,
+        totalDeposits,
+        totalWithdrawals,
+        monthlyHistory: recalculatedHistory,
+        lastUpdated: new Date().toISOString()
+      }
+
+      if (isAdmin3 && user?.uid) {
+        await saveAdmin3UserOverride(user.uid, ownerId, { adminPortfolioData: updatedPortfolioData })
+      } else {
+        await updateDoc(userDocRef, {
+          adminPortfolioData: updatedPortfolioData,
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      setSuccess(
+        isAdmin3
+          ? 'Record eliminated in your sandbox (changes visible only to you)'
+          : `Monthly record for ${confirmLabel} eliminated successfully!`
+      )
+      setEditingRecordIndex(null)
+      setEditFormData({
+        month: '',
+        year: '',
+        percentageGrowth: '',
+        growthAmountExact: '',
+        depositAmount: '',
+        depositDate: '',
+        withdrawalAmount: '',
+        withdrawalDate: '',
+        depositEntries: [{ amount: '', date: '' }],
+        withdrawalEntries: [{ amount: '', date: '' }]
+      })
+      await loadPortfolioData()
+      await loadTotalInvestorAccounts()
+    } catch (error) {
+      console.error('Error deleting monthly record:', error)
+      setError(`Failed to eliminate monthly record: ${error.message}`)
+    } finally {
+      setLoadingEdit(false)
+    }
+  }
+
   const handleAddPerformance = async (e) => {
     e.preventDefault()
     if (!canAddPerformance) {
@@ -1240,10 +1388,18 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
         return
       }
       const userData = userDoc.data()
-      const currentInvestmentData = (isAdmin3 ? portfolioData : userData.investmentData) || {}
-      const currentBalance = currentInvestmentData.currentBalance || currentInvestmentData.initialInvestment || 0
-      const totalDeposits = currentInvestmentData.totalDeposits || currentInvestmentData.initialInvestment || 0
-      const totalWithdrawals = currentInvestmentData.totalWithdrawals || 0
+      const currentPortfolioData =
+        (isAdmin3 ? portfolioData : resolveAdminPortfolioDataWithLegacyFallback(userData)) || {}
+      const existingHistory = sortMonthlyHistory(currentPortfolioData.monthlyHistory || [])
+
+      if (portfolioHistoryHasDuplicate(existingHistory, monthlyUpdate.month, monthlyUpdate.year)) {
+        setError(`A record for ${monthlyUpdate.month} ${monthlyUpdate.year} already exists.`)
+        return
+      }
+
+      const currentBalance = currentPortfolioData.currentBalance || currentPortfolioData.initialInvestment || 0
+      const totalDeposits = currentPortfolioData.totalDeposits || currentPortfolioData.initialInvestment || 0
+      const totalWithdrawals = currentPortfolioData.totalWithdrawals || 0
 
       // Helper function to get days in a month
       const getDaysInMonth = (month, year) => {
@@ -1368,15 +1524,14 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       }
 
       // Get existing monthly history
-      const existingHistory = currentInvestmentData.monthlyHistory || []
       const updatedHistory = [...existingHistory, monthlyRecord]
       
       // Sort the history chronologically
       const sortedHistory = sortMonthlyHistory(updatedHistory)
 
-      // Update investment data
-      const updatedInvestmentData = {
-        ...currentInvestmentData,
+      // Update firm admin portfolio (separate from personal investor investmentData)
+      const updatedPortfolioData = {
+        ...currentPortfolioData,
         currentBalance: newBalance,
         totalDeposits: newTotalDeposits,
         totalWithdrawals: newTotalWithdrawals,
@@ -1385,10 +1540,10 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       }
 
       if (isAdmin3 && user?.uid) {
-        await saveAdmin3UserOverride(user.uid, ownerId, { investmentData: updatedInvestmentData })
+        await saveAdmin3UserOverride(user.uid, ownerId, { adminPortfolioData: updatedPortfolioData })
       } else {
         await updateDoc(userDocRef, {
-          investmentData: updatedInvestmentData,
+          adminPortfolioData: updatedPortfolioData,
           updatedAt: new Date().toISOString()
         })
       }
@@ -1813,7 +1968,9 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
               <React.Fragment key={row.id}>
                 <span className="portfolio-widget-overview-name">{row.name}</span>
                 <span className="portfolio-widget-overview-amount">{formatCurrency(row.balance)}</span>
-                <span className="portfolio-widget-overview-target">{formatCurrency(row.monthlyTarget)}</span>
+                <span className="portfolio-widget-overview-target">
+                  {row.monthlyTarget == null ? '' : formatCurrency(row.monthlyTarget)}
+                </span>
               </React.Fragment>
             ))}
           </div>
@@ -1825,7 +1982,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             <div className="portfolio-widget-overview-footer-line">
               <span>Monthly payout target</span>
               <strong className="portfolio-widget-overview-target">
-                {formatCurrency(investorTotalModalLines.reduce((s, r) => s + r.monthlyTarget, 0))}
+                {formatCurrency(sumInvestorOverviewMonthlyTargets(investorTotalModalLines))}
               </strong>
             </div>
           </div>
@@ -2916,21 +3073,31 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
                       onChange={handleEditInputChange}
                       step="0.01"
                     />
-                    <button
-                      id="save-edit-monthly-widget"
-                      type="submit"
-                      className="btn-submit btn-submit--monthly-widget"
-                      aria-label="Save monthly performance"
-                      disabled={
-                        loadingEdit ||
-                        !String(editFormData.month ?? '').trim() ||
-                        !String(editFormData.year ?? '').trim() ||
-                        (!String(editFormData.percentageGrowth ?? '').trim() &&
-                          !String(editFormData.growthAmountExact ?? '').trim())
-                      }
-                    >
-                      {loadingEdit ? 'Saving...' : 'Save'}
-                    </button>
+                    <div className="portfolio-edit-form-actions">
+                      <button
+                        id="save-edit-monthly-widget"
+                        type="submit"
+                        className="btn-submit btn-submit--monthly-widget"
+                        aria-label="Save monthly performance"
+                        disabled={
+                          loadingEdit ||
+                          !String(editFormData.month ?? '').trim() ||
+                          !String(editFormData.year ?? '').trim() ||
+                          (!String(editFormData.percentageGrowth ?? '').trim() &&
+                            !String(editFormData.growthAmountExact ?? '').trim())
+                        }
+                      >
+                        {loadingEdit ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-delete portfolio-edit-eliminate-btn"
+                        onClick={handleDeleteEditRecord}
+                        disabled={loadingEdit}
+                      >
+                        {loadingEdit ? 'Working...' : 'Eliminate'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </form>

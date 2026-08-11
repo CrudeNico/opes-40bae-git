@@ -15,7 +15,49 @@ import {
 import './AdminInvestorsManagement.css'
 
 const PLACEHOLDER_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1']
-const SPECIAL_DIFF_ONLY_INVESTOR_EMAIL = 'nicolas.fernandez@opessocius.support'
+const PIE_SLICE_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1', '#ef4444', '#84cc16']
+
+const isPartnerUser = (inv) => Array.isArray(inv?.statuses) && inv.statuses.includes('Partner')
+
+const polarToCartesian = (cx, cy, r, deg) => {
+  const rad = (deg - 90) * (Math.PI / 180)
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+const pieSlicePath = (cx, cy, r, startDeg, endDeg) => {
+  if (endDeg - startDeg >= 359.999) {
+    return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`
+  }
+  const start = polarToCartesian(cx, cy, r, endDeg)
+  const end = polarToCartesian(cx, cy, r, startDeg)
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0
+  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y} Z`
+}
+
+function buildInvestorPieSlices(investors, getBalance) {
+  const rows = investors
+    .map((inv, index) => ({
+      id: inv.id,
+      name: inv.displayName || inv.email || 'Investor',
+      balance: Math.max(0, getBalance(inv) || 0),
+      color: PIE_SLICE_COLORS[index % PIE_SLICE_COLORS.length],
+      isPartner: isPartnerUser(inv)
+    }))
+    .filter((row) => row.balance > 0)
+  const total = rows.reduce((sum, row) => sum + row.balance, 0)
+  let angle = -90
+  return rows.map((row) => {
+    const sweep = total > 0 ? (row.balance / total) * 360 : 0
+    const start = angle
+    const end = angle + sweep
+    angle = end
+    return {
+      ...row,
+      path: pieSlicePath(90, 90, 78, start, end),
+      share: total > 0 ? (row.balance / total) * 100 : 0
+    }
+  })
+}
 
 const getProfilePlaceholder = (inv) => {
   if (inv?.profilePlaceholder) return inv.profilePlaceholder
@@ -34,11 +76,15 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
   const canAddPerformance = !isAdmin2 || isAdmin3
   const canEditPerformance = !isAdmin2 || isAdmin3
   const canModifyStatuses = !isAdmin2 || isAdmin3
+  const canManagePartners = !isAdmin2 || isAdmin3
   const [investors, setInvestors] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedInvestor, setSelectedInvestor] = useState(null)
   const [showViewPerformance, setShowViewPerformance] = useState(false)
   const [showAddPerformance, setShowAddPerformance] = useState(false)
+  const [showPartnerManagement, setShowPartnerManagement] = useState(false)
+  const [partnerManagedIds, setPartnerManagedIds] = useState([])
+  const [loadingPartnerManagement, setLoadingPartnerManagement] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [monthlyUpdate, setMonthlyUpdate] = useState({
@@ -57,16 +103,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
   const [editingRecord, setEditingRecord] = useState(null)
   const [editedRecordData, setEditedRecordData] = useState({})
   const [loadingEdit, setLoadingEdit] = useState(false)
-  const [latestTotalInvestorAccounts, setLatestTotalInvestorAccounts] = useState(0)
-  const [latestTotalPortfolioBalance, setLatestTotalPortfolioBalance] = useState(0)
 
-  const getInvestorDisplayBalance = (investor) => {
-    const email = (investor?.email || '').toLowerCase()
-    if (email === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL) {
-      return latestTotalPortfolioBalance - latestTotalInvestorAccounts
-    }
-    return getAdminInvestorSummaryCurrentBalance(investor?.investmentData)
-  }
+  const getInvestorDisplayBalance = (investor) =>
+    getAdminInvestorSummaryCurrentBalance(investor?.investmentData)
 
   useEffect(() => {
     loadInvestors()
@@ -85,43 +124,24 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     try {
       const db = getFirestore()
       const overrides = isAdmin3 && currentUser?.uid ? await getAdmin3Overrides(currentUser.uid) : {}
-      let totalPortfolioBalanceLatest = 0
-      if (currentUser?.uid) {
-        const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid))
-        if (currentUserDoc.exists()) {
-          const currentUserData = currentUserDoc.data() || {}
-          const adminInvestmentData = currentUserData.investmentData || null
-          if (adminInvestmentData) {
-            totalPortfolioBalanceLatest = getAdminInvestorSummaryCurrentBalance(adminInvestmentData)
-            setLatestTotalPortfolioBalance(totalPortfolioBalanceLatest)
-          }
-        }
-      }
       const usersCollection = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCollection)
 
       const investorsList = []
-      let totalInvestorAccountsLatest = 0
       usersSnapshot.forEach((docSnapshot) => {
         const userData = docSnapshot.data()
         let statuses = userData.statuses || []
         let investmentData = userData.investmentData || null
+        let managedInvestorIds = userData.managedInvestorIds || []
         const ov = overrides[docSnapshot.id]
         if (ov) {
           if (ov.statuses !== undefined) statuses = ov.statuses
           if (ov.investmentData !== undefined) investmentData = ov.investmentData
+          if (ov.managedInvestorIds !== undefined) managedInvestorIds = ov.managedInvestorIds
         }
-        const merged = { ...userData, statuses, investmentData, id: docSnapshot.id }
+        const merged = { ...userData, statuses, investmentData, managedInvestorIds, id: docSnapshot.id }
         if ((statuses.includes('Investor') || statuses.includes('Trader')) && investmentData && investmentData.status === 'approved') {
           investorsList.push(mergeUserWithOverride(merged, overrides[docSnapshot.id]))
-        }
-        if (
-          investmentData &&
-          investmentData.status === 'approved' &&
-          (statuses.includes('Investor') || statuses.includes('Trader')) &&
-          (userData.email || '').toLowerCase() !== SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
-        ) {
-          totalInvestorAccountsLatest += getAdminInvestorSummaryCurrentBalance(investmentData)
         }
       })
 
@@ -132,21 +152,18 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         })
       }
 
-      // Sort by displayed balance (highest to lowest)
+      // Partners first, then by displayed balance (highest to lowest)
       investorsList.sort((a, b) => {
-        const aEmail = (a?.email || '').toLowerCase()
-        const bEmail = (b?.email || '').toLowerCase()
-        const aBalance = aEmail === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
-          ? totalPortfolioBalanceLatest - totalInvestorAccountsLatest
-          : getAdminInvestorSummaryCurrentBalance(a?.investmentData)
-        const bBalance = bEmail === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL
-          ? totalPortfolioBalanceLatest - totalInvestorAccountsLatest
-          : getAdminInvestorSummaryCurrentBalance(b?.investmentData)
+        const aPartner = isPartnerUser(a)
+        const bPartner = isPartnerUser(b)
+        if (aPartner && !bPartner) return -1
+        if (!aPartner && bPartner) return 1
+        const aBalance = getAdminInvestorSummaryCurrentBalance(a?.investmentData)
+        const bBalance = getAdminInvestorSummaryCurrentBalance(b?.investmentData)
         return bBalance - aBalance
       })
 
       setInvestors(investorsList)
-      setLatestTotalInvestorAccounts(totalInvestorAccountsLatest)
     } catch (error) {
       console.error('Error loading investors:', error)
       setError('Failed to load investors. Please try again.')
@@ -159,8 +176,85 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     setSelectedInvestor(investor)
     setShowViewPerformance(false)
     setShowAddPerformance(false)
+    setShowPartnerManagement(false)
     setEditingRecord(null)
     setEditedRecordData({})
+  }
+
+  const openPartnerManagement = () => {
+    if (!selectedInvestor || !isPartnerUser(selectedInvestor)) return
+    setPartnerManagedIds(Array.isArray(selectedInvestor.managedInvestorIds) ? [...selectedInvestor.managedInvestorIds] : [])
+    setShowPartnerManagement(true)
+    setError('')
+    setSuccess('')
+  }
+
+  const closePartnerManagement = () => {
+    setShowPartnerManagement(false)
+    setPartnerManagedIds([])
+  }
+
+  const togglePartnerManagedInvestor = (investorId) => {
+    setPartnerManagedIds((prev) =>
+      prev.includes(investorId) ? prev.filter((id) => id !== investorId) : [...prev, investorId]
+    )
+  }
+
+  const getAssignableInvestors = (partnerId) =>
+    investors.filter((inv) => inv.id !== partnerId && !isPartnerUser(inv))
+
+  const handleSavePartnerManagement = async () => {
+    if (!selectedInvestor || !canManagePartners) return
+
+    setLoadingPartnerManagement(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const db = getFirestore()
+      const cleanedIds = [...new Set(partnerManagedIds.filter(Boolean))]
+      const partnerId = selectedInvestor.id
+
+      if (isAdmin3 && currentUser?.uid) {
+        await saveAdmin3UserOverride(currentUser.uid, partnerId, { managedInvestorIds: cleanedIds })
+        const otherPartners = investors.filter((inv) => isPartnerUser(inv) && inv.id !== partnerId)
+        for (const partner of otherPartners) {
+          const current = Array.isArray(partner.managedInvestorIds) ? partner.managedInvestorIds : []
+          const next = current.filter((id) => !cleanedIds.includes(id))
+          if (next.length !== current.length) {
+            await saveAdmin3UserOverride(currentUser.uid, partner.id, { managedInvestorIds: next })
+          }
+        }
+      } else {
+        const otherPartners = investors.filter((inv) => isPartnerUser(inv) && inv.id !== partnerId)
+        for (const partner of otherPartners) {
+          const current = Array.isArray(partner.managedInvestorIds) ? partner.managedInvestorIds : []
+          const next = current.filter((id) => !cleanedIds.includes(id))
+          if (next.length !== current.length) {
+            await updateDoc(doc(db, 'users', partner.id), {
+              managedInvestorIds: next,
+              updatedAt: new Date().toISOString()
+            })
+          }
+        }
+        await updateDoc(doc(db, 'users', partnerId), {
+          managedInvestorIds: cleanedIds,
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      setSuccess(isAdmin3 ? 'Partner management saved to your sandbox.' : 'Partner management updated successfully.')
+      closePartnerManagement()
+      await loadInvestors()
+      setSelectedInvestor((prev) =>
+        prev && prev.id === partnerId ? { ...prev, managedInvestorIds: cleanedIds } : prev
+      )
+    } catch (err) {
+      console.error('Error saving partner management:', err)
+      setError('Failed to save partner management. Please try again.')
+    } finally {
+      setLoadingPartnerManagement(false)
+    }
   }
 
   const closeEditingRecord = () => {
@@ -793,6 +887,14 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     )
   }
 
+  const partnerPieSlices = buildInvestorPieSlices(investors, getInvestorDisplayBalance)
+  const partnerPieTotal = partnerPieSlices.reduce((sum, row) => sum + row.balance, 0)
+  const partnerManagedTotal = partnerPieSlices
+    .filter((row) => partnerManagedIds.includes(row.id))
+    .reduce((sum, row) => sum + row.balance, 0)
+  const partnerManagedPct = partnerPieTotal > 0 ? (partnerManagedTotal / partnerPieTotal) * 100 : 0
+  const assignableInvestors = selectedInvestor ? getAssignableInvestors(selectedInvestor.id) : []
+
   return (
     <div className="admin-investors-management">
       <div className="investors-layout">
@@ -802,13 +904,15 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
             {investors.length === 0 ? (
               <p className="no-investors">No investors found</p>
             ) : (
-              investors.map((investor) => (
+              investors.map((investor) => {
+                const partner = isPartnerUser(investor)
+                return (
                 <div
                   key={investor.id}
-                  className={`investor-card ${selectedInvestor?.id === investor.id ? 'selected' : ''}`}
+                  className={`investor-card ${selectedInvestor?.id === investor.id ? 'selected' : ''}${partner ? ' investor-card-partner' : ''}`}
                   onClick={() => handleInvestorSelect(investor)}
                 >
-                  <div className="investor-card-image">
+                  <div className={`investor-card-image${partner ? ' investor-card-image-partner' : ''}`}>
                     {!isAdmin3 && investor.profileImageUrl ? (
                       <img src={investor.profileImageUrl} alt={investor.displayName || investor.email} />
                     ) : (
@@ -821,7 +925,10 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                     )}
                   </div>
                   <div className="investor-card-info">
-                    <h3 className="investor-card-name">{investor.displayName || 'No name'}</h3>
+                    <h3 className="investor-card-name">
+                      {investor.displayName || 'No name'}
+                      {partner && <span className="investor-partner-badge">Partner</span>}
+                    </h3>
                     <p className="investor-card-email">{investor.email}</p>
                     {investor.investmentData && (
                       <div className="investor-balance">
@@ -837,7 +944,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                     )}
                   </div>
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -847,9 +955,20 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
           {selectedInvestor ? (
             <div className="investor-details">
               <div className="investor-details-header">
-                <h2 className="panel-title">{selectedInvestor.displayName || selectedInvestor.email}</h2>
-                {selectedInvestor.email && (
-                  <span className="investor-details-email">{selectedInvestor.email}</span>
+                <div className="investor-details-header-main">
+                  <h2 className="panel-title">{selectedInvestor.displayName || selectedInvestor.email}</h2>
+                  {selectedInvestor.email && (
+                    <span className="investor-details-email">{selectedInvestor.email}</span>
+                  )}
+                </div>
+                {isPartnerUser(selectedInvestor) && (
+                  <button
+                    type="button"
+                    className="btn-partner-management"
+                    onClick={openPartnerManagement}
+                  >
+                    Management
+                  </button>
                 )}
               </div>
               
@@ -861,17 +980,6 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                 <div className="portfolio-summary-section">
                   <h3 className="section-title">Current Portfolio Summary</h3>
                   <div className="portfolio-summary-grid">
-                    {selectedInvestor.email?.toLowerCase() === SPECIAL_DIFF_ONLY_INVESTOR_EMAIL ? (
-                      <>
-                        <div className="summary-item">
-                          <span className="summary-label">Current Balance:</span>
-                          <span className="summary-value">
-                            €{(latestTotalPortfolioBalance - latestTotalInvestorAccounts).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
                         <div className="summary-item">
                           <span className="summary-label">Current Balance:</span>
                           <span className="summary-value">€{getAdminInvestorSummaryCurrentBalance(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -916,14 +1024,12 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                           <span className="summary-label">Total Withdrawals:</span>
                           <span className="summary-value">€{(selectedInvestor.investmentData.totalWithdrawals || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                      </>
-                    )}
                   </div>
                 </div>
               )}
 
               {/* Action Buttons - hide for sample investors */}
-              {!selectedInvestor._isSample && selectedInvestor.email?.toLowerCase() !== SPECIAL_DIFF_ONLY_INVESTOR_EMAIL && (
+              {!selectedInvestor._isSample && (
               <div className="action-buttons">
                 <button
                   onClick={() => {
@@ -1611,6 +1717,109 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
           )}
         </div>
       </div>
+
+      {showPartnerManagement && selectedInvestor && isPartnerUser(selectedInvestor) && (
+        <div className="partner-management-overlay" onClick={closePartnerManagement}>
+          <div className="partner-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="partner-management-header">
+              <div>
+                <h3>Partner Management</h3>
+                <p>{selectedInvestor.displayName || selectedInvestor.email}</p>
+              </div>
+              <button type="button" className="partner-management-close" onClick={closePartnerManagement} aria-label="Close">
+                ×
+              </button>
+            </div>
+
+            <div className="partner-management-body">
+              <div className="partner-management-pie-section">
+                <svg viewBox="0 0 180 180" className="partner-management-pie" aria-label="Investor fund allocation">
+                  <circle cx="90" cy="90" r="78" fill="#f3f4f6" />
+                  {partnerPieSlices.map((slice) => {
+                    const selected = partnerManagedIds.includes(slice.id)
+                    const dimmed = partnerManagedIds.length > 0 && !selected
+                    return (
+                      <path
+                        key={slice.id}
+                        d={slice.path}
+                        fill={slice.color}
+                        stroke={selected ? '#eab308' : '#ffffff'}
+                        strokeWidth={selected ? 3 : 1.5}
+                        opacity={dimmed ? 0.35 : 1}
+                      />
+                    )
+                  })}
+                </svg>
+                <div className="partner-management-summary">
+                  <div className="partner-management-summary-row">
+                    <span>Total investor funds</span>
+                    <strong>
+                      €{partnerPieTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </strong>
+                  </div>
+                  <div className="partner-management-summary-row partner-management-summary-row-managed">
+                    <span>Managed by partner</span>
+                    <strong>
+                      €{partnerManagedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {' '}
+                      ({partnerManagedPct.toFixed(1)}%)
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="partner-management-list-section">
+                <p className="partner-management-list-label">Select investors under this partner&apos;s management</p>
+                <div className="partner-management-investor-list">
+                  {assignableInvestors.length === 0 ? (
+                    <p className="partner-management-empty">No assignable investors.</p>
+                  ) : (
+                    assignableInvestors.map((inv) => {
+                      const slice = partnerPieSlices.find((row) => row.id === inv.id)
+                      const balance = getInvestorDisplayBalance(inv)
+                      const checked = partnerManagedIds.includes(inv.id)
+                      return (
+                        <label key={inv.id} className={`partner-management-investor-row${checked ? ' selected' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => togglePartnerManagedInvestor(inv.id)}
+                            disabled={!canManagePartners}
+                          />
+                          <span className="partner-management-dot" style={{ backgroundColor: slice?.color || '#9ca3af' }} />
+                          <span className="partner-management-investor-name">{inv.displayName || inv.email}</span>
+                          <span className="partner-management-investor-balance">
+                            €{balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          {slice && (
+                            <span className="partner-management-investor-share">{slice.share.toFixed(1)}%</span>
+                          )}
+                        </label>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="partner-management-footer">
+              <button type="button" className="btn-secondary" onClick={closePartnerManagement}>
+                Cancel
+              </button>
+              {canManagePartners && (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleSavePartnerManagement}
+                  disabled={loadingPartnerManagement}
+                >
+                  {loadingPartnerManagement ? 'Saving...' : 'Save Management'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
