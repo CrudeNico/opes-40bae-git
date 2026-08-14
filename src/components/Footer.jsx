@@ -85,7 +85,7 @@ const Footer = ({ handleLinkClick }) => {
           <div className="footer-bottom-links">
             <Link to="/privacy" onClick={handleLinkClick}>Privacy</Link>
             <Link to="/policy" onClick={handleLinkClick}>Cookie Policy</Link>
-            <Link to="/policy" onClick={handleLinkClick}>Terms of Use</Link>
+            <Link to="/terms" onClick={handleLinkClick}>Terms of Use</Link>
           </div>
           <div className="footer-copyright">© 2026 Opessocius</div>
         </div>

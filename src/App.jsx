@@ -25,6 +25,8 @@ import RiskGuidancePage from './pages/RiskGuidancePage'
 import CompliancePage from './pages/CompliancePage'
 import PolicyPage from './pages/PolicyPage'
 import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
+import SupportPage from './pages/SupportPage'
 import './App.css'
 
 // Component to handle scroll-to-top on route changes
@@ -81,6 +83,8 @@ function App() {
           <Route path="/compliance" element={<CompliancePage />} />
           <Route path="/policy" element={<PolicyPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/support" element={<SupportPage />} />
         </Routes>
       </div>
     </Router>
