@@ -27,6 +27,7 @@ import PolicyPage from './pages/PolicyPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import SupportPage from './pages/SupportPage'
+import CookieConsent from './components/CookieConsent'
 import './App.css'
 
 // Component to handle scroll-to-top on route changes
@@ -86,6 +87,7 @@ function App() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/support" element={<SupportPage />} />
         </Routes>
+        <CookieConsent />
       </div>
     </Router>
   )
