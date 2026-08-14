@@ -47,14 +47,15 @@ function getPartnerStartingBalance(investmentData) {
     return getLastTrancheEnding(mh, TRANCHE_PRIMARY, primaryInit)
   }
 
-  const cb = Number(investmentData?.currentBalance)
-  if (Number.isFinite(cb)) return cb
-
   const untagged = mh.filter((r) => !r.tranche)
   if (untagged.length > 0) {
     const last = untagged[untagged.length - 1]
     return Number(last?.endingBalance) || primaryInit
   }
+
+  const cb = Number(investmentData?.currentBalance)
+  if (Number.isFinite(cb)) return cb
+
   return primaryInit
 }
 
@@ -237,10 +238,6 @@ export function applyPartnerAutoSyncToInvestmentData(investmentData, monthName, 
   const recordIndex = findPartnerMonthRecordIndex(history, monthName, year)
   const existingRecord = recordIndex >= 0 ? history[recordIndex] : null
 
-  if (existingRecord && existingRecord.partnerNetAutoSync === false) {
-    return null
-  }
-
   const startingBalance =
     existingRecord?.startingBalance != null
       ? Number(existingRecord.startingBalance) || 0
@@ -248,18 +245,56 @@ export function applyPartnerAutoSyncToInvestmentData(investmentData, monthName, 
 
   const growthAmount = round2(partnerNet)
   const { depositEntries, withdrawalEntries } = normalizeCashflowEntries(existingRecord)
+  const manualEnding = isManualEndingBalanceRecord(existingRecord)
 
-  const nextRecord = buildPartnerMonthLedgerRecord({
-    month: monthName,
-    year,
-    startingBalance,
-    growthAmount,
-    depositEntries,
-    withdrawalEntries,
-    tranche: existingRecord?.tranche,
-    partnerNetAutoSync: true,
-    existingRecord
-  })
+  let nextRecord
+  if (manualEnding) {
+    // Keep the manually entered ending balance; still sync growth/% from partner net profit.
+    const start = round2(Number(startingBalance) || 0)
+    const growth = growthAmount
+    const percentageGrowth = start > 0 ? roundPercentageGrowth((growth / start) * 100) : 0
+    const depositAmount = round2(
+      depositEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+    )
+    const withdrawalAmount = round2(
+      withdrawalEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+    )
+
+    nextRecord = {
+      ...existingRecord,
+      month: monthName,
+      year: String(year),
+      startingBalance: start,
+      growthAmount: growth,
+      percentageGrowth,
+      depositGrowth: 0,
+      withdrawalGrowthLoss: 0,
+      endingBalance: round2(Number(existingRecord.endingBalance) || 0),
+      endingBalanceOverride: true,
+      depositAmount,
+      depositDate: depositEntries[0]?.date || null,
+      withdrawalAmount,
+      withdrawalDate: withdrawalEntries[0]?.date || null,
+      depositEntries,
+      withdrawalEntries,
+      partnerNetAutoSync: true,
+      updatedAt: new Date().toISOString(),
+      ...(existingRecord?.tranche ? { tranche: existingRecord.tranche } : {})
+    }
+  } else {
+    // Normal path: ending = previous ending (start) + growth + deposits − withdrawals
+    nextRecord = buildPartnerMonthLedgerRecord({
+      month: monthName,
+      year,
+      startingBalance,
+      growthAmount,
+      depositEntries,
+      withdrawalEntries,
+      tranche: existingRecord?.tranche,
+      partnerNetAutoSync: true,
+      existingRecord
+    })
+  }
 
   if (recordIndex >= 0) {
     history[recordIndex] = nextRecord
@@ -307,7 +342,9 @@ async function persistPartnerInvestmentData(db, partnerId, investmentData, isAdm
 
 /**
  * Sync current-month partner ledger entries from computed net profit.
- * Skips partners whose current-month row has partnerNetAutoSync === false (manual edit).
+ * Growth amount always tracks partner net profit. A manually entered ending balance
+ * (endingBalanceOverride) is preserved; otherwise ending is recalculated from
+ * start + growth + deposits − withdrawals.
  * Returns updated partner rows for in-memory merge.
  */
 export async function syncAllPartnersMonthlyEntries({
@@ -366,11 +403,12 @@ export async function syncAllPartnersMonthlyEntries({
     const nextRow = nextIdx >= 0 ? updatedInvestmentData.monthlyHistory[nextIdx] : null
 
     if (
-      prevRow?.partnerNetAutoSync &&
+      prevRow &&
       nextRow &&
       round2(prevRow.growthAmount) === round2(nextRow.growthAmount) &&
       round2(prevRow.endingBalance) === round2(nextRow.endingBalance) &&
-      round2(prevRow.percentageGrowth) === round2(nextRow.percentageGrowth)
+      round2(prevRow.percentageGrowth) === round2(nextRow.percentageGrowth) &&
+      !!prevRow.endingBalanceOverride === !!nextRow.endingBalanceOverride
     ) {
       continue
     }

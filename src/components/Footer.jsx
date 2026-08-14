@@ -83,7 +83,7 @@ const Footer = ({ handleLinkClick }) => {
         </div>
         <div className="footer-bottom">
           <div className="footer-bottom-links">
-            <Link to="/policy" onClick={handleLinkClick}>Privacy</Link>
+            <Link to="/privacy" onClick={handleLinkClick}>Privacy</Link>
             <Link to="/policy" onClick={handleLinkClick}>Cookie Policy</Link>
             <Link to="/policy" onClick={handleLinkClick}>Terms of Use</Link>
           </div>

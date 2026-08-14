@@ -89,3 +89,88 @@ export function collectApprovedInvestorOverviewRows(usersSnapshot, monthlyTarget
 
   return { total, payoutTargetSum, modalLines }
 }
+
+const PARTNER_AUM_PIE_COLORS = [
+  '#3b82f6',
+  '#10b981',
+  '#8b5cf6',
+  '#f59e0b',
+  '#ec4899',
+  '#06b6d4',
+  '#6366f1',
+  '#ef4444',
+  '#84cc16',
+  '#eab308'
+]
+
+/**
+ * Partner capital under management for Overview Current Balance pie.
+ * Each partner slice = partner own balance + balances of managed investors.
+ * Shares are among partners only (no "rest" slice).
+ *
+ * @param {import('firebase/firestore').QuerySnapshot} usersSnapshot
+ * @param {Record<string, object>} [overridesByUserId] Admin 3 sandbox overrides keyed by user id
+ */
+export function collectPartnerAumOverviewRows(usersSnapshot, overridesByUserId = {}) {
+  const accounts = []
+
+  usersSnapshot.forEach((docSnapshot) => {
+    const raw = docSnapshot.data() || {}
+    const ov = overridesByUserId[docSnapshot.id]
+    const userData = ov
+      ? {
+          ...raw,
+          ...(ov.statuses !== undefined ? { statuses: ov.statuses } : {}),
+          ...(ov.investmentData !== undefined ? { investmentData: ov.investmentData } : {}),
+          ...(ov.managedInvestorIds !== undefined
+            ? { managedInvestorIds: ov.managedInvestorIds }
+            : {})
+        }
+      : raw
+
+    const email = userData.email || raw.email || ''
+    const displayName = userData.displayName || raw.displayName || ''
+
+    if (isExcludedFromInvestorOverviewTotal(email)) return
+    if (!isApprovedInvestorForOverviewTotal(userData)) return
+
+    accounts.push({
+      id: docSnapshot.id,
+      name: (displayName && displayName.trim()) || 'Unnamed investor',
+      balance: Math.max(0, Number(getAdminInvestorSummaryCurrentBalance(userData.investmentData)) || 0),
+      isPartner: isPartnerUserForOverview(userData),
+      managedInvestorIds: Array.isArray(userData.managedInvestorIds) ? userData.managedInvestorIds : []
+    })
+  })
+
+  const balanceById = Object.fromEntries(accounts.map((a) => [a.id, a.balance]))
+
+  const rows = accounts
+    .filter((a) => a.isPartner)
+    .map((partner) => {
+      const ownBalance = partner.balance
+      const managedBalance = partner.managedInvestorIds.reduce(
+        (sum, id) => sum + (balanceById[id] || 0),
+        0
+      )
+      return {
+        id: partner.id,
+        name: partner.name,
+        ownBalance,
+        managedBalance,
+        aum: ownBalance + managedBalance
+      }
+    })
+    .filter((row) => row.aum > 0)
+    .sort((a, b) => b.aum - a.aum || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+
+  const partnersAumTotal = rows.reduce((sum, row) => sum + row.aum, 0)
+
+  const coloredRows = rows.map((row, idx) => ({
+    ...row,
+    color: PARTNER_AUM_PIE_COLORS[idx % PARTNER_AUM_PIE_COLORS.length],
+    share: partnersAumTotal > 0 ? (row.aum / partnersAumTotal) * 100 : 0
+  }))
+
+  return { rows: coloredRows, partnersAumTotal }
+}

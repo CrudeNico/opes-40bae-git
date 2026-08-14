@@ -974,7 +974,8 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
             0,
           tranche: editingRecord.tranche,
           existingRecord: originalRecord,
-          partnerNetAutoSync: isPartnerUser(selectedInvestor) ? false : undefined,
+          // Growth continues to sync from partner net profit; only ending stays fixed.
+          partnerNetAutoSync: isPartnerUser(selectedInvestor) ? true : undefined,
           depositEntries: normalizedDepositEntries,
           withdrawalEntries: normalizedWithdrawalEntries
         })
@@ -992,9 +993,11 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
           depositEntries: normalizedDepositEntries,
           withdrawalEntries: normalizedWithdrawalEntries,
           tranche: editingRecord.tranche,
-          partnerNetAutoSync: false,
+          partnerNetAutoSync: true,
           existingRecord: originalRecord
         })
+        // Ensure a previously manual ending is cleared when not overriding.
+        delete updatedRecord.endingBalanceOverride
       } else {
         const percentageGrowth = parseFloat(editedRecordData.percentageGrowth) || 0
         const growthAmount = startingBalance * (percentageGrowth / 100)
@@ -1420,7 +1423,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
           growthAmount,
           depositEntries: normalizedDepositEntries,
           withdrawalEntries: normalizedWithdrawalEntries,
-          partnerNetAutoSync: false
+          partnerNetAutoSync: true
         })
       } else {
       const percentageGrowth = parseFloat(monthlyUpdate.percentageGrowth) || 0
