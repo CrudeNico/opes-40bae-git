@@ -1,6 +1,7 @@
 /**
- * Firm admin portfolio (Admin Portfolio + Overview current balance).
+ * Firm admin portfolio (Admin Portfolio section charts, history, and performance).
  * Separate from `investmentData` on the same user when they are also an Investor.
+ * Overview/Portfolio "Current Balance" uses total approved investor accounts instead.
  */
 import { doc, updateDoc } from 'firebase/firestore'
 

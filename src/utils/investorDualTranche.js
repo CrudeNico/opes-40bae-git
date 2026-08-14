@@ -1,5 +1,7 @@
 /** Shared helpers for two-tranche investors (Conservative primary + Moderate secondary). */
 
+import { getRecordNetGrowthAmount } from './monthlyCashflowProration'
+
 export const TRANCHE_PRIMARY = 'primary'
 export const TRANCHE_SECONDARY = 'secondary'
 
@@ -156,4 +158,117 @@ export function getAdminPerformancePreviewStartingBalance(investmentData, perfor
     return getLastTrancheEnding(mh, TRANCHE_SECONDARY, secondaryInit)
   }
   return getLastTrancheEnding(mh, TRANCHE_PRIMARY, primaryInit)
+}
+
+function getCurrentCalendarMonthYear() {
+  const now = new Date()
+  return { month: MONTH_NAMES[now.getMonth()], year: String(now.getFullYear()) }
+}
+
+function getNextCalendarMonthYear(monthName, year) {
+  const monthIndex = MONTH_NAMES.indexOf(monthName)
+  const y = parseInt(String(year), 10)
+  if (monthIndex < 0 || !Number.isFinite(y)) return getCurrentCalendarMonthYear()
+  if (monthIndex === 11) {
+    return { month: MONTH_NAMES[0], year: String(y + 1) }
+  }
+  return { month: MONTH_NAMES[monthIndex + 1], year: String(y) }
+}
+
+function getScopedMonthlyHistoryForPerformance(history, performanceScope) {
+  const mh = history || []
+  if (performanceScope === 'secondary') {
+    return mh.filter((r) => r.tranche === TRANCHE_SECONDARY)
+  }
+  if (performanceScope === 'primary') {
+    return mh.filter((r) => r.tranche === TRANCHE_PRIMARY)
+  }
+  return mh.filter((r) => !r.tranche)
+}
+
+function defaultPercentageGrowthForScope(investmentData, performanceScope) {
+  if (performanceScope === 'secondary') {
+    const secRate = investmentData?.secondaryInvestment?.monthlyReturnRate
+    if (secRate != null && Number.isFinite(Number(secRate))) {
+      const n = Number(secRate)
+      return String(n <= 1 ? n * 100 : n)
+    }
+    return '4'
+  }
+  const rate = investmentData?.monthlyReturnRate
+  if (rate != null && Number.isFinite(Number(rate))) {
+    const n = Number(rate)
+    return String(n <= 1 ? n * 100 : n)
+  }
+  return investmentData?.riskTolerance === 'conservative' ? '2' : '4'
+}
+
+/**
+ * Defaults for admin "Add monthly performance": next month after the latest scoped entry,
+ * with the same % as that entry (or tranche default when no history yet).
+ */
+function round2(n) {
+  return Math.round(n * 100) / 100
+}
+
+/**
+ * Net payout for one calendar month — one total per investor.
+ * Dual-tranche: sums primary + secondary rows only (ignores legacy untagged rows when tranche rows exist).
+ */
+export function getInvestorMonthNetPayoutAmount(investmentData, monthName, year) {
+  const history = investmentData?.monthlyHistory
+  if (!Array.isArray(history)) return { amount: 0, trancheBreakdown: null }
+
+  const monthRecords = history.filter(
+    (r) => r?.month === monthName && parseInt(String(r?.year), 10) === year
+  )
+  if (monthRecords.length === 0) return { amount: 0, trancheBreakdown: null }
+
+  if (investorHasDualTranche(investmentData)) {
+    const primary = monthRecords.find((r) => r.tranche === TRANCHE_PRIMARY)
+    const secondary = monthRecords.find((r) => r.tranche === TRANCHE_SECONDARY)
+    if (primary || secondary) {
+      const breakdown = []
+      if (primary) {
+        breakdown.push({ tranche: TRANCHE_PRIMARY, label: 'Conservative', amount: round2(getRecordNetGrowthAmount(primary)) })
+      }
+      if (secondary) {
+        breakdown.push({ tranche: TRANCHE_SECONDARY, label: 'Moderate', amount: round2(getRecordNetGrowthAmount(secondary)) })
+      }
+      const amount = round2(breakdown.reduce((sum, row) => sum + row.amount, 0))
+      return { amount, trancheBreakdown: breakdown.length > 0 ? breakdown : null }
+    }
+    const untagged = monthRecords.filter((r) => !r.tranche)
+    if (untagged.length === 1) {
+      return { amount: round2(getRecordNetGrowthAmount(untagged[0])), trancheBreakdown: null }
+    }
+    return { amount: 0, trancheBreakdown: null }
+  }
+
+  const record = monthRecords.find((r) => !r.tranche) || monthRecords[0]
+  return { amount: round2(getRecordNetGrowthAmount(record)), trancheBreakdown: null }
+}
+
+export function getDefaultMonthlyPerformanceFormValues(investmentData, performanceScope = 'primary') {
+  const scopedHistory = sortInvestorMonthlyHistory(
+    getScopedMonthlyHistoryForPerformance(investmentData?.monthlyHistory, performanceScope)
+  )
+  const lastRecord = scopedHistory.length > 0 ? scopedHistory[scopedHistory.length - 1] : null
+
+  if (lastRecord) {
+    const { month, year } = getNextCalendarMonthYear(lastRecord.month, lastRecord.year)
+    const pct = Number(lastRecord.percentageGrowth)
+    return {
+      month,
+      year,
+      percentageGrowth: Number.isFinite(pct) ? String(pct) : defaultPercentageGrowthForScope(investmentData, performanceScope)
+    }
+  }
+
+  const { month, year } = getCurrentCalendarMonthYear()
+  return {
+    month,
+    year,
+    percentageGrowth: defaultPercentageGrowthForScope(investmentData, performanceScope)
+  }
 }

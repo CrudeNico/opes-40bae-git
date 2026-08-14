@@ -1873,10 +1873,13 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       ? monthlyGainRows.reduce((sum, row) => sum + row.gainAmount, 0) / monthlyGainRows.length
       : 0
 
-  const currentBalanceAllocationRows = allApprovedAccountRows
+  /** Current balance metric = sum of approved investor accounts (same as total investor accounts). */
+  const displayCurrentBalance = isAdmin3 ? 1850000 : totalInvestorAccounts
+
+  const currentBalanceAllocationRows = investorBreakdownRows
     .map((row) => ({
       ...row,
-      share: currentBalance > 0 ? (row.currentBalance / currentBalance) * 100 : 0
+      share: displayCurrentBalance > 0 ? (row.currentBalance / displayCurrentBalance) * 100 : 0
     }))
     .sort((a, b) => b.currentBalance - a.currentBalance)
     .map((row, index) => ({
@@ -2114,7 +2117,9 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             </div>
             <div className="metric-content">
               <h4 className="metric-label">Current Balance</h4>
-              <p className="metric-value">{formatCompact(currentBalance)}</p>
+              <p className="metric-value">
+                {loadingInvestorAccounts ? 'Loading...' : formatCompact(displayCurrentBalance)}
+              </p>
             </div>
           </div>
 

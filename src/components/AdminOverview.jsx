@@ -376,7 +376,6 @@ function monthlyTargetAndRateForPayout(investmentData, email, displayName, prevC
 
 const AdminOverview = ({ user, userStatuses = [] }) => {
   const [loading, setLoading] = useState(true)
-  const [currentBalance, setCurrentBalance] = useState(0)
   const [totalInvestorAccounts, setTotalInvestorAccounts] = useState(0)
   /** { name, balance, monthlyTarget }[] for the total-investor modal (non–Admin 3 only). */
   const [investorTotalModalLines, setInvestorTotalModalLines] = useState([])
@@ -423,7 +422,6 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [admin3DailyPerfOverrides, setAdmin3DailyPerfOverrides] = useState({})
   const dailyPerfUnsubscribeRef = useRef(null)
 
-  const ADMIN3_CURRENT_BALANCE = 7110000
   const ADMIN3_TOTAL_INVESTOR_ACCOUNTS = 1850000
   const ADMIN3_INVESTOR_PAYOUT_TARGET = 37500
   const ADMIN3_MONTHLY_PROJECTION = 7110000 * 0.09
@@ -593,7 +591,6 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           setPerformanceOwnerId(ownerId)
 
           if (isAdmin3Local) {
-            setCurrentBalance(ADMIN3_CURRENT_BALANCE)
             const basePortfolio = generateAdmin3PortfolioData()
             let monthlyHistory = basePortfolio.monthlyHistory || []
             if (user?.uid && ownerId) {
@@ -616,12 +613,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             setAdmin3MonthlyHistory(monthlyHistory)
           } else if (portfolioData) {
             setAdmin3MonthlyHistory([])
-            const initialInvestment = portfolioData.initialInvestment || 0
-            const balance = portfolioData.currentBalance || initialInvestment
-            setCurrentBalance(balance)
           } else {
             setAdmin3MonthlyHistory([])
-            setCurrentBalance(0)
           }
         }
       }
@@ -1019,7 +1012,10 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
       `
     }).join('')
 
-    const bal = (isAdmin3 || userStatuses?.includes('Admin 3')) ? ADMIN3_CURRENT_BALANCE : currentBalance
+    const bal =
+      (isAdmin3 || userStatuses?.includes('Admin 3'))
+        ? ADMIN3_TOTAL_INVESTOR_ACCOUNTS
+        : totalInvestorAccounts
     const totalPnLPercent = bal > 0 ? (totalPnL / bal) * 100 : 0
 
     const summaryHtml = `
@@ -1120,8 +1116,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     }
   }
 
-  const displayBalance = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_CURRENT_BALANCE : currentBalance
   const displayInvestorAccounts = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_TOTAL_INVESTOR_ACCOUNTS : totalInvestorAccounts
+  /** Current balance = sum of approved investor account balances (same as total investor accounts). */
+  const displayBalance = displayInvestorAccounts
   const displayPayoutTarget = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_INVESTOR_PAYOUT_TARGET : investorPayoutTarget
   const displayMonthlyProjection = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_MONTHLY_PROJECTION : displayBalance * 0.07
 

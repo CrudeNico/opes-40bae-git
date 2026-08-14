@@ -28,21 +28,30 @@ export function getCalendarDayOfMonth(date) {
 }
 
 /**
- * Fraction of the monthly % earned from `dayOfMonth` through month-end.
- * Day 1 → 1 (full %). Mid-month → ~half. Last day → 0.
+ * Days elapsed in the month through the cashflow date (inclusive).
+ * Day 15 of a 30-day month → 15.
+ */
+export function elapsedMonthGrowthRatio(dayOfMonth, daysInMonth) {
+  if (!Number.isFinite(dayOfMonth) || !Number.isFinite(daysInMonth) || daysInMonth <= 0) return 0
+  if (dayOfMonth < 1 || dayOfMonth > daysInMonth) return 0
+  return dayOfMonth / daysInMonth
+}
+
+/**
+ * Days remaining after the cashflow date through month-end.
+ * Day 15 of a 30-day month → 15 (days 16–30).
+ * Last day → 0.
  */
 export function remainingMonthGrowthRatio(dayOfMonth, daysInMonth) {
   if (!Number.isFinite(dayOfMonth) || !Number.isFinite(daysInMonth) || daysInMonth <= 0) return 0
   if (dayOfMonth < 1 || dayOfMonth > daysInMonth) return 0
   if (dayOfMonth === daysInMonth) return 0
-  return (daysInMonth - dayOfMonth + 1) / daysInMonth
+  return (daysInMonth - dayOfMonth) / daysInMonth
 }
 
 /**
- * Deposit growth: money deposited on day D earns the remaining-month share of the monthly %.
- * - 1st → full %
- * - ~15th → ~half %
- * - last day → 0%
+ * Deposit performance for the days remaining in the month:
+ * DepositAmount × MonthlyRate × (DaysRemaining / DaysInMonth)
  */
 export function calculateProratedDepositGrowth(amount, percentageGrowth, date, month, year) {
   const value = Number(amount) || 0
@@ -55,16 +64,19 @@ export function calculateProratedDepositGrowth(amount, percentageGrowth, date, m
 }
 
 /**
- * Withdrawal growth loss (subtracted after full starting-balance growth was applied):
- * money withdrawn on day D was not invested for the remaining-month share.
- * - 1st → lose full % on that amount (no gain)
- * - ~15th → lose ~half %
- * - last day → lose 0% (kept full % earned while invested)
+ * Withdrawal performance earned only while the amount was invested:
+ * WithdrawalAmount × MonthlyRate × (DaysElapsed / DaysInMonth)
  *
- * Same calendar ratio as deposits; opposite economic effect via subtraction.
+ * Subtracted after full starting-balance growth was applied for the month.
  */
 export function calculateWithdrawalGrowthLoss(amount, percentageGrowth, date, month, year) {
-  return calculateProratedDepositGrowth(amount, percentageGrowth, date, month, year)
+  const value = Number(amount) || 0
+  if (!date || !month || !year || value === 0) return 0
+  const dayOfMonth = getCalendarDayOfMonth(date)
+  const daysInMonth = getDaysInMonthByName(month, year)
+  if (!dayOfMonth || !daysInMonth) return 0
+  const ratio = elapsedMonthGrowthRatio(dayOfMonth, daysInMonth)
+  return value * (Number(percentageGrowth) / 100) * ratio
 }
 
 /**

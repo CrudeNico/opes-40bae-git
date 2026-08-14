@@ -252,6 +252,376 @@
   gap: 1rem;
 }
 
+.partner-management-donut-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+
+.partner-management-donut {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.partner-management-donut-slice {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.partner-management-donut-slice.is-dimmed {
+  opacity: 0.45;
+}
+
+.partner-management-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1.75rem;
+  pointer-events: none;
+}
+
+.partner-management-donut-slice-label {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: #6b7280;
+  margin-bottom: 0.15rem;
+}
+
+.partner-management-donut-amount {
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: #1f2937;
+}
+
+.partner-management-month-tabs {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.partner-management-month-tabs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.partner-management-month-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.partner-management-month-tab-net {
+  min-width: 0;
+}
+
+.partner-management-history-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.partner-management-history-btn:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.partner-management-history-btn.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.partner-management-history-list {
+  gap: 0.5rem;
+}
+
+.partner-management-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.55rem;
+  background: #ffffff;
+}
+
+.partner-management-history-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.partner-management-history-month {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.partner-management-history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.partner-management-history-pdf-btn {
+  flex-shrink: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.45rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.partner-management-history-pdf-btn:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.partner-management-month-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.65rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.partner-management-month-tab:hover {
+  border-color: #d1d5db;
+}
+
+.partner-management-month-tab.active {
+  border-color: #eab308;
+  background: #fefce8;
+}
+
+.partner-management-month-tab span:first-child {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.partner-management-month-tab strong {
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+.partner-management-month-tab strong.positive {
+  color: #059669;
+}
+
+.partner-management-month-tab strong.negative {
+  color: #dc2626;
+}
+
+.partner-management-month-tab small {
+  font-size: 0.72rem;
+  color: #9ca3af;
+}
+
+.partner-management-loading-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.partner-management-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.partner-management-detail-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  font-size: 0.82rem;
+}
+
+.partner-management-detail-row-summary {
+  grid-template-columns: 1fr auto;
+}
+
+.partner-management-detail-day {
+  font-weight: 600;
+  color: #374151;
+  min-width: 3.5rem;
+}
+
+.partner-management-detail-type {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+}
+
+.partner-management-detail-type--win {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.partner-management-detail-type--loss {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.partner-management-detail-name {
+  grid-column: 1 / span 2;
+  font-weight: 500;
+  color: #374151;
+}
+
+.partner-management-detail-amount {
+  text-align: right;
+  color: #1f2937;
+  font-variant-numeric: tabular-nums;
+}
+
+.partner-management-detail-share {
+  text-align: right;
+  font-weight: 600;
+  color: #059669;
+  font-variant-numeric: tabular-nums;
+}
+
+.partner-management-detail-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.55rem;
+  padding: 0 0.75rem 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+.partner-management-detail-header--gains {
+  grid-template-columns: 1fr auto auto auto;
+}
+
+.partner-management-detail-row--trade {
+  grid-template-columns: 1fr auto auto auto;
+}
+
+.partner-management-detail-pct {
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.partner-management-detail-trade-label {
+  font-weight: 500;
+  color: #374151;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.partner-management-detail-row--payout {
+  grid-template-columns: 1fr auto;
+}
+
+.partner-management-detail-row--payout .partner-management-detail-name {
+  grid-column: auto;
+}
+
+.partner-management-payout-share-label {
+  color: #000000;
+}
+
+.partner-management-payout-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.partner-management-tranche-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0 0.75rem 0.35rem 1.25rem;
+}
+
+.partner-management-tranche-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.partner-management-detail-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  margin-top: 0.35rem;
+  border-radius: 0.55rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.partner-management-detail-total .positive {
+  color: #059669;
+}
+
+.partner-management-detail-total .negative {
+  color: #dc2626;
+}
+
+.positive {
+  color: #059669;
+}
+
+.negative {
+  color: #dc2626;
+}
+
 .partner-management-pie {
   width: 220px;
   height: 220px;
@@ -472,10 +842,99 @@
   padding: 1.5rem;
 }
 
+.portfolio-summary-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.portfolio-summary-section--partner .portfolio-summary-layout {
+  align-items: center;
+}
+
+.portfolio-summary-stats {
+  flex: 1;
+  min-width: 0;
+}
+
 .portfolio-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+}
+
+.partner-summary-donut-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border-radius: 0.75rem;
+}
+
+.partner-summary-donut-wrap {
+  position: relative;
+  width: 168px;
+  height: 168px;
+}
+
+.partner-summary-donut {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.partner-summary-donut-slice {
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform-origin: 90px 90px;
+}
+
+.partner-summary-donut-slice.is-dimmed {
+  opacity: 0.45;
+}
+
+.partner-summary-donut-slice.is-active {
+  opacity: 1;
+}
+
+.partner-summary-donut-wrap:has(.partner-summary-donut-slice.is-active) {
+  transform: scale(1.05);
+  transition: transform 0.15s ease;
+}
+
+.partner-summary-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1.35rem;
+  pointer-events: none;
+}
+
+.partner-summary-donut-slice-label {
+  font-size: 0.62rem;
+  line-height: 1.2;
+  color: #6b7280;
+  margin-bottom: 0.12rem;
+}
+
+.partner-summary-donut-amount {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  color: #1f2937;
+}
+
+.partner-summary-donut-pct {
+  font-size: 0.82rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 0.15rem;
 }
 
 .summary-item {
@@ -1108,6 +1567,16 @@
     grid-template-columns: 1fr;
   }
 
+  .portfolio-summary-layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+
+  .partner-summary-donut-panel {
+    align-self: center;
+  }
+
   .investor-edit-record-widget .monthly-update-form .form-row {
     grid-template-columns: 1fr;
   }
@@ -1203,6 +1672,23 @@ html.dark-mode .section-title {
 html.dark-mode .portfolio-summary-section {
   background: #111827;
   border-color: #374151;
+}
+
+html.dark-mode .partner-summary-donut-pct,
+html.dark-mode .partner-summary-donut-slice-label {
+  color: #9ca3af;
+}
+
+html.dark-mode .partner-summary-donut-amount {
+  color: #f9fafb;
+}
+
+html.dark-mode .partner-summary-donut-slice--rest {
+  fill: #4b5563;
+}
+
+html.dark-mode .partner-summary-donut path {
+  stroke: #111827;
 }
 
 html.dark-mode .summary-label {
@@ -1439,6 +1925,71 @@ html.dark-mode .partner-management-header {
 
 html.dark-mode .partner-management-header h3 {
   color: #f9fafb;
+}
+
+html.dark-mode .partner-management-history-btn {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+html.dark-mode .partner-management-history-btn.active {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+html.dark-mode .partner-management-history-row {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .partner-management-history-month {
+  color: #e5e7eb;
+}
+
+html.dark-mode .partner-management-history-pdf-btn {
+  background: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+html.dark-mode .partner-management-month-tab {
+  background: #1f2937;
+  border-color: #374151;
+  color: #d1d5db;
+}
+
+html.dark-mode .partner-management-month-tab.active {
+  background: #422006;
+  border-color: #ca8a04;
+}
+
+html.dark-mode .partner-management-month-tab strong {
+  color: #f3f4f6;
+}
+
+html.dark-mode .partner-management-detail-row {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+html.dark-mode .partner-management-detail-total {
+  background: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+html.dark-mode .partner-management-payout-share-label {
+  color: #000000;
+}
+
+html.dark-mode .partner-management-donut-amount {
+  color: #f3f4f6;
+}
+
+html.dark-mode .partner-management-donut-slice-label {
+  color: #9ca3af;
 }
 
 html.dark-mode .partner-management-summary-row {
