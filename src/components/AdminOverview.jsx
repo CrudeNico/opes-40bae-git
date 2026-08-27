@@ -255,6 +255,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [pendingConsultations, setPendingConsultations] = useState(0)
   const [userMessageAlerts, setUserMessageAlerts] = useState(0)
   const [investorPayoutTarget, setInvestorPayoutTarget] = useState(0)
+  const [blurredOverviewWidgets, setBlurredOverviewWidgets] = useState({})
+  const overviewWidgetClickTimersRef = useRef({})
   const [error, setError] = useState('')
   /** Animated widths (%); blue → green stagger when calendar month changes */
   const [progressBarFill, setProgressBarFill] = useState({ blue: 0, green: 0, red: 0 })
@@ -964,7 +966,15 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   /** Current balance = sum of approved investor account balances (same as total investor accounts). */
   const displayBalance = displayInvestorAccounts
   const displayPayoutTarget = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_INVESTOR_PAYOUT_TARGET : investorPayoutTarget
-  const displayMonthlyProjection = (userStatuses?.includes('Admin 3') || isAdmin3) ? ADMIN3_MONTHLY_PROJECTION : displayBalance * 0.07
+  const projectionAtSevenPercent = displayBalance * 0.07
+  const projectionAtTenPercent = displayBalance * 0.1
+  const reachedSevenPercentProjection =
+    projectionAtSevenPercent > 0 && totalDailyPerformance >= projectionAtSevenPercent
+  const displayMonthlyProjection = (userStatuses?.includes('Admin 3') || isAdmin3)
+    ? ADMIN3_MONTHLY_PROJECTION
+    : reachedSevenPercentProjection
+      ? projectionAtTenPercent
+      : projectionAtSevenPercent
 
   const monthlyProjection = displayMonthlyProjection
   
@@ -1000,16 +1010,18 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     }
   }
 
-  // Keep the current-progress label hidden whenever it visually overlaps target labels.
+  // Hide target labels when the current-progress label would overlap them.
   const currentProgressLabelPosition = Math.min(Math.max(progressPercentage, 5), 95)
   const TARGET_TWO_POSITION = firstTargetPosition
   const TARGET_ONE_POSITION = 100
   const labelOverlapThreshold = 8
-  const rightEdgeOverlapThreshold = 6
+  const rightEdgeOverlapThreshold = 8
   const mobileCurrentLabelMinPosition = TARGET_TWO_POSITION + 13
   const overlapsTargetTwoDesktop =
     Math.abs(currentProgressLabelPosition - TARGET_TWO_POSITION) <= labelOverlapThreshold
   const overlapsTargetOne =
+    progressAmount !== 0 &&
+    progressPercentage > 0 &&
     Math.abs(currentProgressLabelPosition - TARGET_ONE_POSITION) <= rightEdgeOverlapThreshold
   const mobileCurrentLabelTooCloseToPayoutTarget =
     isMobileProjectionBar && currentProgressLabelPosition < mobileCurrentLabelMinPosition
@@ -1017,9 +1029,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     progressAmount !== 0 &&
     (
       mobileCurrentLabelTooCloseToPayoutTarget ||
-      (!isMobileProjectionBar && overlapsTargetTwoDesktop) ||
-      overlapsTargetOne
+      (!isMobileProjectionBar && overlapsTargetTwoDesktop)
     )
+  const hideEndTargetLabel = overlapsTargetOne
   const displayCurrentLabelPosition = isMobileProjectionBar
     ? Math.min(Math.max(currentProgressLabelPosition, mobileCurrentLabelMinPosition), 95)
     : currentProgressLabelPosition
@@ -1141,6 +1153,33 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     setHoveredPieSegmentId(null)
   }
 
+  const toggleOverviewWidgetBlur = (widgetId) => {
+    setBlurredOverviewWidgets((prev) => ({
+      ...prev,
+      [widgetId]: !prev[widgetId]
+    }))
+  }
+
+  const handleOverviewWidgetClick = (widgetId, action) => {
+    const timers = overviewWidgetClickTimersRef.current
+    if (timers[widgetId]) clearTimeout(timers[widgetId])
+    timers[widgetId] = setTimeout(() => {
+      timers[widgetId] = null
+      action?.()
+    }, 280)
+  }
+
+  const handleOverviewWidgetDoubleClick = (widgetId, e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const timers = overviewWidgetClickTimersRef.current
+    if (timers[widgetId]) {
+      clearTimeout(timers[widgetId])
+      timers[widgetId] = null
+    }
+    toggleOverviewWidgetBlur(widgetId)
+  }
+
   const selectedDayDateLabel =
     selectedDay != null
       ? new Date(calendarYear, calendarMonth, selectedDay).toLocaleDateString('en-US', {
@@ -1154,6 +1193,28 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
     const amt = parseFloat(String(t.amount).replace(',', '.')) || 0
     return amt > 0 && (t.type === 'win' || t.type === 'loss')
   })
+
+  const calendarFirstDayOffset = getFirstDayOfMonth(calendarMonth, calendarYear)
+  const calendarDaysInMonth = getDaysInMonth(calendarMonth, calendarYear)
+  const calendarDayHasTrade = (day) => {
+    if (isAdmin3User && isAdmin3CalendarDayBlocked(calendarYear, calendarMonth, day)) return false
+    return dayHasPerformanceData(dailyPerformances[String(day)])
+  }
+  const firstRowIncomplete = calendarFirstDayOffset > 0
+  const firstRowDayCount = firstRowIncomplete ? 7 - calendarFirstDayOffset : 0
+  const firstRowHasTrade =
+    firstRowIncomplete &&
+    Array.from({ length: firstRowDayCount }, (_, i) => i + 1).some(calendarDayHasTrade)
+  const collapseFirstCalendarRow = firstRowIncomplete && !firstRowHasTrade
+
+  const lastRowCellCount = (calendarFirstDayOffset + calendarDaysInMonth) % 7
+  const lastRowIncomplete = lastRowCellCount !== 0
+  const lastRowDayCount = lastRowIncomplete ? lastRowCellCount : 0
+  const lastRowStartDay = calendarDaysInMonth - lastRowDayCount + 1
+  const lastRowHasTrade =
+    lastRowIncomplete &&
+    Array.from({ length: lastRowDayCount }, (_, i) => lastRowStartDay + i).some(calendarDayHasTrade)
+  const collapseLastCalendarRow = lastRowIncomplete && !lastRowHasTrade
 
   if (loading) {
     return (
@@ -1173,7 +1234,8 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           className="overview-widget overview-widget-investor-total-click"
           role="button"
           tabIndex={0}
-          onClick={openBalancePieModal}
+          onClick={() => handleOverviewWidgetClick('current-balance', openBalancePieModal)}
+          onDoubleClick={(e) => handleOverviewWidgetDoubleClick('current-balance', e)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
@@ -1181,11 +1243,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             }
           }}
           aria-label="Open partner capital under management pie chart"
+          title="Double-click to hide or show value"
         >
           <div className="widget-header">
             <h3 className="widget-title">Current Balance</h3>
           </div>
-          <div className="widget-value">€{displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className={`widget-value${blurredOverviewWidgets['current-balance'] ? ' widget-value--blurred' : ''}`}>
+            €{displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
         </div>
 
         {/* Total Investor Accounts Widget — click to see names and balances that sum to this total */}
@@ -1195,8 +1260,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
           tabIndex={userStatuses?.includes('Admin 3') || isAdmin3 ? -1 : 0}
           onClick={() => {
             if (userStatuses?.includes('Admin 3') || isAdmin3) return
-            setShowInvestorTotalModal(true)
+            handleOverviewWidgetClick('total-investor-accounts', () => setShowInvestorTotalModal(true))
           }}
+          onDoubleClick={(e) => handleOverviewWidgetDoubleClick('total-investor-accounts', e)}
           onKeyDown={(e) => {
             if (userStatuses?.includes('Admin 3') || isAdmin3) return
             if (e.key === 'Enter' || e.key === ' ') {
@@ -1205,27 +1271,42 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
             }
           }}
           aria-label="Show list of investors included in total investor accounts"
+          title="Double-click to hide or show value"
         >
           <div className="widget-header">
-            <h3 className="widget-title">Total Investor Accounts</h3>
+            <h3 className="widget-title">Investor Accounts</h3>
           </div>
-          <div className="widget-value">€{displayInvestorAccounts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className={`widget-value${blurredOverviewWidgets['total-investor-accounts'] ? ' widget-value--blurred' : ''}`}>
+            €{displayInvestorAccounts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
         </div>
 
         {/* Pending Consultations Widget */}
-        <div className="overview-widget">
+        <div
+          className="overview-widget overview-widget--blur-toggle"
+          onDoubleClick={(e) => handleOverviewWidgetDoubleClick('pending-consultations', e)}
+          title="Double-click to hide or show value"
+        >
           <div className="widget-header">
             <h3 className="widget-title">Pending Consultations</h3>
           </div>
-          <div className="widget-value">{pendingConsultations}</div>
+          <div className={`widget-value${blurredOverviewWidgets['pending-consultations'] ? ' widget-value--blurred' : ''}`}>
+            {pendingConsultations}
+          </div>
         </div>
 
         {/* User Message Alerts Widget */}
-        <div className="overview-widget">
+        <div
+          className="overview-widget overview-widget--blur-toggle"
+          onDoubleClick={(e) => handleOverviewWidgetDoubleClick('user-message-alerts', e)}
+          title="Double-click to hide or show value"
+        >
           <div className="widget-header">
             <h3 className="widget-title">User Message Alerts</h3>
           </div>
-          <div className="widget-value">{userMessageAlerts}</div>
+          <div className={`widget-value${blurredOverviewWidgets['user-message-alerts'] ? ' widget-value--blurred' : ''}`}>
+            {userMessageAlerts}
+          </div>
         </div>
       </div>
 
@@ -1468,18 +1549,17 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
       {/* Monthly Projection Progress Bar */}
       <div className="projection-widget">
-        <div className="projection-header">
-          <h3 className="projection-title">Monthly Projection</h3>
-        </div>
         <div className="progress-bar-container">
           <div className="progress-bar-labels">
-            <div 
-              className="target-label-amount target-1"
-              style={{ right: '0%' }}
-            >
-              €{monthlyProjection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div 
+            {!hideEndTargetLabel && (
+              <div
+                className="target-label-amount target-1"
+                style={{ right: '0%' }}
+              >
+                €{monthlyProjection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            )}
+            <div
               className="target-label-amount target-2"
               style={{ left: '33.33%' }}
             >
@@ -1523,43 +1603,58 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
 
         {/* Calendar Widget */}
         <div className="calendar-widget">
+          <button
+            className="calendar-pdf-button calendar-pdf-button--corner"
+            onClick={handleDownloadMonthlyReport}
+            type="button"
+            aria-label="Download monthly performance report as PDF"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
+              <path d="M320 528C205.1 528 112 434.9 112 320C112 205.1 205.1 112 320 112C434.9 112 528 205.1 528 320C528 434.9 434.9 528 320 528zM320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64zM308.7 451.3C314.9 457.5 325.1 457.5 331.3 451.3L435.3 347.3C439.9 342.7 441.2 335.8 438.8 329.9C436.4 324 430.5 320 424 320L352 320L352 216C352 202.7 341.3 192 328 192L312 192C298.7 192 288 202.7 288 216L288 320L216 320C209.5 320 203.7 323.9 201.2 329.9C198.7 335.9 200.1 342.8 204.7 347.3L308.7 451.3z" />
+            </svg>
+          </button>
           <div className="calendar-header">
-            <button
-              className="calendar-nav-button"
-              onClick={() => handleMonthNavigation('prev')}
-              aria-label="Previous month"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <h3 className="calendar-title">
-              {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </h3>
-            <button
-              className="calendar-nav-button"
-              onClick={() => handleMonthNavigation('next')}
-              aria-label="Next month"
-              disabled={isAdmin3User && isAdmin3AtCurrentMonth()}
-              style={
-                isAdmin3User && isAdmin3AtCurrentMonth()
-                  ? { opacity: 0.4, cursor: 'not-allowed' }
-                  : undefined
-              }
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            <div className="calendar-header-nav">
+              <button
+                className="calendar-nav-button"
+                onClick={() => handleMonthNavigation('prev')}
+                aria-label="Previous month"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <h3 className="calendar-title">
+                {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              <button
+                className="calendar-nav-button"
+                onClick={() => handleMonthNavigation('next')}
+                aria-label="Next month"
+                disabled={isAdmin3User && isAdmin3AtCurrentMonth()}
+                style={
+                  isAdmin3User && isAdmin3AtCurrentMonth()
+                    ? { opacity: 0.4, cursor: 'not-allowed' }
+                    : undefined
+                }
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div className="calendar-grid">
+          <div className="calendar-grid" key={`${calendarYear}-${calendarMonth}`}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} className="calendar-day-header">{day}</div>
             ))}
-            {Array.from({ length: getFirstDayOfMonth(calendarMonth, calendarYear) }).map((_, i) => (
-              <div key={`empty-${i}`} className="calendar-day-empty"></div>
+            {Array.from({ length: calendarFirstDayOffset }).map((_, i) => (
+              <div
+                key={`empty-${i}`}
+                className={`calendar-day-empty${collapseFirstCalendarRow ? ' calendar-day--row-collapsed' : ''}`}
+              ></div>
             ))}
-            {Array.from({ length: getDaysInMonth(calendarMonth, calendarYear) }, (_, i) => {
+            {Array.from({ length: calendarDaysInMonth }, (_, i) => {
               const day = i + 1
               const dayKey = day.toString()
               const blockedDay = isAdmin3User
@@ -1570,11 +1665,14 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
               const net = performance ? dayNetSigned(performance) : 0
               const netClass = net > 0 ? 'day-win' : net < 0 ? 'day-loss' : hasPerf ? 'day-flat' : ''
               const isCurrent = isCurrentDay(day)
+              const inCollapsedFirstRow = collapseFirstCalendarRow && day <= firstRowDayCount
+              const inCollapsedLastRow = collapseLastCalendarRow && day >= lastRowStartDay
+              const rowCollapsed = inCollapsedFirstRow || inCollapsedLastRow
               
               return (
                 <div
                   key={day}
-                  className={`calendar-day ${isCurrent ? 'current-day' : ''} ${netClass} ${hasPerf ? 'has-performance' : ''}`}
+                  className={`calendar-day ${isCurrent ? 'current-day' : ''} ${netClass} ${hasPerf ? 'has-performance' : ''}${rowCollapsed ? ' calendar-day--row-collapsed' : ''}`}
                   onClick={() => {
                     if (!isAdmin2) handleDayClick(day)
                   }}
@@ -1598,18 +1696,6 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
                 </div>
               )
             })}
-          </div>
-          <div className="calendar-footer">
-            <button
-              className="calendar-pdf-button"
-              onClick={handleDownloadMonthlyReport}
-              type="button"
-              aria-label="Download monthly performance report as PDF"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
-                <path d="M320 528C205.1 528 112 434.9 112 320C112 205.1 205.1 112 320 112C434.9 112 528 205.1 528 320C528 434.9 434.9 528 320 528zM320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64zM308.7 451.3C314.9 457.5 325.1 457.5 331.3 451.3L435.3 347.3C439.9 342.7 441.2 335.8 438.8 329.9C436.4 324 430.5 320 424 320L352 320L352 216C352 202.7 341.3 192 328 192L312 192C298.7 192 288 202.7 288 216L288 320L216 320C209.5 320 203.7 323.9 201.2 329.9C198.7 335.9 200.1 342.8 204.7 347.3L308.7 451.3z" />
-              </svg>
-            </button>
           </div>
         </div>
 

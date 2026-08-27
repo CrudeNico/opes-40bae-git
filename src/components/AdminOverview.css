@@ -79,6 +79,19 @@
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+  transition: filter 0.4s ease, opacity 0.4s ease, letter-spacing 0.4s ease;
+  will-change: filter;
+}
+
+.widget-value.widget-value--blurred {
+  filter: blur(9px);
+  opacity: 0.45;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.overview-widget--blur-toggle {
+  cursor: pointer;
 }
 
 .overview-widget-investor-total-click {
@@ -744,8 +757,8 @@
 .progress-bar-labels {
   position: relative;
   width: 100%;
-  margin-bottom: 0.5rem;
-  height: 24px;
+  margin-bottom: 0.15rem;
+  height: 20px;
 }
 
 .target-label-amount {
@@ -780,12 +793,6 @@ html.dark-mode .current-progress-label {
   color: #f9fafb;
 }
 
-.admin-overview-container .calendar-footer {
-  margin-top: 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .admin-overview-container .calendar-pdf-button {
   width: 40px;
   height: 40px;
@@ -800,6 +807,13 @@ html.dark-mode .current-progress-label {
   color: #ffffff;
 }
 
+.admin-overview-container .calendar-pdf-button--corner {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2;
+}
+
 .admin-overview-container .calendar-pdf-button:hover {
   background: #1f2937;
   transform: translateY(-1px);
@@ -810,12 +824,6 @@ html.dark-mode .current-progress-label {
   width: 18px;
   height: 18px;
   fill: currentColor;
-}
-
-@media (max-width: 768px) {
-  .admin-overview-container .calendar-footer {
-    justify-content: center;
-  }
 }
 
 .progress-bar-container {
@@ -935,14 +943,9 @@ html.dark-mode .current-progress-label {
     padding: 1rem;
   }
 
-  .projection-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
   .progress-bar-labels {
-    height: 22px;
+    height: 18px;
+    margin-bottom: 0.1rem;
   }
 
   .target-label-amount {
@@ -1163,13 +1166,22 @@ html.dark-mode .projection-description {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: none;
+  position: relative;
 }
 
 .admin-overview-container .calendar-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
   margin-bottom: 1.5rem;
+  padding-right: 3rem;
+}
+
+.admin-overview-container .calendar-header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
 }
 
 .admin-overview-container .calendar-title {
@@ -1186,7 +1198,7 @@ html.dark-mode .projection-description {
   padding: 0.35rem;
   cursor: pointer;
   color: #6b7280;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1214,22 +1226,31 @@ html.dark-mode .projection-description {
 }
 
 .admin-overview-container .calendar-day-empty {
-  aspect-ratio: 1;
+  aspect-ratio: 2 / 1;
 }
 
 .admin-overview-container .calendar-day {
-  aspect-ratio: 1;
+  aspect-ratio: 2 / 1;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   padding: 0.5rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   background: #ffffff;
   position: relative;
+}
+
+.admin-overview-container .calendar-day.calendar-day--row-collapsed,
+.admin-overview-container .calendar-day-empty.calendar-day--row-collapsed {
+  aspect-ratio: 4 / 1;
+}
+
+.admin-overview-container .calendar-day.calendar-day--row-collapsed {
+  padding: 0.2rem 0.5rem;
 }
 
 .admin-overview-container .calendar-day:hover {
@@ -1905,7 +1926,26 @@ html.dark-mode .form-group label {
 
   .admin-overview-container .calendar-header {
     margin-bottom: 0.75rem;
-    padding: 0 0.1rem;
+    padding: 0 2.5rem 0 0.1rem;
+  }
+
+  .admin-overview-container .calendar-header-nav {
+    gap: 0.35rem;
+  }
+
+  .admin-overview-container .calendar-pdf-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .admin-overview-container .calendar-pdf-button--corner {
+    top: 0.65rem;
+    right: 0.65rem;
+  }
+
+  .admin-overview-container .calendar-pdf-button svg {
+    width: 14px;
+    height: 14px;
   }
 
   .admin-overview-container .calendar-grid {
@@ -1923,17 +1963,27 @@ html.dark-mode .form-group label {
 
   .admin-overview-container .calendar-day-empty {
     aspect-ratio: auto;
-    height: 55px;
-    min-height: 55px;
+    height: 28px;
+    min-height: 28px;
   }
 
   .admin-overview-container .calendar-day {
     aspect-ratio: auto;
-    height: 55px;
+    height: 28px;
     padding: 0.14rem;
-    min-height: 55px;
+    min-height: 28px;
     min-width: 0;
     gap: 0.08rem;
+  }
+
+  .admin-overview-container .calendar-day.calendar-day--row-collapsed,
+  .admin-overview-container .calendar-day-empty.calendar-day--row-collapsed {
+    height: 14px;
+    min-height: 14px;
+  }
+
+  .admin-overview-container .calendar-day.calendar-day--row-collapsed {
+    padding: 0.05rem;
   }
 
   .admin-overview-container .day-number {
@@ -1992,17 +2042,27 @@ html.dark-mode .form-group label {
 
   .admin-overview-container .calendar-day-empty {
     aspect-ratio: auto;
-    height: 55px;
-    min-height: 55px;
+    height: 28px;
+    min-height: 28px;
   }
 
   .admin-overview-container .calendar-day {
     aspect-ratio: auto;
-    height: 55px;
-    min-height: 55px;
+    height: 28px;
+    min-height: 28px;
     padding: 0.12rem;
     min-width: 0;
     gap: 0.06rem;
+  }
+
+  .admin-overview-container .calendar-day.calendar-day--row-collapsed,
+  .admin-overview-container .calendar-day-empty.calendar-day--row-collapsed {
+    height: 14px;
+    min-height: 14px;
+  }
+
+  .admin-overview-container .calendar-day.calendar-day--row-collapsed {
+    padding: 0.04rem;
   }
 
   .admin-overview-container .day-number {
