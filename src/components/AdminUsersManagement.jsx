@@ -324,6 +324,8 @@ const AdminUsersManagement = ({ user: currentUser, currentUserStatuses = [] }) =
 
   const isNewUser = (user) => {
     if (!user?.id || dismissedNewUserFlags[user.id]) return false
+    const statuses = Array.isArray(user.statuses) ? user.statuses.filter(Boolean) : []
+    if (statuses.length > 0) return false
     if (user._showNewUserFlag) return true
     if (user._isSample) return false
     return getCreatedAtMs(user.createdAt) > 0

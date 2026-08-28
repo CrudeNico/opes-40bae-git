@@ -290,9 +290,9 @@ const AdminOverview = ({ user, userStatuses = [] }) => {
   const [admin3DailyPerfOverrides, setAdmin3DailyPerfOverrides] = useState({})
   const dailyPerfUnsubscribeRef = useRef(null)
 
-  const ADMIN3_TOTAL_INVESTOR_ACCOUNTS = 1850000
+  const ADMIN3_TOTAL_INVESTOR_ACCOUNTS = 7110000
   const ADMIN3_INVESTOR_PAYOUT_TARGET = 37500
-  const ADMIN3_MONTHLY_PROJECTION = 7110000 * 0.09
+  const ADMIN3_MONTHLY_PROJECTION = ADMIN3_TOTAL_INVESTOR_ACCOUNTS * 0.09
 
   const isAdmin3User = isAdmin3 || userStatuses?.includes('Admin 3')
   const canEditAdmin3DayTrades = isAdmin3User && !isAdmin2

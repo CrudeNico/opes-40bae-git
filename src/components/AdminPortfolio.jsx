@@ -580,6 +580,7 @@ export function generateAdmin3PortfolioData() {
 }
 
 const HISTORICAL_LINE_GREEN = '#10b981'
+const ADMIN3_TOTAL_INVESTOR_ACCOUNTS = 7110000
 
 const AdminPortfolio = ({ user, userStatuses = [] }) => {
   const isAdmin2 = userStatuses && (userStatuses.includes('Admin 2') || userStatuses.includes('Relations'))
@@ -715,6 +716,14 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
 
   const loadTotalInvestorAccounts = async () => {
     try {
+      if (isAdmin3) {
+        setTotalInvestorAccounts(ADMIN3_TOTAL_INVESTOR_ACCOUNTS)
+        setInvestorBreakdownRows([])
+        setInvestorTotalModalLines([])
+        setAllApprovedAccountRows([])
+        return
+      }
+
       const db = getFirestore()
       const overrides = isAdmin3 && user?.uid ? await getAdmin3Overrides(user.uid) : {}
 
@@ -1874,7 +1883,8 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
       : 0
 
   /** Current balance metric = sum of approved investor accounts (same as total investor accounts). */
-  const displayCurrentBalance = isAdmin3 ? 1850000 : totalInvestorAccounts
+  const displayCurrentBalance = isAdmin3 ? ADMIN3_TOTAL_INVESTOR_ACCOUNTS : totalInvestorAccounts
+  const displayTotalInvestorAccounts = isAdmin3 ? ADMIN3_TOTAL_INVESTOR_ACCOUNTS : totalInvestorAccounts
 
   const currentBalanceAllocationRows = investorBreakdownRows
     .map((row) => ({
@@ -2171,7 +2181,7 @@ const AdminPortfolio = ({ user, userStatuses = [] }) => {
             <div className="metric-content">
               <h4 className="metric-label">Total Investor Acc</h4>
               <p className="metric-value">
-                {loadingInvestorAccounts ? 'Loading...' : formatCompact(isAdmin3 ? 1850000 : totalInvestorAccounts)}
+                {loadingInvestorAccounts ? 'Loading...' : formatCompact(displayTotalInvestorAccounts)}
               </p>
             </div>
           </div>

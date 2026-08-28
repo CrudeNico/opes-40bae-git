@@ -20,6 +20,12 @@ import { syncAllPartnersMonthlyEntries, buildPartnerMonthLedgerRecord, isPartner
 import { generateAdmin3PortfolioData } from './AdminPortfolio'
 import { getAdmin3SampleInvestors } from '../utils/admin3SampleUsers'
 import {
+  applyAdmin3PartnerDemoToInvestor,
+  applyAdmin3PartnerDemoToInvestors,
+  getAdmin3PartnerDemoBalance,
+  isAdmin3PartnerDemoProfile
+} from '../utils/admin3PartnerDemo'
+import {
   TRANCHE_PRIMARY,
   TRANCHE_SECONDARY,
   getLastTrancheEnding,
@@ -327,8 +333,13 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
     }
   }
 
-  const getInvestorDisplayBalance = (investor) =>
-    getAdminInvestorSummaryCurrentBalance(investor?.investmentData)
+  const getInvestorDisplayBalance = (investor) => {
+    if (isAdmin3) {
+      const demoBalance = getAdmin3PartnerDemoBalance(investor?.email)
+      if (demoBalance != null) return demoBalance
+    }
+    return getAdminInvestorSummaryCurrentBalance(investor?.investmentData)
+  }
 
   const getPartnerEditFormStartingBalance = () => {
     if (!selectedInvestor?.investmentData || !editingRecord) return 0
@@ -467,11 +478,16 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
             referenceDate: now
           })
           if (!cancelled && updates.length > 0) {
-            setInvestors((prev) => mergePartnerSyncUpdates(prev, updates))
+            setInvestors((prev) =>
+              isAdmin3
+                ? applyAdmin3PartnerDemoToInvestors(mergePartnerSyncUpdates(prev, updates))
+                : mergePartnerSyncUpdates(prev, updates)
+            )
             setSelectedInvestor((prev) => {
               if (!prev) return prev
               const hit = updates.find((row) => row.partnerId === prev.id)
-              return hit ? { ...prev, investmentData: hit.investmentData } : prev
+              const next = hit ? { ...prev, investmentData: hit.investmentData } : prev
+              return isAdmin3 ? applyAdmin3PartnerDemoToInvestor(next) : next
             })
           }
         }
@@ -537,13 +553,13 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
         const bPartner = isPartnerUser(b)
         if (aPartner && !bPartner) return -1
         if (!aPartner && bPartner) return 1
-        const aBalance = getAdminInvestorSummaryCurrentBalance(a?.investmentData)
-        const bBalance = getAdminInvestorSummaryCurrentBalance(b?.investmentData)
+        const aBalance = getInvestorDisplayBalance(a)
+        const bBalance = getInvestorDisplayBalance(b)
         return bBalance - aBalance
       })
 
       const syncedList = await runPartnerMonthlyAutoSync(investorsList)
-      setInvestors(syncedList)
+      setInvestors(isAdmin3 ? applyAdmin3PartnerDemoToInvestors(syncedList) : syncedList)
     } catch (error) {
       console.error('Error loading investors:', error)
       setError('Failed to load investors. Please try again.')
@@ -1575,7 +1591,9 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
             ) : (
               investors.map((investor) => {
                 const partner = isPartnerUser(investor)
-                const hasCurrentMonthEntry = hasPerformanceEntryForCurrentMonth(investor)
+                const hasCurrentMonthEntry =
+                  hasPerformanceEntryForCurrentMonth(investor) &&
+                  !(isAdmin3 && isAdmin3PartnerDemoProfile(investor))
                 return (
                 <div
                   key={investor.id}
@@ -1587,7 +1605,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       <CurrentMonthPerformanceCheckIcon />
                     </span>
                   )}
-                  <div className={`investor-card-image${partner ? ' investor-card-image-partner' : ''}`}>
+                  <div className={`investor-card-image${partner && !isAdmin3 ? ' investor-card-image-partner' : ''}`}>
                     {!isAdmin3 && investor.profileImageUrl ? (
                       <img src={investor.profileImageUrl} alt={investor.displayName || investor.email} />
                     ) : (
@@ -1659,7 +1677,7 @@ const AdminInvestorsManagement = ({ user: currentUser, userStatuses = [] }) => {
                       <div className="portfolio-summary-grid">
                         <div className="summary-item">
                           <span className="summary-label">Current Balance:</span>
-                          <span className="summary-value">€{getAdminInvestorSummaryCurrentBalance(selectedInvestor.investmentData).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="summary-value">€{getInvestorDisplayBalance(selectedInvestor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="summary-item">
                           <span className="summary-label">
