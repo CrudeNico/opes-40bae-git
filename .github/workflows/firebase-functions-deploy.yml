@@ -30,7 +30,8 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - uses: FirebaseExtended/action-setup-firebase@v0
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
 
       - name: Set Resend API secret
         run: |
