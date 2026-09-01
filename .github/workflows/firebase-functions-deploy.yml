@@ -33,9 +33,13 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Set Resend API secret
+      - name: Write function environment
         run: |
-          printf '%s' "${{ secrets.VITE_RESEND_API_KEY }}" | firebase functions:secrets:set RESEND_API_KEY --project opes-40bae --force
+          cat > functions/.env.opes-40bae <<EOF
+          RESEND_API_KEY=${{ secrets.VITE_RESEND_API_KEY }}
+          RESEND_SENDER_EMAIL=${{ secrets.VITE_RESEND_SENDER_EMAIL }}
+          RESEND_SENDER_NAME=${{ secrets.VITE_RESEND_SENDER_NAME }}
+          EOF
 
       - name: Deploy functions
         run: firebase deploy --only functions:sendResendEmail --project opes-40bae --non-interactive

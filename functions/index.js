@@ -743,9 +743,6 @@ async function getRequesterContext(request) {
 }
 
 export const sendResendEmail = onCall(
-  {
-    secrets: [RESEND_API_KEY]
-  },
   async (request) => {
     const { to, subject, html, text, attachments } = request.data || {}
     const recipients = normalizeRecipientList(to)

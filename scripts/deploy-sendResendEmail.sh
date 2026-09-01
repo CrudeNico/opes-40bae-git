@@ -17,7 +17,16 @@ if [[ -z "${RESEND_KEY:-}" ]]; then
   exit 1
 fi
 
-printf '%s' "$RESEND_KEY" | firebase functions:secrets:set RESEND_API_KEY --project "$PROJECT_ID" --force
+printf '%s' "$RESEND_KEY" | firebase functions:secrets:set RESEND_API_KEY --project "$PROJECT_ID" --force 2>/dev/null || true
+
+SENDER_EMAIL="$(grep '^VITE_RESEND_SENDER_EMAIL=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
+SENDER_NAME="$(grep '^VITE_RESEND_SENDER_NAME=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
+
+cat > functions/.env.opes-40bae <<EOF
+RESEND_API_KEY=$RESEND_KEY
+RESEND_SENDER_EMAIL=${SENDER_EMAIL:-noreply@opessocius.com}
+RESEND_SENDER_NAME=${SENDER_NAME:-Opessocius Asset Management}
+EOF
 
 cd functions
 npm ci

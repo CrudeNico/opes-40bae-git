@@ -41,6 +41,7 @@ firebase-debug.log
 # Environment variables
 .env
 .env.local
+functions/.env*
 
 # Playwright session & chat watcher state
 .pw-session/

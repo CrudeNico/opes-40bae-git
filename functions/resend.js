@@ -1,6 +1,6 @@
-import { defineSecret, defineString } from 'firebase-functions/params'
+import { defineString } from 'firebase-functions/params'
 
-export const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
+export const RESEND_API_KEY = defineString('RESEND_API_KEY')
 export const RESEND_SENDER_EMAIL = defineString('RESEND_SENDER_EMAIL', {
   default: 'noreply@opessocius.com'
 })
