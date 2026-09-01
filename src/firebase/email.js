@@ -18,16 +18,25 @@ const emailFooterNote = 'This is an automated email. Please do not reply to this
 
 const formatCallableError = (error) => {
   const code = error?.code || ''
+  const message = (error?.message || '').replace(/^FirebaseError:\s*/i, '')
+
   if (code === 'functions/unauthenticated') {
     return 'You must be logged in as an admin to send this email.'
   }
   if (code === 'functions/permission-denied') {
-    return error.message || 'You do not have permission to send this email.'
+    return message || 'You do not have permission to send this email.'
   }
-  if (code === 'functions/not-found') {
+  if (code === 'functions/not-found' || code === 'functions/unavailable') {
     return 'Email service is not deployed yet. Deploy the sendResendEmail Cloud Function.'
   }
-  return (error.message || 'Failed to send email').replace(/^FirebaseError:\s*/i, '')
+  if (
+    code === 'functions/internal' &&
+    (!message || message === 'internal')
+  ) {
+    return 'Email service is unavailable. Deploy the sendResendEmail Cloud Function and set the RESEND_API_KEY secret.'
+  }
+
+  return message || 'Failed to send email'
 }
 
 /**
